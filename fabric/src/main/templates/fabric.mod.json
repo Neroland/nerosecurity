@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+  "name": "${mod_name}",
+  "description": "NeroSecurity - multiloader build (Fabric).",
+  "authors": ["${mod_authors}"],
+  "license": "${mod_license}",
+  "accessWidener": "nerosecurity.accesswidener",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["za.co.neroland.nerosecurity.fabric.NeroSecurityFabric"],
+    "client": ["za.co.neroland.nerosecurity.fabric.NeroSecurityFabricClient"]
+  },
+  "mixins": [
+    "nerosecurity-common.mixins.json",
+    "nerosecurity.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "minecraft": ">=${minecraft_version}",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
