@@ -30,4 +30,12 @@ The build is the repo root, with a flattened cross-loader structure driven by St
           :fabric:26.1.2:build :fabric:26.2:build :fabric:26.3:build   # all nine
 ```
 
+## Privacy & telemetry
+
+> **Telemetry notice:** NeroSecurity sends anonymous error reports (stack trace + mod/game
+> versions only — never IPs, usernames, UUIDs, or world data) to the developers via Sentry
+> (EU servers) so crashes can be fixed. On by default — opt out any time by setting `telemetryEnabled = false`
+> in `config/nerosecurity.properties`. Full details:
+> [PRIVACY.md](https://github.com/Neroland/nerosecurity/blob/main/PRIVACY.md).
+
 See [`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md) for agent and contributor context.

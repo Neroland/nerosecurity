@@ -27,3 +27,12 @@ type = "required"
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+
+# Neroland Core — required shared foundation; must load BEFORE NeroSecurity (ordering = AFTER).
+# Core is the ONLY hard dependency: every other Nero mod stays soft and is detected at runtime.
+[[dependencies.${mod_id}]]
+modId = "nerolandcore"
+type = "required"
+versionRange = "${nerolandcore_version_range}"
+ordering = "AFTER"
+side = "BOTH"

@@ -1,3 +1,11 @@
+[![NeroLink App — Beta](https://img.shields.io/badge/NeroLink_App-Now_in_Beta-60d4e8?style=for-the-badge)](https://nerolandmc.net/nerolink/#beta) [![Explore the Neroland ecosystem](https://img.shields.io/badge/Explore-The_Neroland_Ecosystem-1a5a6c?style=for-the-badge)](https://nerolandmc.net/ecosystem/)
+
+> 📱 **NeroLink App Beta — your Neroland world on your phone.** Check energy, alerts and machines live, claim quest rewards and search your storage without logging in. **[Join the beta at nerolandmc.net →](https://nerolandmc.net/nerolink/#beta)**
+>
+> 🌌 **Explore the Neroland ecosystem.** See how NeroSecurity fits together with the rest of the Nero mods — every mod, wiki and changelog in one place. **[View the ecosystem at nerolandmc.net →](https://nerolandmc.net/ecosystem/)** · [NeroSecurity on the website](https://nerolandmc.net/mods/nerosecurity/)
+
+---
+
 # NeroSecurity
 
 **Lock it down — keycards, blast doors, force fields, cameras and turret-grade defence for tech bases, colony outposts and orbital stations.**
@@ -48,6 +56,12 @@ NeroSecurity is the most privacy-sensitive mod in the ecosystem, because cameras
 - 🙈 **Opt-out & per-feature toggles** — players and servers can opt out of being logged where feasible, and cameras, logging, force fields and lockdown are each independently disableable in a clearly labelled `privacy` config section.
 - 👁️ **No silent recording** — an unmistakable "recording active" indicator surfaces whenever surveillance is in effect, and reading the audit log is itself privileged and itself audited.
 - 📡 **Anonymous crash telemetry, opt-out** — carries only version strings (mod / MC / loader / OS / Java), never IPs, names, UUIDs or world data, and is disableable in config.
+
+> **Telemetry notice:** NeroSecurity sends anonymous error reports (stack trace + mod/game
+> versions only — never IPs, usernames, UUIDs, or world data) to the developers via Sentry
+> (EU servers) so crashes can be fixed. On by default — opt out any time by setting `telemetryEnabled = false`
+> in `config/nerosecurity.properties`. Full details:
+> [PRIVACY.md](https://github.com/Neroland/nerosecurity/blob/main/PRIVACY.md).
 
 ## Why it fits the ecosystem
 
