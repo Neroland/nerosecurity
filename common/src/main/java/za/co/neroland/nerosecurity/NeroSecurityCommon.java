@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
+import za.co.neroland.nerosecurity.economy.SecurityEconomy;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 
@@ -38,5 +39,9 @@ public final class NeroSecurityCommon {
         //    telemetryEnabled=false); stays inert while the build's DSN is the placeholder
         //    (see NeroSecurityTelemetry's PLACEHOLDER_DSN guard).
         NeroSecurityTelemetry.init();
+
+        // 3. Optional NeroEconomy bridge for paid security tiers. Touches NeroEconomy only when it is loaded
+        //    and new enough; claims must happen here, before the first server starts.
+        SecurityEconomy.init();
     }
 }

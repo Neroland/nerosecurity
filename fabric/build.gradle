@@ -70,6 +70,14 @@ dependencies {
     // NeroSecurity (see fabric.mod.json depends).
     implementation "za.co.neroland.nerolandcore:nerolandcore-fabric-${mc}:${nerolandcoreVersion}"
 
+    // NeroEconomy — OPTIONAL. compileOnly: never bundled, never a hard requirement. Only the economy bridge
+    // class imports it, and only after isModLoaded("neroeconomy"), so NeroSecurity runs without it.
+    compileOnly "za.co.neroland.neroeconomy:neroeconomy-fabric-${mc}:${rootProject.neroeconomy_version}"
+    // Dev clients load NeroEconomy only with -PwithNeroEconomy; the default run proves it stays optional.
+    if (project.hasProperty('withNeroEconomy')) {
+        runtimeOnly "za.co.neroland.neroeconomy:neroeconomy-fabric-${mc}:${rootProject.neroeconomy_version}"
+    }
+
     // Sentry SDK (telemetry/NeroSecurityTelemetry): compile against it + embed it as a jar-in-jar so the
     // shipped Fabric jar carries it. Counterpart to the NeoForge JarJar bundling.
     implementation 'io.sentry:sentry:8.45.0'

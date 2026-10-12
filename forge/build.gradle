@@ -107,6 +107,10 @@ dependencies {
     // loads BEFORE NeroSecurity (see mods.toml, ordering = AFTER); it is never bundled.
     implementation "za.co.neroland.nerolandcore:nerolandcore-forge-${mc}:${nerolandcoreVersion}"
 
+    // NeroEconomy — OPTIONAL. compileOnly: never bundled, never a hard requirement. Only the economy bridge
+    // class imports it, and only after isModLoaded("neroeconomy"), so NeroSecurity runs without it.
+    compileOnly "za.co.neroland.neroeconomy:neroeconomy-forge-${mc}:${rootProject.neroeconomy_version}"
+
     implementation 'io.sentry:sentry:8.45.0'
     jarJar(group: 'io.sentry', name: 'sentry', version: '8.45.0')
 

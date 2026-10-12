@@ -2,7 +2,7 @@
 
 > Part of the Neroland sci-fi Minecraft mod ecosystem, built on **Neroland Core**.
 
-**Status:** barebones multiloader skeleton — version `0.0.1-alpha.1`. No gameplay content yet.
+**Status:** barebones multiloader skeleton — version `0.3.0-alpha.1`. No gameplay content yet; optional NeroEconomy seams are in place.
 
 ## Build targets
 
@@ -29,6 +29,45 @@ The build is the repo root, with a flattened cross-loader structure driven by St
           :forge:26.1.2:build :forge:26.2:build :forge:26.3:build \
           :fabric:26.1.2:build :fabric:26.2:build :fabric:26.3:build   # all nine
 ```
+
+## Developer notes: NeroEconomy seam and rules
+
+NeroSecurity has no content yet. `common/src/main/java/za/co/neroland/nerosecurity/economy/SecurityEconomy`
+is the ready-to-use seam for paid security tiers:
+
+- `SecurityEconomy.chargeTier(player, price, key)` charges reason `security_tier` into NeroEconomy's
+  Reserve. Upgrade only when `outcome.ok()`. NeroSecurity never pays out for guarding (that would be a
+  faucet).
+
+- NeroEconomy is **optional**. It is compiled `compileOnly` (never bundled) and declared optional in
+  every loader manifest. One bridge class, `economy/NeroEconomyBridge`, is the only code that imports
+  `za.co.neroland.neroeconomy`, and it is loaded only after `isModLoaded("neroeconomy")` and an API
+  version check (`SiblingEconomy.API_VERSION >= 1`, read reflectively). The handle is claimed once from
+  common init.
+- Every call returns an `EconomyOutcome`: `APPLIED` (grant), `REFUSED` (nothing moved; show
+  `outcome.message()`), or `ABSENT` (NeroEconomy is not installed; use the fallback).
+- Request keys name the thing being paid for, never a player. A key holding a UUID or 32 hex digits is
+  refused before it is sent. Nothing logs who paid.
+- Dev clients load NeroEconomy only with `-PwithNeroEconomy` (NeoForge and Fabric), so the default run
+  proves the mod works without it.
+
+### Rules for guarding economy blocks (non-negotiable)
+
+Security is the feature most able to lock players out of their own money, so every lock, guard, zone or
+tier must keep these rules:
+
+1. **Owners always reach their own economy blocks.** The owner of a Player Shop, Auto-Trader or Market
+   Board listing, and any player at a Bank, Trading or Exchange Terminal, can always open it. Credits and
+   goods are never held hostage by a lapsed security subscription.
+2. **Never break a block to enforce a restriction.** Breaking an Auto-Trader settles its rule and drops its
+   slots like a chest; doing that automatically would scatter a player's goods.
+3. **Never inspect economy state to decide access.** No balance or holding of any player is read for an
+   access decision; NeroEconomy exposes none to other mods anyway.
+4. **Failed renewal downgrades only.** Charge when the player chooses or renews a tier, never silently in
+   the background. A refused renewal lowers the protection tier; it never removes the owner's access to
+   their own blocks.
+
+With NeroEconomy absent, tiers are free or configured another way.
 
 ## Privacy & telemetry
 

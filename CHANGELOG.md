@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0-alpha.1] - 2026-10-11
+
+Optional NeroEconomy seams. No blocks, items or recipes yet.
+
+### Added
+
+- **NeroEconomy seam for paid security tiers** (NeroEconomy stays optional; NeroSecurity builds, loads and
+  runs without it): `economy/SecurityEconomy.chargeTier` charges reason `security_tier` into NeroEconomy's
+  Reserve and returns an outcome with a player-facing message.
+- The rules every security feature keeps around economy blocks (owners always reach their own blocks,
+  never break blocks, no economy inspection for access, a failed renewal only downgrades), documented in
+  the README and the new wiki page *NeroEconomy integration*.
+
+### Changed
+
+- NeroEconomy is declared as an optional dependency on every loader (Fabric `suggests`, NeoForge
+  `optional`, Forge `mandatory = false`, floor `0.3.0-beta.1`) and compiled `compileOnly`.
+- Neroland Core (floor 1.13.0) is now a required dependency, and NeroSecurity ships anonymous, opt-out
+  crash reporting (see PRIVACY.md).
+
 ## [0.2.0-alpha.1] - 2026-09-24
 
 EMI compatibility. No gameplay, id, tag or config change.
