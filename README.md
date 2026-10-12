@@ -2,7 +2,7 @@
 
 > Part of the Neroland sci-fi Minecraft mod ecosystem, built on **Neroland Core**.
 
-**Status:** barebones multiloader skeleton — version `0.3.0-alpha.1`. No gameplay content yet; optional NeroEconomy seams are in place.
+**Status:** barebones multiloader skeleton — version `0.4.0-alpha.1`. No gameplay content yet; optional NeroEconomy seams and the NeroQuests quest pack are in place.
 
 ## Build targets
 
@@ -68,6 +68,20 @@ tier must keep these rules:
    their own blocks.
 
 With NeroEconomy absent, tiers are free or configured another way.
+
+## Quests (NeroQuests, optional)
+
+NeroSecurity ships a NeroQuests quest pack: chapter `nerosecurity:access_granted` "Access Granted", five
+player quests that teach a player to secure their own base (craft a keycard, encode it, bring a hub online,
+run a lockdown drill, then the capstone). It is plain data in the jar and appears in the quest book only
+when NeroQuests is installed; there is no dependency on NeroQuests in any form. The quests become
+completable once the security features exist: future code calls
+`progression/SecurityMilestones.record(player, milestone)` when a player encodes their first keycard,
+brings an installation online or clears a lockdown drill, which opens the matching player-scope Neroland
+Core gate (`nerosecurity:first_keycard`, `installation_online`, `lockdown_drill`). Those gates are
+records for quests only and are never read to grant access. There are no threshold channels for security
+events, by design, and no quest reward ever changes access state. See the wiki page
+[NeroQuests integration](wiki/NeroQuests-Integration.md).
 
 ## Privacy & telemetry
 

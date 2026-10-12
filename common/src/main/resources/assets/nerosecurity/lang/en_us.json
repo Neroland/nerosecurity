@@ -1,3 +1,14 @@
 {
-  "economy_result.nerosecurity.absent": "Paid security tiers need NeroEconomy, which is not installed on this server."
+  "chapter.nerosecurity.access_granted.title": "Access Granted",
+  "economy_result.nerosecurity.absent": "Paid security tiers need NeroEconomy, which is not installed on this server.",
+  "quest.nerosecurity.access_granted.card_stock.desc": "Every lock starts with a key. Craft a blank keycard; it opens nothing until it is encoded.",
+  "quest.nerosecurity.access_granted.card_stock.title": "Card Stock",
+  "quest.nerosecurity.access_granted.first_keycard.desc": "Encode your first keycard. From here on, access to your base is something you hand out on purpose.",
+  "quest.nerosecurity.access_granted.first_keycard.title": "First Keycard",
+  "quest.nerosecurity.access_granted.head_of_security.desc": "Keycard encoded, hub online, drill passed. Your base is yours to open and yours to close.",
+  "quest.nerosecurity.access_granted.head_of_security.title": "Head of Security",
+  "quest.nerosecurity.access_granted.installation_online.desc": "Register a security hub and link at least one device to it. One hub decides who gets in, so every door answers to the same rules.",
+  "quest.nerosecurity.access_granted.installation_online.title": "Installation Online",
+  "quest.nerosecurity.access_granted.lockdown_drill.desc": "Trigger a lockdown on your own installation, then clear it. A drill, not an alarm: know the way out before you ever need it.",
+  "quest.nerosecurity.access_granted.lockdown_drill.title": "Lockdown Drill"
 }

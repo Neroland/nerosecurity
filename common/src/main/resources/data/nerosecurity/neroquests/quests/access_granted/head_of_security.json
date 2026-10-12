@@ -1,0 +1,34 @@
+{
+  "title": "quest.nerosecurity.access_granted.head_of_security.title",
+  "description": "quest.nerosecurity.access_granted.head_of_security.desc",
+  "icon": "minecraft:shield",
+  "prerequisites": [
+    "nerosecurity:access_granted/lockdown_drill"
+  ],
+  "objectives": [
+    {
+      "type": "neroquests:quest_complete",
+      "quest": "nerosecurity:access_granted/first_keycard"
+    },
+    {
+      "type": "neroquests:quest_complete",
+      "quest": "nerosecurity:access_granted/installation_online"
+    },
+    {
+      "type": "neroquests:quest_complete",
+      "quest": "nerosecurity:access_granted/lockdown_drill"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 200
+    },
+    {
+      "type": "neroquests:item",
+      "item": "minecraft:iron_ingot",
+      "count": 16
+    }
+  ],
+  "scope": "player"
+}

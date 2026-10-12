@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-alpha.1] - 2026-10-11
+
+Quest-pack data and milestone seams. Requires Neroland Core 1.15.0. Still no blocks, items or recipes.
+
+### Added
+
+- **NeroQuests quest pack**: chapter `nerosecurity:access_granted` "Access Granted", 5 player quests (Card
+  Stock, First Keycard, Installation Online, Lockdown Drill, Head of Security) that appears in the quest book
+  when NeroQuests is installed; inert otherwise, no dependency. The quests are data only today: they become
+  completable once the keycard item, security hub and lockdown exist and the code records the milestones
+  below. Until `nerosecurity:keycard` is registered NeroQuests drops *Card Stock* at load (its validator
+  treats an unknown item from a loaded mod as a typo); the four gate and completion quests load and wait.
+- **Milestone gates** (player scope, no `requires`, records only): `nerosecurity:first_keycard`,
+  `nerosecurity:installation_online`, `nerosecurity:lockdown_drill`.
+- `progression/SecurityMilestones`: one `record(...)` per gate for future security code to call, online or
+  offline (Core 1.15.0's `ProgressionGates.open(server, uuid, gate)`). A milestone gate is never read for
+  an access decision; access comes from keycards, owners, factions and claims only.
+
+### Changed
+
+- Neroland Core floor raised from 1.13.0 to 1.15.0 (offline-capable progression gates).
+- No threshold channels, by design: a crossing about alarms, intrusions or lockdowns would announce that a
+  base is under attack right now, so the security event bus stays internal. Quest rewards never change
+  access state (no hook gates, no free access level, no door bypass).
+
 ## [0.3.0-alpha.1] - 2026-10-11
 
 Optional NeroEconomy seams. No blocks, items or recipes yet.

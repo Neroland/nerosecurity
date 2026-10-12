@@ -14,6 +14,10 @@ import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
  * construction. This is a barebones skeleton — no content is registered yet;
  * add shared blocks, items and systems here and reach loader-specific
  * behaviour through a platform seam.
+ *
+ * <p>Progression: personal security milestones are recorded through
+ * {@link za.co.neroland.nerosecurity.progression.SecurityMilestones} as player-scope Neroland Core gates;
+ * they are records for quest packs, never an access check.
  */
 public final class NeroSecurityCommon {
 

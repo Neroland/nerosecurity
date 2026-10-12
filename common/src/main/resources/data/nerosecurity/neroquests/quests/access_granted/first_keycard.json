@@ -1,0 +1,21 @@
+{
+  "title": "quest.nerosecurity.access_granted.first_keycard.title",
+  "description": "quest.nerosecurity.access_granted.first_keycard.desc",
+  "icon": "minecraft:name_tag",
+  "prerequisites": [
+    "nerosecurity:access_granted/card_stock"
+  ],
+  "objectives": [
+    {
+      "type": "neroquests:gate_open",
+      "gate": "nerosecurity:first_keycard"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 50
+    }
+  ],
+  "scope": "player"
+}

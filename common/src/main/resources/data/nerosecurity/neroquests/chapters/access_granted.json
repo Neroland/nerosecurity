@@ -1,0 +1,31 @@
+{
+  "title": "chapter.nerosecurity.access_granted.title",
+  "icon": "minecraft:iron_door",
+  "quests": [
+    {
+      "quest": "nerosecurity:access_granted/card_stock",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "quest": "nerosecurity:access_granted/first_keycard",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "quest": "nerosecurity:access_granted/installation_online",
+      "x": 4,
+      "y": 0
+    },
+    {
+      "quest": "nerosecurity:access_granted/lockdown_drill",
+      "x": 6,
+      "y": 0
+    },
+    {
+      "quest": "nerosecurity:access_granted/head_of_security",
+      "x": 8,
+      "y": 0
+    }
+  ]
+}

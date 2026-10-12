@@ -1,0 +1,21 @@
+{
+  "title": "quest.nerosecurity.access_granted.installation_online.title",
+  "description": "quest.nerosecurity.access_granted.installation_online.desc",
+  "icon": "minecraft:observer",
+  "prerequisites": [
+    "nerosecurity:access_granted/first_keycard"
+  ],
+  "objectives": [
+    {
+      "type": "neroquests:gate_open",
+      "gate": "nerosecurity:installation_online"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 100
+    }
+  ],
+  "scope": "player"
+}

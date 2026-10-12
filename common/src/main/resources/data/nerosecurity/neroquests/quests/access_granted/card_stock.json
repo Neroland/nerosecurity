@@ -1,0 +1,18 @@
+{
+  "title": "quest.nerosecurity.access_granted.card_stock.title",
+  "description": "quest.nerosecurity.access_granted.card_stock.desc",
+  "icon": "minecraft:paper",
+  "objectives": [
+    {
+      "type": "neroquests:craft_item",
+      "item": "nerosecurity:keycard"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 25
+    }
+  ],
+  "scope": "player"
+}

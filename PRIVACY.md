@@ -53,7 +53,9 @@ nothing is ever sent before the config — and therefore your choice — has bee
 ## Player data
 
 NeroSecurity does not currently store any player data of its own — no player UUIDs, names, positions or
-gameplay records are written to the world save or anywhere else. Neroland Core (a required
+gameplay records are written to the world save or anywhere else. The only per-player record NeroSecurity
+will create is a milestone gate (first keycard, installation online, lockdown drill) kept in Neroland Core's
+progression store, which is covered by Core's own privacy disclosure. Neroland Core (a required
 dependency) documents its own data handling in its own PRIVACY.md.
 
 ## Legal basis and your rights (GDPR / POPIA)

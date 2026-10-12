@@ -1,0 +1,21 @@
+{
+  "title": "quest.nerosecurity.access_granted.lockdown_drill.title",
+  "description": "quest.nerosecurity.access_granted.lockdown_drill.desc",
+  "icon": "minecraft:redstone_lamp",
+  "prerequisites": [
+    "nerosecurity:access_granted/installation_online"
+  ],
+  "objectives": [
+    {
+      "type": "neroquests:gate_open",
+      "gate": "nerosecurity:lockdown_drill"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 100
+    }
+  ],
+  "scope": "player"
+}
