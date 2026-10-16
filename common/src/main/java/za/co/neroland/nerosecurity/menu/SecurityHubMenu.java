@@ -20,8 +20,13 @@ import za.co.neroland.nerosecurity.registry.NeroSecurityMenus;
  */
 public class SecurityHubMenu extends AbstractContainerMenu {
 
+    /** Fewest ticks between two privacy requests or actions answered for one open menu. */
+    public static final int PRIVACY_MIN_INTERVAL_TICKS = 10;
+
     private final @Nullable UUID installationId;
     private final ContainerLevelAccess access;
+    /** Server: game time of the last answered privacy request or action ({@code Long.MIN_VALUE} = never). */
+    private long lastPrivacyAt = Long.MIN_VALUE;
 
     /** Client-side factory: the client learns the installation from the snapshot, not from the menu. */
     public SecurityHubMenu(int containerId, Inventory inventory) {
@@ -38,6 +43,19 @@ public class SecurityHubMenu extends AbstractContainerMenu {
     /** The installation this menu is bound to (server side; null on the client). */
     public @Nullable UUID installationId() {
         return installationId;
+    }
+
+    /**
+     * Whether a privacy request or action may be answered now (at most one per
+     * {@link #PRIVACY_MIN_INTERVAL_TICKS}); records the time when it may. A clock that went backwards resets.
+     */
+    public boolean tryPrivacy(long gameTime) {
+        if (lastPrivacyAt != Long.MIN_VALUE && gameTime >= lastPrivacyAt
+                && gameTime - lastPrivacyAt < PRIVACY_MIN_INTERVAL_TICKS) {
+            return false;
+        }
+        lastPrivacyAt = gameTime;
+        return true;
     }
 
     @Override

@@ -15,6 +15,7 @@ import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
 import za.co.neroland.nerosecurity.access.AccessResolver;
+import za.co.neroland.nerosecurity.block.SecurityDevice;
 import za.co.neroland.nerosecurity.block.alarm.AlarmBlockEntity;
 import za.co.neroland.nerosecurity.block.alarm.AlarmResponse;
 import za.co.neroland.nerosecurity.block.alarm.AlarmRules;
@@ -68,6 +69,7 @@ public final class AlarmPayloadHandlers {
             AccessDecision decision = resolve(player, alarm, installation, AccessAction.CONFIGURE_DEVICE);
             if (!decision.allowed()) {
                 player.sendOverlayMessage(decision.message());
+                SecurityDevice.denyFeedback(player, alarm.getBlockPos());
                 return;
             }
             BlockPos pos = alarm.getBlockPos().immutable();
@@ -100,18 +102,15 @@ public final class AlarmPayloadHandlers {
             switch (AlarmRules.configureChange(currentTypes, currentResponses, wantedTypes, wantedResponses, ownerMay,
                     serverAllowsLockdown())) {
                 case OWNER_ONLY -> {
-                    player.sendSystemMessage(Component.translatable("alarm.nerosecurity.lockdown.owner_only"));
-                    refresh(player, alarm);
+                    refuse(player, alarm, Component.translatable("alarm.nerosecurity.lockdown.owner_only"));
                     return;
                 }
                 case LOCKDOWN_ARMED_OWNER_ONLY -> {
-                    player.sendSystemMessage(Component.translatable("alarm.nerosecurity.lockdown.owner_only_armed"));
-                    refresh(player, alarm);
+                    refuse(player, alarm, Component.translatable("alarm.nerosecurity.lockdown.owner_only_armed"));
                     return;
                 }
                 case SERVER_DISABLED -> {
-                    player.sendSystemMessage(Component.translatable("alarm.nerosecurity.lockdown.server_disabled"));
-                    refresh(player, alarm);
+                    refuse(player, alarm, Component.translatable("alarm.nerosecurity.lockdown.server_disabled"));
                     return;
                 }
                 default -> {
@@ -123,8 +122,9 @@ public final class AlarmPayloadHandlers {
                 alarm.applySettings(wantedTypes, wantedResponses);
                 publish(player, alarm, installation, SecurityEventType.DEVICE_CONFIGURED);
             }
-            player.sendOverlayMessage(Component.translatable("alarm.nerosecurity.configured"));
-            refresh(player, alarm);
+            Component done = Component.translatable("alarm.nerosecurity.configured");
+            player.sendOverlayMessage(done);
+            refresh(player, alarm, true, done);
         });
     }
 
@@ -142,15 +142,15 @@ public final class AlarmPayloadHandlers {
             }
             AccessDecision decision = resolve(player, alarm, installation, AccessAction.SILENCE_ALARM);
             if (!decision.allowed()) {
-                player.sendSystemMessage(decision.message());
-                refresh(player, alarm);
+                refuse(player, alarm, decision.message());
                 return;
             }
             int minutes = AlarmRules.clampSilenceMinutes(payload.minutes(), NeroSecurityConfig.alarmSilenceMaxMinutes());
             alarm.silenceUntil(AlarmRules.silencedUntil(System.currentTimeMillis(), minutes));
             publish(player, alarm, installation, SecurityEventType.ALARM_SILENCED);
-            player.sendOverlayMessage(Component.translatable("alarm.nerosecurity.silenced", minutes));
-            refresh(player, alarm);
+            Component silenced = Component.translatable("alarm.nerosecurity.silenced", minutes);
+            player.sendOverlayMessage(silenced);
+            refresh(player, alarm, true, silenced);
         });
     }
 
@@ -178,15 +178,27 @@ public final class AlarmPayloadHandlers {
     }
 
     static void sendSnapshot(ServerPlayer player, AlarmBlockEntity alarm, AccessDecision decision) {
+        sendSnapshot(player, alarm, decision, true, null);
+    }
+
+    /** As above, carrying the outcome of the action that produced it for the screen's footer. */
+    static void sendSnapshot(ServerPlayer player, AlarmBlockEntity alarm, AccessDecision decision, boolean ok,
+            @Nullable Component message) {
         long now = System.currentTimeMillis();
         Services.NETWORK.sendToPlayer(player, new AlarmSnapshot(alarm.getBlockPos().immutable(), alarm.subscribed(),
                 alarm.responses(), AlarmRules.silencedForSeconds(now, alarm.silencedUntil()), decision.effective(),
                 decision.admin(), serverAllowsLockdown(),
-                Math.max(1, (NeroSecurityConfig.alarmLockdownAutoReleaseSeconds() + 59) / 60)));
+                Math.max(1, (NeroSecurityConfig.alarmLockdownAutoReleaseSeconds() + 59) / 60), ok, message));
+    }
+
+    /** A refusal: said in chat as before, and carried in the refreshed snapshot for the footer. */
+    private static void refuse(ServerPlayer player, AlarmBlockEntity alarm, Component reason) {
+        player.sendSystemMessage(reason);
+        refresh(player, alarm, false, reason);
     }
 
     /** Re-sends the snapshot while the player may still configure the alarm; closes the screen otherwise. */
-    private static void refresh(ServerPlayer player, AlarmBlockEntity alarm) {
+    private static void refresh(ServerPlayer player, AlarmBlockEntity alarm, boolean ok, @Nullable Component message) {
         Installation installation = alarm.installation();
         if (installation == null) {
             player.closeContainer();
@@ -194,7 +206,7 @@ public final class AlarmPayloadHandlers {
         }
         AccessDecision decision = resolve(player, alarm, installation, AccessAction.CONFIGURE_DEVICE);
         if (decision.allowed()) {
-            sendSnapshot(player, alarm, decision);
+            sendSnapshot(player, alarm, decision, ok, message);
         } else {
             player.closeContainer();
             player.sendSystemMessage(decision.message());

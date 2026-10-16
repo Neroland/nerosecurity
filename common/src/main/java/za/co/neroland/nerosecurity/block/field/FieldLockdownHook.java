@@ -17,8 +17,8 @@ import za.co.neroland.nerosecurity.registry.FieldRegistrations;
 
 /**
  * Raises (or lowers) every loaded emitter of an installation the moment its lockdown begins (or ends): effective
- * strength to {@code maxFieldStrength} at no extra power, the meter reset, the lockdown look painted, nearby players
- * resynced. Unloaded emitters are never loaded for this: they read lockdown from the store on their first tick, so
+ * strength to {@code maxFieldStrength} at no extra power, the meter rescaled to the new capacity (never reset, so
+ * cycling a lockdown cannot drain it), the lockdown look painted, nearby players resynced. Unloaded emitters are never loaded for this: they read lockdown from the store on their first tick, so
  * the hook is an accelerator, not the source of truth. Sealing the field to everyone below OWNER is the resolver's
  * lockdown rule, not this hook. Registered with {@link LockdownHooks}, which isolates it.
  */

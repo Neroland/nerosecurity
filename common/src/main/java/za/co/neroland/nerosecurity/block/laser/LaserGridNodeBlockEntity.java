@@ -57,6 +57,7 @@ import za.co.neroland.nerosecurity.sensor.SensorPermission;
 import za.co.neroland.nerosecurity.sensor.SensorPermission.Classification;
 import za.co.neroland.nerosecurity.sensor.SensorPermission.Sensed;
 import za.co.neroland.nerosecurity.sensor.SensorSettings;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
 
@@ -346,6 +347,7 @@ public class LaserGridNodeBlockEntity extends AbstractMachineBlockEntity impleme
             }
         }
         if (tripped) {
+            SecuritySounds.LASER_TRIP.play(serverLevel, worldPosition);
             lastTripAt = now;
             if (lastTripSyncAt == Long.MIN_VALUE || now - lastTripSyncAt >= TRIP_SYNC_MIN_TICKS) {
                 lastTripSyncAt = now;

@@ -1,3 +1,64 @@
 {
-  "parent": "nerosecurity:block/security_camera"
+  "parent": "minecraft:block/block",
+  "textures": {
+    "mount": "nerosecurity:block/security_camera_mount",
+    "body": "nerosecurity:block/security_camera_body",
+    "lens": "nerosecurity:block/security_camera_lens",
+    "particle": "nerosecurity:block/security_camera_body"
+  },
+  "elements": [
+    {
+      "name": "mount",
+      "from": [5, 5, 14],
+      "to": [11, 11, 16],
+      "faces": {
+        "north": {"texture": "#mount", "uv": [0, 0, 16, 16]},
+        "south": {"texture": "#mount"},
+        "east": {"texture": "#mount"},
+        "west": {"texture": "#mount"},
+        "up": {"texture": "#mount"},
+        "down": {"texture": "#mount"}
+      }
+    },
+    {
+      "name": "arm",
+      "from": [7, 7, 10],
+      "to": [9, 9, 14],
+      "faces": {
+        "north": {"texture": "#mount"},
+        "south": {"texture": "#mount"},
+        "east": {"texture": "#mount"},
+        "west": {"texture": "#mount"},
+        "up": {"texture": "#mount"},
+        "down": {"texture": "#mount"}
+      }
+    },
+    {
+      "name": "body",
+      "from": [4, 4, 2],
+      "to": [12, 11, 10],
+      "faces": {
+        "north": {"texture": "#body"},
+        "south": {"texture": "#body"},
+        "east": {"texture": "#body"},
+        "west": {"texture": "#body"},
+        "up": {"texture": "#body"},
+        "down": {"texture": "#body"}
+      }
+    },
+    {
+      "name": "lens",
+      "from": [6, 5, 1],
+      "to": [10, 9, 2],
+      "faces": {
+        "north": {"texture": "#lens", "uv": [0, 0, 16, 16]},
+        "south": {"texture": "#lens"},
+        "east": {"texture": "#lens"},
+        "west": {"texture": "#lens"},
+        "up": {"texture": "#lens"},
+        "down": {"texture": "#lens"}
+      },
+      "shade": false
+    }
+  ]
 }

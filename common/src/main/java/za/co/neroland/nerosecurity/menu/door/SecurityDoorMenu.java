@@ -34,10 +34,11 @@ import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
  */
 public class SecurityDoorMenu extends AbstractContainerMenu {
 
-    public static final int MODULE_X = 116;
-    public static final int MODULE_Y = 96;
+    /** Slot positions match the screen hull: modules inside the UPGRADES box, inventory at inventoryRowsY(168). */
+    public static final int MODULE_X = 188;
+    public static final int MODULE_Y = 122;
     public static final int INVENTORY_X = 8;
-    public static final int INVENTORY_Y = 118;
+    public static final int INVENTORY_Y = 182;
 
     public static final int DATA_ENERGY_LO = 0;
     public static final int DATA_ENERGY_HI = 1;

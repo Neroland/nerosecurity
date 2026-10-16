@@ -1,114 +1,154 @@
 package za.co.neroland.nerosecurity.client.screen.sensor;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
+
+import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.access.AccessLevel;
+import za.co.neroland.nerosecurity.client.SecurityColours;
+import za.co.neroland.nerosecurity.client.screen.SecurityScreen;
+import za.co.neroland.nerosecurity.client.widget.Gauge;
+import za.co.neroland.nerosecurity.client.widget.LevelLadder;
+import za.co.neroland.nerosecurity.client.widget.LevelMeaning;
+import za.co.neroland.nerosecurity.client.widget.SectionBox;
+import za.co.neroland.nerosecurity.client.widget.Segmented;
+import za.co.neroland.nerosecurity.client.widget.Status;
+import za.co.neroland.nerosecurity.client.widget.StatusDot;
+import za.co.neroland.nerosecurity.client.widget.WidgetColours;
+import za.co.neroland.nerosecurity.client.widget.WidgetText;
 import za.co.neroland.nerosecurity.menu.sensor.SensorPayloads.SensorConfigure;
 import za.co.neroland.nerosecurity.menu.sensor.SensorPayloads.SensorSnapshot;
 import za.co.neroland.nerosecurity.menu.sensor.SensorSettingsMenu;
-import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.sensor.SensorEntityMode;
 import za.co.neroland.nerosecurity.sensor.SensorSettings;
 
 /**
- * The shared sensor settings screen (laser grid node and camera), deliberately plain (a later stage
- * restyles it): four level buttons ("who may pass unreported"), the entity-mode toggle, the camera's
- * field-of-view toggle (hidden for a laser), armed/power status and the range-module slots. It draws only
- * what the server sent; every button sends an intent the server re-authorises, and the buttons stay
- * disabled until the next snapshot.
+ * "Who may cross this beam?" / "Who may pass this camera?" — the shared sensor settings screen on the
+ * {@link SecurityScreen} hull: the level ladder with its meaning line, the "Also sense" segmented control, the
+ * camera's field-of-view control (hidden for a laser), the power gauge, the one status row (armed in the REC
+ * colour, the same notice the LED gives) and the UPGRADES box around the range-module slots. It draws only
+ * what the server sent; every control sends a {@link SensorConfigure} the server re-authorises, and the controls
+ * are held until the next snapshot. Disabled controls always say why.
  *
  * <p>CLIENT-ONLY.
  */
-public class SensorSettingsScreen extends AbstractContainerScreen<SensorSettingsMenu> {
+public class SensorSettingsScreen extends SecurityScreen<SensorSettingsMenu> {
 
-    private static final int W = 176;
-    private static final int H = 200;
-    private static final int PANEL = 0xFF141C26;
-    private static final int EDGE = 0xFF2A3A4D;
-    private static final int TROUGH = 0xFF0B1119;
-    private static final int TITLE = 0xFFD6ECFF;
-    private static final int SUBTLE = 0xFF8DA0B4;
-    private static final int GOOD = 0xFF6BE38A;
-    private static final int WARN = 0xFFFFB454;
+    public static final int W = 248;
+    public static final int H = 178;
 
-    private static final AccessLevel[] LEVELS = {
-            AccessLevel.PUBLIC, AccessLevel.MEMBER, AccessLevel.OFFICER, AccessLevel.OWNER };
+    private static final int LADDER_Y = 30;
+    private static final int MEANING_Y = 52;
+    private static final int MODE_LABEL_Y = 76;
+    private static final int MODE_Y = 86;
+    private static final int FOV_Y = 106;
+    private static final int FOV_X = 90;
+    private static final int POWER_Y = 126;
+    private static final int STATE_Y = 138;
+    private static final int LEFT_W = 164;
+    private static final int BOX_X0 = 180;
+    private static final int BOX_X1 = 240;
+    private static final int BOX_Y0 = 126;
+    private static final int BOX_Y1 = 154;
+    private static final int CONTROL_H = 16;
+    private static final int GAUGE_LABEL_W = 36;
 
-    private final Button[] levelButtons = new Button[LEVELS.length];
-    private Button modeButton;
-    private Button fovButton;
-    /** The snapshot version a sent intent is waiting on; buttons stay disabled until it changes. */
-    private long awaiting = -1L;
+    private static final SensorEntityMode[] MODES = SensorEntityMode.values();
+
+    private LevelLadder ladder;
+    private Segmented mode;
+    private Segmented fov;
 
     public SensorSettingsScreen(SensorSettingsMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, W, H);
-        this.titleLabelX = 8;
-        this.titleLabelY = 6;
-        this.inventoryLabelX = SensorSettingsMenu.INVENTORY_X;
-        this.inventoryLabelY = SensorSettingsMenu.INVENTORY_Y - 10;
+        super(menu, inventory, title, W, H, true, ClientSensorState::version);
+        setSubtitle(Component.translatable("sensor.nerosecurity.subtitle"));
+        applyTitle(null);
     }
 
-    @Override
-    protected void init() {
-        super.init();
-        int x = this.leftPos;
-        int y = this.topPos;
-        for (int i = 0; i < LEVELS.length; i++) {
-            AccessLevel level = LEVELS[i];
-            this.levelButtons[i] = addRenderableWidget(Button.builder(level.displayName(), b -> setLevel(level))
-                    .bounds(x + 8 + i * 40, y + 18, 38, 16).build());
-        }
-        this.modeButton = addRenderableWidget(Button.builder(Component.empty(), b -> cycleMode())
-                .bounds(x + 8, y + 38, 160, 16).build());
-        this.fovButton = addRenderableWidget(Button.builder(Component.empty(), b -> cycleFov())
-                .bounds(x + 8, y + 58, 160, 16).build());
-        refreshWidgets();
-    }
-
-    private SensorSnapshot snapshot() {
+    private static @Nullable SensorSnapshot snapshot() {
         return ClientSensorState.current();
     }
 
-    private boolean waiting() {
-        return awaiting >= 0 && awaiting == ClientSensorState.version();
+    private boolean isLaser(@Nullable SensorSnapshot snap) {
+        return snap != null ? snap.laser() : menu.laser();
     }
 
-    private boolean isLaser(SensorSnapshot snap) {
-        return snap != null ? snap.laser() : this.menu.laser();
+    private void applyTitle(@Nullable SensorSnapshot snap) {
+        setTitleLine(Component.translatable(SensorText.titleKey(isLaser(snap))));
     }
 
-    private void refreshWidgets() {
-        SensorSnapshot snap = snapshot();
-        boolean ready = snap != null && !waiting();
-        AccessLevel viewer = snap == null ? AccessLevel.PUBLIC : snap.viewerLevel();
-        SensorSettings settings = snap == null ? SensorSettings.DEFAULT : snap.settings();
-        for (int i = 0; i < LEVELS.length; i++) {
-            AccessLevel level = LEVELS[i];
-            boolean selected = snap != null && settings.minLevel() == level;
-            Button button = this.levelButtons[i];
-            button.setMessage(selected
-                    ? Component.literal("[").append(level.displayName()).append("]")
-                    : level.displayName());
-            boolean ownerOnly = viewer != AccessLevel.OWNER
-                    && (level == AccessLevel.OWNER || settings.minLevel() == AccessLevel.OWNER);
-            button.active = ready && !selected && !ownerOnly;
-            button.setTooltip(ownerOnly ? Tooltip.create(Component.translatable("door.nerosecurity.owner_only_setting"))
-                    : Tooltip.create(Component.translatable(level.meaningKey())));
+    @Override
+    protected void initWidgets() {
+        int x = left();
+        int y = top();
+        ladder = addGroup(new LevelLadder(x + PAD, y + LADDER_Y, this::setLevel));
+
+        List<Component> modeLabels = new ArrayList<>();
+        for (SensorEntityMode m : MODES) {
+            modeLabels.add(Component.translatable(m.translationKey()));
         }
-        boolean ownerLocked = viewer != AccessLevel.OWNER && settings.minLevel() == AccessLevel.OWNER;
-        this.modeButton.setMessage(Component.translatable("sensor.nerosecurity.mode",
-                Component.translatable(settings.entityMode().translationKey())));
-        this.modeButton.active = ready && !ownerLocked;
+        mode = addGroup(new Segmented(x + PAD, y + MODE_Y, W - 2 * PAD, CONTROL_H, modeLabels, this::setMode));
+        for (int i = 0; i < MODES.length; i++) {
+            // A long phrase is cut with "…" on its segment; the tooltip and the row above carry it in full.
+            mode.setHelp(i, modeLabels.get(i));
+        }
+
+        List<Component> fovLabels = new ArrayList<>();
+        for (int degrees : SensorSettings.FOV_OPTIONS) {
+            fovLabels.add(Component.literal(String.format(Locale.ROOT, "%d°", degrees)));
+        }
+        fov = addGroup(new Segmented(x + FOV_X, y + FOV_Y, W - PAD - FOV_X, CONTROL_H, fovLabels, this::setFov));
+    }
+
+    @Override
+    protected void refreshWidgets() {
+        SensorSnapshot snap = snapshot();
+        applyTitle(snap);
         boolean laser = isLaser(snap);
-        this.fovButton.visible = !laser;
-        this.fovButton.setMessage(Component.translatable("sensor.nerosecurity.fov", settings.fovDegrees()));
-        this.fovButton.active = ready && !laser && !ownerLocked;
+        fov.setVisible(!laser);
+        if (snap == null) {
+            Component waiting = Component.translatable("ui.nerosecurity.waiting");
+            ladder.select(null);
+            ladder.disableAll(waiting);
+            mode.select(-1);
+            mode.disableAll(waiting);
+            fov.select(-1);
+            fov.disableAll(waiting);
+            return;
+        }
+        SensorSettings settings = snap.settings();
+        ladder.select(settings.minLevel());
+        mode.select(settings.entityMode().ordinal());
+        fov.select(SensorText.indexOf(SensorSettings.FOV_OPTIONS, settings.fovDegrees()));
+
+        // The server reports an operator as OWNER in viewerLevel (SensorPayloadHandlers), so no admin flag here.
+        boolean ownerOrAdmin = snap.viewerLevel() == AccessLevel.OWNER;
+        String why = SensorText.editWhy(snap.linked(), settings.minLevel(), ownerOrAdmin);
+        if (why != null) {
+            Component reason = Component.translatable(why);
+            ladder.disableAll(reason);
+            mode.disableAll(reason);
+            fov.disableAll(reason);
+            return;
+        }
+        ladder.enableAll();
+        ladder.restrictOwner(snap.viewerLevel(), false, Component.translatable(SensorText.OWNER_ONLY_KEY));
+        mode.enableAll();
+        fov.enableAll();
+    }
+
+    @Override
+    protected void onSnapshot(boolean answeredIntent) {
+        SensorSnapshot snap = snapshot();
+        if (snap != null) {
+            feedbackFromSnapshot(snap.ok(), snap.message(), answeredIntent);
+        }
     }
 
     /** The snapshot is display-only and is dropped as soon as the screen closes. */
@@ -118,22 +158,13 @@ public class SensorSettingsScreen extends AbstractContainerScreen<SensorSettings
         super.removed();
     }
 
-    @Override
-    public void containerTick() {
-        super.containerTick();
-        refreshWidgets();
-    }
-
-    // --- intents --------------------------------------------------------------------------------
+    // --- intents (the server re-resolves every one) ---------------------------------------------
 
     private void send(SensorSettings wanted) {
         SensorSnapshot snap = snapshot();
-        if (snap == null) {
-            return;
+        if (snap != null) {
+            sendIntent(new SensorConfigure(snap.pos(), wanted));
         }
-        this.awaiting = ClientSensorState.version();
-        Services.NETWORK.sendToServer(new SensorConfigure(snap.pos(), wanted));
-        refreshWidgets();
     }
 
     private void setLevel(AccessLevel level) {
@@ -143,82 +174,74 @@ public class SensorSettingsScreen extends AbstractContainerScreen<SensorSettings
         }
     }
 
-    private void cycleMode() {
+    private void setMode(int index) {
         SensorSnapshot snap = snapshot();
-        if (snap != null) {
-            SensorEntityMode[] modes = SensorEntityMode.values();
-            SensorEntityMode next = modes[(snap.settings().entityMode().ordinal() + 1) % modes.length];
-            send(snap.settings().withEntityMode(next));
+        if (snap != null && index >= 0 && index < MODES.length) {
+            send(snap.settings().withEntityMode(MODES[index]));
         }
     }
 
-    private void cycleFov() {
+    private void setFov(int index) {
         SensorSnapshot snap = snapshot();
-        if (snap == null || snap.laser()) {
-            return;
+        if (snap != null && !snap.laser() && index >= 0 && index < SensorSettings.FOV_OPTIONS.length) {
+            send(snap.settings().withFov(SensorSettings.FOV_OPTIONS[index]));
         }
-        int[] options = SensorSettings.FOV_OPTIONS;
-        int current = snap.settings().fovDegrees();
-        int next = options[0];
-        for (int i = 0; i < options.length; i++) {
-            if (options[i] == current) {
-                next = options[(i + 1) % options.length];
-                break;
-            }
-        }
-        send(snap.settings().withFov(next));
     }
 
     // --- drawing --------------------------------------------------------------------------------
 
     @Override
-    public void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        int x = this.leftPos;
-        int y = this.topPos;
-        g.fill(x - 1, y - 1, x + W + 1, y + H + 1, EDGE);
-        g.fill(x, y, x + W, y + H, PANEL);
-        for (Slot slot : this.menu.slots) {
-            if (slot.isActive()) {
-                g.fill(x + slot.x - 1, y + slot.y - 1, x + slot.x + 17, y + slot.y + 17, TROUGH);
-            }
-        }
-        super.extractContents(g, mouseX, mouseY, partialTick);
-        drawStatus(g);
-    }
+    protected void extractPanel(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        int x = left();
+        int y = top();
+        LevelMeaning.draw(g, font, x + PAD, y + MEANING_Y, LevelLadder.WIDTH, ladder.selected());
 
-    private void drawStatus(GuiGraphicsExtractor g) {
         SensorSnapshot snap = snapshot();
         boolean laser = isLaser(snap);
-        int x = this.leftPos + 8;
-        int y = this.topPos + (laser ? 60 : 78);
-        boolean linked = snap != null ? this.menu.linked() || snap.linked() : this.menu.linked();
-        g.text(this.font, Component.translatable("sensor.nerosecurity.power", this.menu.energy(), this.menu.capacity()),
-                x, y, SUBTLE, false);
-        Component state;
-        int colour;
-        if (!linked) {
-            state = Component.translatable("device.nerosecurity.unlinked");
-            colour = SUBTLE;
-        } else if (this.menu.armed()) {
-            state = Component.translatable("sensor.nerosecurity.armed");
-            colour = GOOD;
-        } else if (laser && !this.menu.paired()) {
-            state = Component.translatable("sensor.nerosecurity.unpaired");
-            colour = WARN;
-        } else {
-            state = Component.translatable("sensor.nerosecurity.disarmed");
-            colour = WARN;
+        int room = W - 2 * PAD;
+
+        // "Also sense: players and hostile mobs" — the current choice in full above the segments.
+        Component modeLine = snap == null
+                ? Component.translatable("sensor.nerosecurity.mode.label")
+                : Component.translatable("sensor.nerosecurity.mode",
+                        Component.translatable(snap.settings().entityMode().translationKey()));
+        WidgetText.drawFitted(g, font, modeLine, x + PAD, y + MODE_LABEL_Y, room, WidgetColours.TEXT);
+        if (!laser) {
+            g.text(font, Component.translatable("sensor.nerosecurity.fov.label"), x + PAD, y + FOV_Y + 4,
+                    WidgetColours.TEXT, false);
         }
-        g.text(this.font, state, x, y + 10, colour, false);
-        if (this.menu.moduleSlots() > 0) {
-            g.text(this.font, Component.translatable("door.nerosecurity.modules"), x,
-                    SensorSettingsMenu.MODULE_Y + this.topPos + 4, SUBTLE, false);
+
+        long energy = menu.energy();
+        long capacity = menu.capacity();
+        g.text(font, Component.translatable("field.nerosecurity.power"), x + PAD, y + POWER_Y, WidgetColours.TEXT, false);
+        Gauge.draw(g, font, x + PAD + GAUGE_LABEL_W, y + POWER_Y, LEFT_W - GAUGE_LABEL_W,
+                capacity <= 0 ? 0f : energy / (float) capacity,
+                energy <= 0 ? SecurityColours.WARN : SecurityColours.INK_CYAN,
+                Component.literal(String.format(Locale.ROOT, "%,d / %,d", energy, capacity)));
+
+        boolean linked = menu.linked() || (snap != null && snap.linked());
+        SensorText.Row state = SensorText.state(linked, menu.armed(), laser, menu.paired(), energy > 0);
+        statusRow(g, x + PAD, y + STATE_Y, LEFT_W, state);
+
+        if (menu.moduleSlots() > 0) {
+            SectionBox.draw(g, font, x + BOX_X0, y + BOX_Y0, x + BOX_X1, y + BOX_Y1,
+                    Component.translatable("door.nerosecurity.section.upgrades"));
         }
     }
 
-    @Override
-    protected void extractLabels(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        g.text(this.font, this.title, this.titleLabelX, this.titleLabelY, TITLE, false);
-        g.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, SUBTLE, false);
+    /** A glyph (REC-red filled square while recording) plus the sentence fitted to {@code width}. */
+    private void statusRow(GuiGraphicsExtractor g, int x, int y, int width, SensorText.Row row) {
+        if (row.recording()) {
+            StatusDot.drawShape(g, x, y + 1, Status.Shape.FILLED_SQUARE, SecurityColours.opaque(SecurityColours.REC));
+        } else {
+            StatusDot.drawGlyph(g, x, y + 1, row.status());
+        }
+        Component text = Component.translatable(row.key());
+        int tx = x + StatusDot.SIZE + 4;
+        int room = width - (StatusDot.SIZE + 4);
+        WidgetText.drawFitted(g, font, text, tx, y, room, WidgetColours.TEXT);
+        if (WidgetText.overflows(font, text, room)) {
+            explain(g, x, y, width, 9, text);
+        }
     }
 }

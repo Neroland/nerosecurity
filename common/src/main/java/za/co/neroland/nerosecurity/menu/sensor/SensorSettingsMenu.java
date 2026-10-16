@@ -42,10 +42,11 @@ public class SensorSettingsMenu extends AbstractContainerMenu {
 
     /** Module slot positions always present; a host with fewer gets inactive placeholders. */
     public static final int MAX_MODULE_SLOTS = 2;
-    public static final int MODULE_X = 134;
-    public static final int MODULE_Y = 96;
+    /** Slot positions match the screen hull: modules inside the UPGRADES box, inventory at inventoryRowsY(178). */
+    public static final int MODULE_X = 206;
+    public static final int MODULE_Y = 132;
     public static final int INVENTORY_X = 8;
-    public static final int INVENTORY_Y = 118;
+    public static final int INVENTORY_Y = 192;
 
     public static final int DATA_ENERGY_LO = 0;
     public static final int DATA_ENERGY_HI = 1;

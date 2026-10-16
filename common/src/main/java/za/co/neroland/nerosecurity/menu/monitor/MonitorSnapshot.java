@@ -8,14 +8,19 @@ import io.netty.handler.codec.DecoderException;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+
+import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.audit.AnonymousEvent;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.LockdownSource;
+import za.co.neroland.nerosecurity.menu.SnapshotMessages;
 
 /**
  * What a Security Monitor shows, built on the server and sent to one viewer (clientbound
@@ -36,10 +41,13 @@ import za.co.neroland.nerosecurity.installation.LockdownSource;
  * @param auditDisabled        the audit log is off on this server, so there are no event rows
  * @param devices              camera and laser rows in the monitor's dimension, cameras first
  * @param events               the newest events, newest first, at most {@link #MAX_EVENTS}
+ * @param ok                   whether {@code message} reports a success
+ * @param message              the outcome of the action that produced this snapshot, or null
  */
 public record MonitorSnapshot(BlockPos pos, String installationName, boolean lockdown, LockdownSource source,
         int lockdownSinceSeconds, int autoReleaseInSeconds, boolean camerasDisabled, boolean auditDisabled,
-        List<DeviceRow> devices, List<AnonymousEvent> events) implements CustomPacketPayload {
+        List<DeviceRow> devices, List<AnonymousEvent> events, boolean ok, @Nullable Component message)
+        implements CustomPacketPayload {
 
     /** Device rows one snapshot carries at most (the default {@code maxDevicesPerInstallation}). */
     public static final int MAX_DEVICES = 256;
@@ -50,7 +58,7 @@ public record MonitorSnapshot(BlockPos pos, String installationName, boolean loc
     public static final Type<MonitorSnapshot> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(NeroSecurityCommon.MOD_ID, "monitor_snapshot"));
 
-    public static final StreamCodec<FriendlyByteBuf, MonitorSnapshot> STREAM_CODEC =
+    public static final StreamCodec<RegistryFriendlyByteBuf, MonitorSnapshot> STREAM_CODEC =
             StreamCodec.of(MonitorSnapshot::write, MonitorSnapshot::read);
 
     /** The kind of a listed device. */
@@ -104,7 +112,7 @@ public record MonitorSnapshot(BlockPos pos, String installationName, boolean loc
 
     // --- wire format ------------------------------------------------------------------------------
 
-    private static void write(FriendlyByteBuf buf, MonitorSnapshot v) {
+    private static void write(RegistryFriendlyByteBuf buf, MonitorSnapshot v) {
         buf.writeBlockPos(v.pos);
         buf.writeUtf(v.installationName, NAME_MAX_BYTES);
         buf.writeBoolean(v.lockdown);
@@ -123,9 +131,10 @@ public record MonitorSnapshot(BlockPos pos, String installationName, boolean loc
         for (AnonymousEvent event : v.events) {
             AnonymousEvent.STREAM_CODEC.encode(buf, event);
         }
+        SnapshotMessages.write(buf, v.ok, v.message);
     }
 
-    private static MonitorSnapshot read(FriendlyByteBuf buf) {
+    private static MonitorSnapshot read(RegistryFriendlyByteBuf buf) {
         BlockPos pos = buf.readBlockPos();
         String name = buf.readUtf(NAME_MAX_BYTES);
         boolean lockdown = buf.readBoolean();
@@ -145,8 +154,10 @@ public record MonitorSnapshot(BlockPos pos, String installationName, boolean loc
         for (int i = 0; i < eventCount; i++) {
             events.add(AnonymousEvent.STREAM_CODEC.decode(buf));
         }
+        boolean ok = SnapshotMessages.readOk(buf);
+        Component message = SnapshotMessages.readMessage(buf);
         return new MonitorSnapshot(pos, name, lockdown, source, since, release, camerasDisabled, auditDisabled,
-                devices, events);
+                devices, events, ok, message);
     }
 
     private static int count(FriendlyByteBuf buf, int max) {

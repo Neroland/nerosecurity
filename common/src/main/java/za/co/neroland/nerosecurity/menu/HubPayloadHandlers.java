@@ -1,8 +1,5 @@
 package za.co.neroland.nerosecurity.menu;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,8 +24,6 @@ import za.co.neroland.nerosecurity.menu.HubPayloads.HubAddMember;
 import za.co.neroland.nerosecurity.menu.HubPayloads.HubLockdown;
 import za.co.neroland.nerosecurity.menu.HubPayloads.HubRename;
 import za.co.neroland.nerosecurity.menu.HubPayloads.HubSetMember;
-import za.co.neroland.nerosecurity.menu.HubPayloads.HubSnapshot;
-import za.co.neroland.nerosecurity.menu.HubPayloads.MemberRow;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 
@@ -61,19 +56,14 @@ public final class HubPayloadHandlers {
      * only, and kept nowhere.
      */
     public static void sendSnapshot(ServerPlayer player, Installation installation, AccessDecision decision) {
+        sendSnapshot(player, installation, decision, true, null);
+    }
+
+    /** As above, carrying the outcome of the action that produced it for the screen's footer. */
+    public static void sendSnapshot(ServerPlayer player, Installation installation, AccessDecision decision,
+            boolean ok, @Nullable Component message) {
         MinecraftServer server = player.level().getServer();
-        List<MemberRow> owners = new ArrayList<>();
-        for (UUID owner : installation.owners()) {
-            if (!Installation.TOMBSTONE_OWNER.equals(owner)) {
-                owners.add(new MemberRow(owner, PlayerNames.display(server, owner), AccessLevel.OWNER));
-            }
-        }
-        List<MemberRow> members = new ArrayList<>();
-        for (Map.Entry<UUID, AccessLevel> member : installation.members().entrySet()) {
-            members.add(new MemberRow(member.getKey(), PlayerNames.display(server, member.getKey()), member.getValue()));
-        }
-        Services.NETWORK.sendToPlayer(player, new HubSnapshot(installation.id(), installation.name(),
-                installation.lockdown().active(), members, owners, installation.deviceCount(), decision.effective()));
+        Services.NETWORK.sendToPlayer(player, HubSnapshots.build(server, installation, decision, ok, message));
     }
 
     public static void handleSetMember(HubSetMember payload, ServerPlayer player) {
@@ -160,7 +150,7 @@ public final class HubPayloadHandlers {
         AccessDecision decision = AccessResolver.DEFAULT.resolve(new AccessQuery(player.level().getServer(),
                 player.getUUID(), fresh, AccessAction.OPEN, fresh.hubPos()), AccessLevel.OFFICER);
         if (decision.allowed()) {
-            sendSnapshot(player, fresh, decision);
+            sendSnapshot(player, fresh, decision, result.ok(), result.message());
         } else {
             player.closeContainer();
             player.sendSystemMessage(decision.message());

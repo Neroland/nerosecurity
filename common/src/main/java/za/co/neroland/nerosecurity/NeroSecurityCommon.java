@@ -22,6 +22,7 @@ import za.co.neroland.nerosecurity.link.SecurityLinkModule;
 import za.co.neroland.nerosecurity.lockdown.LockdownChannel;
 import za.co.neroland.nerosecurity.lockdown.LockdownHooks;
 import za.co.neroland.nerosecurity.lockdown.LockdownScheduler;
+import za.co.neroland.nerosecurity.lockdown.VisualLockdownHook;
 import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.network.SecurityNetwork;
 import za.co.neroland.nerosecurity.platform.Services;
@@ -142,6 +143,9 @@ public final class NeroSecurityCommon {
         // 4k. Force fields react to lockdown at once (strength boost, repaint, resync); isolated by
         //     LockdownHooks, and only an accelerator: emitters also read lockdown on their own tick.
         LockdownHooks.register(new FieldLockdownHook());
+        // 4l. Stage 5 visuals react to lockdown at once (hub and monitor look, door clamps, the lockdown tone);
+        //     isolated, and only an accelerator: each device re-derives the same state on its own refresh.
+        LockdownHooks.register(new VisualLockdownHook());
 
         // 5a. Integration bridges, each found through ServiceLoader only when its mod is loaded and this
         //     build includes it. The factions façade also listens for reputation tier crossings, which

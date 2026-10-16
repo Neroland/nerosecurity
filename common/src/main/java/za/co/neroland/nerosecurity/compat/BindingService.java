@@ -1,5 +1,6 @@
 package za.co.neroland.nerosecurity.compat;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
@@ -18,6 +19,7 @@ import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessQuery;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.access.DenyReason;
+import za.co.neroland.nerosecurity.access.MembershipSource;
 import za.co.neroland.nerosecurity.block.field.FieldPassability;
 import za.co.neroland.nerosecurity.compat.colonies.ColoniesBridge;
 import za.co.neroland.nerosecurity.compat.colonies.ColoniesCompat;
@@ -37,12 +39,17 @@ import za.co.neroland.nerosecurity.installation.ServiceResult;
  * The only writer of integration bindings (faction, colony, station). Every method, in this order:
  * <ol>
  *   <li>re-reads the installation from the store by id and resolves {@link AccessAction#BIND_INTEGRATION} (OWNER)
- *       through the access resolver, so a demoted or removed owner is refused on the very next command;</li>
+ *       through the access resolver, so a demoted or removed owner is refused on the very next command. Only
+ *       <b>stored ownership</b> counts: grants are taken from the membership rows alone ({@link #GRANTING_SOURCES}),
+ *       so an OWNER keycard or an integration grant can never bind or unbind; denies, the lockdown rule and the
+ *       operator override apply as always;</li>
  *   <li>for a bind only: refuses with {@code compat.nerosecurity.absent} unless that integration is active (the
  *       sibling is loaded, this build has its bridge, and its {@code *IntegrationEnabled} switch is on). An unbind
  *       is always allowed for an OWNER, even with the sibling absent or switched off: it only ever removes a
  *       grant, so an owner can always clear a binding the server can no longer check;</li>
- *   <li>for a bind: refuses a max level other than MEMBER or OFFICER, then checks the <b>precondition</b>: the
+ *   <li>for a bind: refuses a max level other than MEMBER or OFFICER ({@link #DEFAULT_MAX_LEVEL}, MEMBER, when the
+ *       caller does not choose; OFFICER, which lets the organisation's members open the hub roster and read the audit
+ *       log, must be asked for explicitly), then checks the <b>precondition</b>: the
  *       binder is a current member of the faction, a member (ally, chief, owner) of the colony, or the current
  *       owner of the station;</li>
  *   <li>writes the store, marks every force field's verdict cache stale, and publishes {@code *_BOUND} /
@@ -75,6 +82,12 @@ public final class BindingService {
             return new Outcome(status, DenyReason.NONE, ok ? ServiceResult.success(message) : ServiceResult.failure(message));
         }
     }
+
+    /** The max level of a faction or colony binding when the binder does not name one. OFFICER is opt-in. */
+    public static final AccessLevel DEFAULT_MAX_LEVEL = AccessLevel.MEMBER;
+
+    /** The only source whose grants count for binding: the installation's stored owners (and members) rows. */
+    public static final Set<Identifier> GRANTING_SOURCES = Set.of(MembershipSource.ID);
 
     public static final BindingService DEFAULT = new BindingService(AccessResolver.DEFAULT,
             FactionsCompat::bridgeOrNull, NeroSecurityConfig::isFactionsIntegrationEnabled,
@@ -277,13 +290,13 @@ public final class BindingService {
         return store == null || installationId == null ? null : store.byId(installationId).orElse(null);
     }
 
-    /** Null when the actor may bind (OWNER, or an operator); otherwise the refusal. */
+    /** Null when the actor may bind (a stored OWNER, or an operator); otherwise the refusal. */
     private @Nullable Outcome authorise(@Nullable MinecraftServer server, UUID actor, @Nullable Installation installation) {
         if (installation == null || actor == null) {
             return gone();
         }
         AccessQuery query = new AccessQuery(server, actor, installation, AccessAction.BIND_INTEGRATION, installation.hubPos());
-        AccessDecision decision = resolver.resolve(query, AccessAction.BIND_INTEGRATION.defaultMinimum);
+        AccessDecision decision = resolver.resolve(query, AccessAction.BIND_INTEGRATION.defaultMinimum, GRANTING_SOURCES);
         if (decision.allowed()) {
             return null;
         }

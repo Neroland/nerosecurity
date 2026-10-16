@@ -27,6 +27,8 @@ public class SecurityDoorBlock extends AbstractSecurityDoorBlock {
         registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(OPEN, false)
+                .setValue(ANIMATING, false)
+                .setValue(SEALED, false)
                 .setValue(PART, DoorPart.LOWER));
     }
 
@@ -37,7 +39,7 @@ public class SecurityDoorBlock extends AbstractSecurityDoorBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, OPEN, PART);
+        builder.add(FACING, OPEN, ANIMATING, SEALED, PART);
     }
 
     @Override

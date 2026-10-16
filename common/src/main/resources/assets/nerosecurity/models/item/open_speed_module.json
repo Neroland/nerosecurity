@@ -1,6 +1,4 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/sugar"
-  }
+  "textures": {"layer0": "nerosecurity:item/open_speed_module"}
 }

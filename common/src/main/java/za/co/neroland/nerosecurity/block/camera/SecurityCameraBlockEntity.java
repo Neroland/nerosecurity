@@ -109,6 +109,10 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
     private static final String KEY_HAS_LOOK = "HasLook";
     private static final String KEY_LOOK_YAW = "LookYaw";
     private static final String KEY_LOOK_PITCH = "LookPitch";
+    /** Game time the current look was sent (the renderer's tilt anchor); only while there is a look. */
+    private static final String KEY_SEEN_AT = "SeenAt";
+    /** The server's {@code cameraSweepTicks}, so the client pans on the same clock as the server. */
+    private static final String KEY_SWEEP = "Sweep";
 
     private SensorSettings settings = SensorSettings.DEFAULT;
     private final SecurityModuleSlots modules = new SecurityModuleSlots(MODULE_SLOTS,
@@ -125,6 +129,9 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
     private long lookSyncedAt = Long.MIN_VALUE;
     private boolean lookDirty;
     private int classifyOffset;
+    /** Client copies of the renderer-only {@value #KEY_SEEN_AT} and {@value #KEY_SWEEP}. */
+    private long clientSeenAt = Long.MIN_VALUE;
+    private int clientSweep = -1;
 
     public SecurityCameraBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state, NeroSecurityConfig.cameraEnergyCapacity(), MAX_TRANSFER, 0, stack -> null);
@@ -210,6 +217,22 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
     /** Pitch (degrees, positive down) toward where the camera last saw an intruder. Never persisted. */
     public float lastPitch() {
         return lastPitch;
+    }
+
+    /**
+     * Game time the current look was sent ({@code Long.MIN_VALUE} when none): on the client the synced copy,
+     * the anchor of the renderer's tilt-toward / hold / tilt-back timeline.
+     */
+    public long lookSeenAt() {
+        return level != null && level.isClientSide() ? clientSeenAt : lookSyncedAt;
+    }
+
+    /** Ticks for one full pan sweep: the synced server value on the client, the config on the server. */
+    public int sweepTicks() {
+        if (level != null && level.isClientSide() && clientSweep > 0) {
+            return clientSweep;
+        }
+        return NeroSecurityConfig.cameraSweepTicks();
     }
 
     public DevicePos devicePos(ServerLevel serverLevel) {
@@ -535,6 +558,8 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
         this.hasLook = input.getBooleanOr(KEY_HAS_LOOK, false);
         this.lastYaw = input.getFloatOr(KEY_LOOK_YAW, 0.0F);
         this.lastPitch = input.getFloatOr(KEY_LOOK_PITCH, 0.0F);
+        this.clientSeenAt = input.getLongOr(KEY_SEEN_AT, Long.MIN_VALUE);
+        this.clientSweep = input.getIntOr(KEY_SWEEP, -1);
     }
 
     @Override
@@ -543,8 +568,9 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
     }
 
     /**
-     * Only what the renderer needs: {@code Armed} and the coarse last-seen direction (two angles in
-     * {@link CameraRules#LOOK_STEP_DEGREES}-degree steps). Never the camera's configuration (minimum
+     * Only what the renderer needs: {@code Armed}, the coarse last-seen direction (two angles in
+     * {@link CameraRules#LOOK_STEP_DEGREES}-degree steps) with the game time it was sent, and the pan period.
+     * Never the camera's configuration (minimum
      * level, entity mode, field of view, module, energy, side config), an entity id, a name or a position.
      */
     @Override
@@ -555,7 +581,9 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
         if (hasLook) {
             tag.putFloat(KEY_LOOK_YAW, lastYaw);
             tag.putFloat(KEY_LOOK_PITCH, lastPitch);
+            tag.putLong(KEY_SEEN_AT, lookSyncedAt);
         }
+        tag.putInt(KEY_SWEEP, NeroSecurityConfig.cameraSweepTicks());
         return tag;
     }
 }

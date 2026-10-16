@@ -28,8 +28,11 @@ import org.junit.jupiter.api.Test;
 import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
+import za.co.neroland.nerosecurity.access.AccessSource;
+import za.co.neroland.nerosecurity.access.AccessVote;
 import za.co.neroland.nerosecurity.access.AdminCheck;
 import za.co.neroland.nerosecurity.access.DenyReason;
+import za.co.neroland.nerosecurity.access.KeycardSource;
 import za.co.neroland.nerosecurity.access.MembershipSource;
 import za.co.neroland.nerosecurity.compat.BindingService.Outcome;
 import za.co.neroland.nerosecurity.compat.BindingService.Status;
@@ -142,12 +145,80 @@ class BindingRulesTest {
         installation = CompatFixtures.create(store, owner, 0);
         store.setMember(installation.id(), officer, AccessLevel.OFFICER, 64);
         AccessResolver resolver = new AccessResolver(() -> List.of(MembershipSource.INSTANCE), AdminCheck.NONE, () -> true);
-        service = new BindingService(resolver,
+        service = serviceWith(resolver);
+        subscription = SecurityEventBus.subscribe(installation.id(), events::add);
+    }
+
+    private BindingService serviceWith(AccessResolver resolver) {
+        return new BindingService(resolver,
                 () -> factionsPresent.get() ? factions : null, factionsEnabled::get,
                 () -> coloniesPresent.get() ? colonies : null, () -> true,
                 () -> nerospacePresent.get() ? nerospace : null, () -> true,
                 invalidations::incrementAndGet, () -> 42L);
-        subscription = SecurityEventBus.subscribe(installation.id(), events::add);
+    }
+
+    /** A source granting {@code who} OWNER under {@code id}: an encrypted OWNER keycard, or any integration. */
+    private static AccessSource grantsOwner(Identifier id, UUID who) {
+        return new AccessSource() {
+            @Override
+            public Identifier id() {
+                return id;
+            }
+
+            @Override
+            public AccessVote vote(za.co.neroland.nerosecurity.access.AccessQuery query) {
+                return who.equals(query.actor()) ? new AccessVote.Grant(AccessLevel.OWNER) : AccessVote.Abstain.INSTANCE;
+            }
+        };
+    }
+
+    // --- S4-8: stored ownership only ----------------------------------------------------------------
+
+    @Test
+    void bindingNeedsStoredOwnershipNotAKeycardOrIntegrationGrant() {
+        factionMembers.add(actor);
+        assertTrue(store.bindColony(installation.id(), COLONY, AccessLevel.MEMBER));
+        for (Identifier sourceId : List.of(KeycardSource.ID, FactionSource.ID, ColonySource.ID)) {
+            BindingService carded = serviceWith(new AccessResolver(
+                    () -> List.of(MembershipSource.INSTANCE, grantsOwner(sourceId, actor)), AdminCheck.NONE, () -> true));
+            Outcome bind = carded.bindFaction(null, store, actor, installation.id(), FACTION, AccessLevel.MEMBER);
+            assertEquals(Status.DENIED, bind.status(), "an OWNER grant from " + sourceId + " must not bind");
+            assertEquals(DenyReason.INSUFFICIENT_LEVEL, bind.deny());
+            assertEquals(Status.DENIED, carded.unbindColony(null, store, actor, installation.id()).status(),
+                    "nor unbind");
+            // The stored owner still binds through the same resolver.
+            factionMembers.add(owner);
+            assertEquals(Status.BOUND,
+                    carded.bindFaction(null, store, owner, installation.id(), FACTION, AccessLevel.MEMBER).status());
+            assertTrue(store.unbindFaction(installation.id()));
+        }
+        assertNull(fresh().boundFaction());
+        assertEquals(COLONY, fresh().boundColony(), "the refused unbinds changed nothing");
+
+        // The operator override still applies, with no membership row at all.
+        BindingService admin = serviceWith(new AccessResolver(() -> List.of(MembershipSource.INSTANCE),
+                (server, who) -> actor.equals(who), () -> true));
+        assertEquals(Status.BOUND,
+                admin.bindFaction(null, store, actor, installation.id(), FACTION, AccessLevel.MEMBER).status());
+        assertEquals(Status.UNBOUND, admin.unbindColony(null, store, actor, installation.id()).status());
+    }
+
+    // --- S4-11: MEMBER unless OFFICER is asked for --------------------------------------------------
+
+    @Test
+    void defaultBindingMaxLevelIsMember() {
+        assertEquals(AccessLevel.MEMBER, BindingService.DEFAULT_MAX_LEVEL);
+        factionMembers.add(owner);
+        factionMembers.add(actor); // TRUSTED in the fake bridge: OFFICER-worthy, but capped by the binding
+        assertEquals(Status.BOUND, bindFaction(owner, BindingService.DEFAULT_MAX_LEVEL).status());
+        assertEquals(AccessLevel.MEMBER, fresh().factionMaxLevel());
+        FactionSource source = new FactionSource(() -> factions, () -> true, () -> 1L);
+        AccessVote vote = source.vote(CompatFixtures.query(actor, fresh(), AccessAction.OPEN));
+        assertTrue(vote instanceof AccessVote.Grant grant && grant.level() == AccessLevel.MEMBER,
+                "a default binding grants at most MEMBER: no roster, no audit log");
+        // OFFICER only when asked for.
+        assertEquals(Status.BOUND, bindFaction(owner, AccessLevel.OFFICER).status());
+        assertEquals(AccessLevel.OFFICER, fresh().factionMaxLevel());
     }
 
     @AfterEach

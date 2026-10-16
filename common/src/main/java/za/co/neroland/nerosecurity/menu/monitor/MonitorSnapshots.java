@@ -147,7 +147,7 @@ public final class MonitorSnapshots {
         int n = Math.min(shown.size(), clampLimit(limit));
         return new MonitorSnapshot(monitorPos, installationName, active,
                 source, since, release, !camerasEnabled, !auditEnabled,
-                devices, shown.subList(0, n));
+                devices, shown.subList(0, n), true, null);
     }
 
     private static int clampLimit(int limit) {

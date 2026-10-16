@@ -1,5 +1,7 @@
 package za.co.neroland.nerosecurity.block.monitor;
 
+import java.util.UUID;
+
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
@@ -19,9 +21,12 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
@@ -37,6 +42,7 @@ import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.item.LinkingToolItem;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorPayloadHandlers;
+import za.co.neroland.nerosecurity.registry.MonitorRegistrations;
 
 /**
  * The Security Monitor ({@code nerosecurity:security_monitor}): an unpowered, linkable device whose
@@ -55,10 +61,15 @@ public class SecurityMonitorBlock extends BaseEntityBlock implements SecurityDev
 
     public static final MapCodec<SecurityMonitorBlock> CODEC = BlockCodecs.simple(SecurityMonitorBlock::new);
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
+    /**
+     * Visual only: the monitor's installation is in lockdown (and lockdown is enabled on this server). Set by
+     * the lockdown hook and re-derived from the store by the monitor's visual refresh.
+     */
+    public static final BooleanProperty LOCKDOWN = BooleanProperty.create("lockdown");
 
     public SecurityMonitorBlock(Properties properties) {
         super(properties);
-        registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+        registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(LOCKDOWN, false));
     }
 
     // No @Override: codec() is abstract up to 26.2 and no longer declared on the supertype in 26.3.
@@ -68,12 +79,13 @@ public class SecurityMonitorBlock extends BaseEntityBlock implements SecurityDev
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, LOCKDOWN);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite())
+                .setValue(LOCKDOWN, false);
     }
 
     @Override
@@ -95,6 +107,32 @@ public class SecurityMonitorBlock extends BaseEntityBlock implements SecurityDev
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new SecurityMonitorBlockEntity(pos, state);
+    }
+
+    /** Server only: the staggered visual refresh of {@link #LOCKDOWN}. */
+    @Override
+    public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state,
+            BlockEntityType<T> type) {
+        if (level.isClientSide()) {
+            return null;
+        }
+        return createTickerHelper(type, MonitorRegistrations.BLOCK_ENTITY.get(),
+                (lvl, pos, st, monitor) -> monitor.visualTick(lvl, pos));
+    }
+
+    /** A freshly linked or unlinked monitor shows its installation's lockdown state at once. */
+    @Override
+    public void onLinked(ServerLevel level, BlockPos pos, UUID installationId) {
+        if (level.getBlockEntity(pos) instanceof SecurityMonitorBlockEntity monitor) {
+            monitor.refreshVisual(level);
+        }
+    }
+
+    @Override
+    public void onUnlinked(ServerLevel level, BlockPos pos, UUID installationId) {
+        if (level.getBlockEntity(pos) instanceof SecurityMonitorBlockEntity monitor) {
+            monitor.refreshVisual(level);
+        }
     }
 
     /** The linking tool acts on the monitor as a device; it must not open the screen instead. */
@@ -123,6 +161,7 @@ public class SecurityMonitorBlock extends BaseEntityBlock implements SecurityDev
         AccessDecision decision = MonitorPayloadHandlers.resolveView(serverPlayer, installation, at);
         if (!decision.allowed()) {
             serverPlayer.sendOverlayMessage(decision.message());
+            SecurityDevice.denyFeedback(serverPlayer, pos);
             return InteractionResult.SUCCESS;
         }
         MonitorPayloadHandlers.sendSnapshot(serverPlayer, monitor, serverLevel, installation);

@@ -56,10 +56,11 @@ public final class FieldPayloads {
     /**
      * Server truth for the open field screen. Display only: the server re-checks everything a configure intent says.
      * {@code viewerLevel} (OWNER for an operator) lets the screen disable owner-only choices; {@code serverEnabled}
-     * is the server's {@code forceFieldsEnabled}.
+     * is the server's {@code forceFieldsEnabled}. {@code placed} is how many field blocks are actually up, next to the
+     * {@code area} the shape asks for: fewer means holes the owner should clear.
      */
     public record FieldSnapshot(BlockPos pos, FieldSettings settings, int strength, int maxStrength, int range,
-            int area, int maxArea, int drawPerTick, long energy, long capacity, FieldState state, float loadFraction,
+            int area, int placed, int maxArea, int drawPerTick, long energy, long capacity, FieldState state, float loadFraction,
             int cooldownSeconds, AccessLevel viewerLevel, boolean admin, boolean breachable, boolean serverEnabled)
             implements CustomPacketPayload {
 
@@ -72,6 +73,7 @@ public final class FieldPayloads {
                     buf.writeVarInt(v.maxStrength);
                     buf.writeVarInt(v.range);
                     buf.writeVarInt(v.area);
+                    buf.writeVarInt(v.placed);
                     buf.writeVarInt(v.maxArea);
                     buf.writeVarInt(v.drawPerTick);
                     buf.writeVarLong(v.energy);
@@ -85,7 +87,7 @@ public final class FieldPayloads {
                     buf.writeBoolean(v.serverEnabled);
                 },
                 buf -> new FieldSnapshot(buf.readBlockPos(), FieldSettings.STREAM_CODEC.decode(buf), buf.readVarInt(),
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                         buf.readVarLong(), buf.readVarLong(), FieldState.STREAM_CODEC.decode(buf), buf.readFloat(),
                         buf.readVarInt(), AccessLevel.STREAM_CODEC.decode(buf), buf.readBoolean(), buf.readBoolean(),
                         buf.readBoolean()));
@@ -94,6 +96,7 @@ public final class FieldPayloads {
             settings = settings == null ? FieldSettings.DEFAULT : settings;
             state = state == null ? FieldState.IDLE : state;
             viewerLevel = viewerLevel == null ? AccessLevel.PUBLIC : viewerLevel;
+            placed = Math.max(0, placed);
         }
 
         @Override

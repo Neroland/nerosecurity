@@ -13,6 +13,7 @@ import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
+import za.co.neroland.nerosecurity.block.SecurityDevice;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
@@ -59,6 +60,7 @@ public final class SensorPayloadHandlers {
         AccessDecision decision = resolveConfigure(player, installation, at);
         if (!decision.allowed()) {
             player.sendOverlayMessage(decision.message());
+            SecurityDevice.denyFeedback(player, be.getBlockPos());
             return;
         }
         sendSnapshot(player, host, installation, decision);
@@ -74,9 +76,15 @@ public final class SensorPayloadHandlers {
     /** Sends the sensor snapshot to a player the resolver has just allowed to configure the sensor. */
     public static void sendSnapshot(ServerPlayer player, SensorMenuHost host, @Nullable Installation installation,
             AccessDecision decision) {
+        sendSnapshot(player, host, installation, decision, true, null);
+    }
+
+    /** As above, carrying the outcome of the action that produced it for the screen's footer. */
+    public static void sendSnapshot(ServerPlayer player, SensorMenuHost host, @Nullable Installation installation,
+            AccessDecision decision, boolean ok, @Nullable Component message) {
         Services.NETWORK.sendToPlayer(player, new SensorSnapshot(host.sensorBlockEntity().getBlockPos(),
                 host.sensorSettings(), host.isLaser(), installation != null,
-                decision.admin() ? AccessLevel.OWNER : decision.effective()));
+                decision.admin() ? AccessLevel.OWNER : decision.effective(), ok, message));
     }
 
     public static void handleConfigure(SensorConfigure payload, ServerPlayer player) {
@@ -105,17 +113,20 @@ public final class SensorPayloadHandlers {
             }
             boolean owner = decision.admin() || decision.effective() == AccessLevel.OWNER;
             if (!SensorSettings.mayApply(true, owner, current, wanted)) {
-                player.sendSystemMessage(Component.translatable("door.nerosecurity.owner_only_setting"));
-                sendSnapshot(player, host, installation, decision);
+                Component refusal = Component.translatable("door.nerosecurity.owner_only_setting");
+                player.sendSystemMessage(refusal);
+                sendSnapshot(player, host, installation, decision, false, refusal);
                 return;
             }
+            Component done = null;
             if (!wanted.equals(current)) {
                 host.setSensorSettings(wanted);
                 SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.DEVICE_CONFIGURED, installation.id(), at,
                         player.getUUID(), System.currentTimeMillis()));
-                player.sendOverlayMessage(Component.translatable("sensor.nerosecurity.configured"));
+                done = Component.translatable("sensor.nerosecurity.configured");
+                player.sendOverlayMessage(done);
             }
-            sendSnapshot(player, host, installation, decision);
+            sendSnapshot(player, host, installation, decision, true, done);
         });
     }
 

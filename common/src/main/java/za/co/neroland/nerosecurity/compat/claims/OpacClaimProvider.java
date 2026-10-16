@@ -18,9 +18,9 @@ import za.co.neroland.nerosecurity.NeroSecurityCommon;
  * {@code opac_compat=false}.
  *
  * <p>Wilderness and the claim's own owner are allowed; anyone else is allowed only when OPAC says they have chunk
- * access. Claims only ever take access away ({@link ClaimSource} never grants). A null server (plain-JVM tests
- * only) has no claims to consult and answers "allowed"; an OPAC failure answers "not allowed" (fail closed) and is
- * warned about once, by exception class only.
+ * access. Claims only ever take access away ({@link ClaimSource} never grants). A null server has no claims to
+ * consult and answers "not allowed" (fail closed; production never passes one); an OPAC failure likewise answers
+ * "not allowed" and is warned about once, by exception class only.
  */
 public final class OpacClaimProvider implements ClaimProvider {
 
@@ -40,7 +40,7 @@ public final class OpacClaimProvider implements ClaimProvider {
     @Override
     public boolean mayInteract(MinecraftServer server, Identifier dimension, BlockPos pos, UUID actor) {
         if (server == null) {
-            return true;
+            return false; // fail closed: nothing to ask, so never "allowed"
         }
         if (dimension == null || pos == null || actor == null) {
             return false;

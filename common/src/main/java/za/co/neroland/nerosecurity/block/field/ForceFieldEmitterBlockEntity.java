@@ -14,6 +14,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
@@ -52,6 +55,7 @@ import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.field.FieldMenu;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
 
@@ -69,9 +73,16 @@ import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
  * raises the effective strength to {@code maxFieldStrength} at no extra power ({@link FieldStrength}); the resolver's
  * lockdown rule is what seals the field to everyone below OWNER.
  *
- * <p><b>Persisted:</b> settings, modules, state, load, cooldown end, owned positions (energy and side config via
- * Core). Per-player maps (verdicts, last sync, breach cooldowns) are transient, bounded, pruned and dropped on
- * unload. Nothing here names a player. The update tag is empty: the renderer needs only the {@code ACTIVE} blockstate.
+ * <p><b>Overload meter.</b> A lockdown edge rescales the meter to the new capacity and never resets it
+ * ({@link FieldStrength#rescaleLoad}), so cycling a lockdown cannot drain it. An overload cooldown is also recorded in
+ * {@link FieldCooldowns}, which a new emitter placed at the same position adopts on its first tick, so breaking and
+ * re-placing the emitter cannot cut it short. Melee load is spaced per attacker ({@link BreachCooldowns#tryMelee}).
+ *
+ * <p><b>Persisted:</b> settings, modules, state, load (and whether it was measured against the lockdown-boosted
+ * capacity), cooldown end, owned positions (energy and side config via Core). Per-player maps (verdicts, last sync,
+ * breach cooldowns) are transient, bounded, pruned and dropped on unload. Nothing here names a player. The update tag
+ * carries only what the renderer draws: {@code State}, {@code DrawBucket} (0..4) and {@code Lockdown}
+ * ({@link RenderSync}).
  */
 public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         implements FieldPassability.Emitter, MenuProvider {
@@ -80,6 +91,12 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     public static final int MAX_TRANSFER = 4000;
     /** Most owned positions read back from a save (the config cap is at most 4096). */
     public static final int MAX_PROJECTED = 4096;
+    /** Ticks between retries of positions an entity was standing in (the rest waits for the normal reconcile). */
+    public static final int HELD_RETRY_TICKS = 5;
+    /** Fewest ticks between two {@code FIELD_OBSTRUCTED} events from one emitter (five minutes). */
+    public static final int OBSTRUCTED_EVENT_COOLDOWN_TICKS = 20 * 60 * 5;
+    /** Consecutive short reconciles before {@code FIELD_OBSTRUCTED} is published. */
+    public static final int OBSTRUCTED_AFTER_RECONCILES = 2;
 
     /** Why the field was taken down from outside the state machine. */
     public enum CollapseReason { REMOVED, UNLINKED }
@@ -90,6 +107,9 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     private static final String KEY_LOAD = "Load";
     private static final String KEY_COOLDOWN = "CooldownUntil";
     private static final String KEY_PROJECTED = "Projected";
+    private static final String KEY_LOAD_BOOSTED = "LoadBoosted";
+    private static final String KEY_DRAW_BUCKET = "DrawBucket";
+    private static final String KEY_LOCKDOWN = "Lockdown";
 
     private FieldSettings settings = FieldSettings.DEFAULT;
     private final SecurityModuleSlots modules = new SecurityModuleSlots(MODULE_SLOTS,
@@ -109,6 +129,11 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     private boolean syncRequested = true;
     private long lastExplosionTick = Long.MIN_VALUE;
     private int lastExplosionId;
+    private boolean cooldownAdopted;
+    private int shortReconciles;
+    private long lastObstructedAt = Long.MIN_VALUE;
+    /** Wanted positions skipped only because an entity stood there: retried every {@value #HELD_RETRY_TICKS} ticks. */
+    private final Set<BlockPos> heldByEntity = new HashSet<>();
     private final PassabilityCache verdicts = new PassabilityCache();
     private final Map<UUID, FieldSync.Sent> lastSent = new HashMap<>();
     private final BreachCooldowns breachCooldowns = new BreachCooldowns();
@@ -116,6 +141,13 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     private @Nullable Installation installation;
     private long installationTick = Long.MIN_VALUE;
     private long installationGeneration = Long.MIN_VALUE;
+    // renderer sync: what clients were last sent (server) and the synced copies (client)
+    private @Nullable FieldState sentState;
+    private int sentBucket;
+    private boolean sentLockdown;
+    private long sentAt = Long.MIN_VALUE;
+    private int clientDrawBucket;
+    private boolean clientLockdown;
 
     public ForceFieldEmitterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state, NeroSecurityConfig.fieldEnergyCapacity(), MAX_TRANSFER, 0, stack -> null);
@@ -159,6 +191,34 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
 
     public boolean lockdownBoost() {
         return lockdownBoost;
+    }
+
+    /** Renderer: the field state (server truth; the synced copy on the client). */
+    public FieldState renderState() {
+        return fieldState;
+    }
+
+    /** Renderer: draw quantised 0..4 against the largest possible draw ({@link RenderSync#drawBucket}). */
+    public int renderDrawBucket() {
+        return level != null && level.isClientSide() ? clientDrawBucket : currentDrawBucket();
+    }
+
+    /** Renderer: whether the field wears the lockdown look. */
+    public boolean renderLockdown() {
+        return level != null && level.isClientSide() ? clientLockdown : lockdownBoost;
+    }
+
+    private int currentDrawBucket() {
+        return RenderSync.drawBucket(fieldState, drawPerTick(), FieldPower.drawPerTick(NeroSecurityConfig.maxFieldArea(),
+                NeroSecurityConfig.maxFieldStrength(), NeroSecurityConfig.fieldBasePowerPerTick(),
+                NeroSecurityConfig.fieldPowerPerBlockStrength()));
+    }
+
+    private void markRenderSent(long now) {
+        sentState = fieldState;
+        sentBucket = currentDrawBucket();
+        sentLockdown = lockdownBoost;
+        sentAt = now;
     }
 
     public long energyAmount() {
@@ -240,6 +300,10 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         return projected;
     }
 
+    Set<BlockPos> heldMutable() {
+        return heldByEntity;
+    }
+
     Map<UUID, FieldSync.Sent> lastSent() {
         return lastSent;
     }
@@ -287,6 +351,7 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     /** Stores settings already authorised and validated by the payload handler; reconciles on the next tick. */
     public void setSettings(FieldSettings newSettings) {
         this.settings = newSettings == null ? FieldSettings.DEFAULT : newSettings;
+        this.heldByEntity.clear();
         this.reconcileRequested = true;
         this.syncRequested = true;
         setChanged();
@@ -310,6 +375,7 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
 
     private void onModulesChanged() {
         setChanged();
+        heldByEntity.clear();
         reconcileRequested = true; // range (and so validity) may have changed
         syncRequested = true;
     }
@@ -339,10 +405,10 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     }
 
     private void applyLockdownBoost(ServerLevel level, boolean boost) {
+        double before = loadCapacity();
         lockdownBoost = boost;
-        if (boost) {
-            load = 0.0D; // stress from before the lockdown does not carry into the boosted field
-        }
+        // Never reset: the meter keeps its fraction of the new capacity, so a lockdown cycle cannot drain it.
+        load = FieldStrength.rescaleLoad(load, before, loadCapacity());
         FieldProjector.repaint(level, this, boost);
         syncRequested = true;
         setChanged();
@@ -374,6 +440,9 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         if (actor != null && isPassableFor(serverLevel, actor)) {
             return;
         }
+        if (source == LoadSource.MELEE && !breachCooldowns.tryMelee(actor, now)) {
+            return; // one hit per attacker per MELEE_SPACING_TICKS: load measures swings, not packets
+        }
         double added = switch (source) {
             case MELEE -> NeroSecurityConfig.fieldMeleeLoad();
             case PROJECTILE -> NeroSecurityConfig.fieldProjectileLoad();
@@ -404,6 +473,18 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
             return;
         }
         long now = level.getGameTime();
+        if (sentState == null) {
+            markRenderSent(now); // the chunk data already carried these values
+        }
+        // 0. A new emitter adopts an overload cooldown its position is still serving (break and re-place).
+        if (!cooldownAdopted) {
+            cooldownAdopted = true;
+            long adopted = FieldCooldowns.session().adopt(devicePos(serverLevel), now);
+            if (adopted > cooldownUntil) {
+                cooldownUntil = adopted;
+                setChanged();
+            }
+        }
         // 1. The store, once per tick; lockdown read from it (the hook only accelerates this).
         forgetInstallation();
         Installation linked = installationNow(serverLevel);
@@ -455,7 +536,16 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
                 if (FieldProjector.reconcile(serverLevel, this, linked)) {
                     setChanged();
                 }
+                noteObstruction(serverLevel, linked, now);
+            } else if (!heldByEntity.isEmpty() && Math.floorMod(now + pos.asLong(), (long) HELD_RETRY_TICKS) == 0L) {
+                // Gaps an entity was standing in close as soon as it moves, not at the next full reconcile.
+                if (FieldProjector.retryHeld(serverLevel, this, linked)) {
+                    setChanged();
+                }
             }
+        } else {
+            heldByEntity.clear();
+            shortReconciles = 0;
         }
 
         // 4. Nearby players' own verdicts (staggered; forced on flips).
@@ -466,11 +556,45 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
                 FieldSync.pass(serverLevel, this);
             }
         }
+
+        // 5. Renderer sync: on change only, spaced, except a state flip, which goes at once.
+        if (RenderSync.resendDue(sentState, sentBucket, sentLockdown, sentAt, fieldState, currentDrawBucket(),
+                lockdownBoost, now)) {
+            markRenderSent(now);
+            BlockState current = getBlockState();
+            level.sendBlockUpdated(pos, current, current, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /**
+     * {@code FIELD_OBSTRUCTED} (no actor, the emitter's position): published when fewer blocks are placed than the
+     * geometry asks for over {@value #OBSTRUCTED_AFTER_RECONCILES} reconciles in a row, at most once per
+     * {@value #OBSTRUCTED_EVENT_COOLDOWN_TICKS} ticks, so an owner learns their field has holes (junk in the plane,
+     * water, a claim, an entity) without a stream of rows.
+     */
+    private void noteObstruction(ServerLevel level, @Nullable Installation linked, long now) {
+        if (projectedCount() >= area()) {
+            shortReconciles = 0;
+            return;
+        }
+        shortReconciles = Math.min(OBSTRUCTED_AFTER_RECONCILES, shortReconciles + 1);
+        if (shortReconciles < OBSTRUCTED_AFTER_RECONCILES || linked == null) {
+            return;
+        }
+        if (lastObstructedAt != Long.MIN_VALUE && now >= lastObstructedAt
+                && now - lastObstructedAt < OBSTRUCTED_EVENT_COOLDOWN_TICKS) {
+            return;
+        }
+        lastObstructedAt = now;
+        publish(SecurityEventType.FIELD_OBSTRUCTED, linked, level, null);
     }
 
     private void apply(FieldStateMachine.Action action, ServerLevel level, @Nullable Installation linked) {
         switch (action) {
             case PROJECT -> {
+                if (restorePending) {
+                    SecuritySounds.FIELD_RESTORE.play(level, worldPosition);
+                }
                 if (restorePending && linked != null) {
                     publish(SecurityEventType.FIELD_RESTORED, linked, level, null);
                 }
@@ -478,6 +602,7 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
                 reconcileRequested = true;
             }
             case RESTORE -> {
+                SecuritySounds.FIELD_RESTORE.play(level, worldPosition);
                 if (linked != null) {
                     publish(SecurityEventType.FIELD_RESTORED, linked, level, null);
                 }
@@ -487,6 +612,7 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
             }
             case COLLAPSE_BROWNOUT -> {
                 FieldProjector.collapse(level, this);
+                SecuritySounds.FIELD_COLLAPSE.play(level, worldPosition);
                 restorePending = true;
                 if (linked != null) {
                     publish(SecurityEventType.FIELD_COLLAPSED, linked, level, null);
@@ -499,6 +625,8 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
             }
             case COLLAPSE_OVERLOAD -> {
                 FieldProjector.collapse(level, this);
+                SecuritySounds.FIELD_COLLAPSE.play(level, worldPosition);
+                FieldCooldowns.session().record(devicePos(level), cooldownUntil, level.getGameTime());
                 restorePending = true;
                 if (linked != null) {
                     publish(SecurityEventType.FIELD_OVERLOADED, linked, level, null);
@@ -570,6 +698,7 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         verdicts.clear();
         lastSent.clear();
         breachCooldowns.clear();
+        heldByEntity.clear();
         forgetInstallation();
     }
 
@@ -582,6 +711,7 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         modules.save(output.child(KEY_MODULES));
         output.putString(KEY_STATE, fieldState.jsonName());
         output.putDouble(KEY_LOAD, load);
+        output.putBoolean(KEY_LOAD_BOOSTED, lockdownBoost);
         output.putLong(KEY_COOLDOWN, cooldownUntil);
         output.store(KEY_PROJECTED, Codec.LONG_STREAM, projected.stream().mapToLong(BlockPos::asLong));
     }
@@ -597,18 +727,35 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         this.fieldState = FieldState.byName(input.getStringOr(KEY_STATE, FieldState.IDLE.jsonName()));
         double readLoad = input.getDoubleOr(KEY_LOAD, 0.0D);
         this.load = Double.isFinite(readLoad) ? Math.max(0.0D, Math.min(1.0E9D, readLoad)) : 0.0D;
+        // The capacity the saved meter was measured against: the first tick rescales only if lockdown changed since.
+        this.lockdownBoost = input.getBooleanOr(KEY_LOAD_BOOSTED, false);
         this.cooldownUntil = input.getLongOr(KEY_COOLDOWN, 0L);
         projected.clear();
         input.read(KEY_PROJECTED, Codec.LONG_STREAM).ifPresent(stream -> stream.limit(MAX_PROJECTED)
                 .forEach(packed -> projected.add(BlockPos.of(packed))));
+        // Update-tag keys (client copies only; never written to the save). State arrives through KEY_STATE above.
+        this.clientDrawBucket = Math.max(0, Math.min(RenderSync.MAX_BUCKET, input.getIntOr(KEY_DRAW_BUCKET, 0)));
+        this.clientLockdown = input.getBooleanOr(KEY_LOCKDOWN, false);
         this.reconcileRequested = true;
         this.syncRequested = true;
     }
 
-    /** Empty: the renderer needs only the blockstate. Settings, modules, energy and owned positions stay on the server. */
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    /**
+     * Only what the renderer draws: the state, the draw bucket and the lockdown look. Settings, modules, load,
+     * energy and owned positions stay on the server.
+     */
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        return new CompoundTag();
+        CompoundTag tag = new CompoundTag();
+        tag.putString(KEY_STATE, fieldState.jsonName());
+        tag.putInt(KEY_DRAW_BUCKET, currentDrawBucket());
+        tag.putBoolean(KEY_LOCKDOWN, lockdownBoost);
+        return tag;
     }
 
     // --- menu ------------------------------------------------------------------------------------
@@ -621,5 +768,44 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     @Override
     public @Nullable AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
         return new FieldMenu(containerId, inventory, this);
+    }
+
+    /** The renderer-sync rules as pure functions (unit-tested). */
+    public static final class RenderSync {
+
+        /** Highest draw bucket. */
+        public static final int MAX_BUCKET = 4;
+        /** Fewest ticks between two resends that are not a state flip. */
+        public static final int MIN_SPACING_TICKS = 10;
+
+        private RenderSync() {
+        }
+
+        /**
+         * {@code 0} unless projecting with a positive draw; otherwise {@code ceil(4 x draw / maxDraw)} in 1..4
+         * (4 when the largest possible draw is unknown or reached).
+         */
+        public static int drawBucket(FieldState state, int draw, int maxDraw) {
+            if (state != FieldState.PROJECTING || draw <= 0) {
+                return 0;
+            }
+            if (maxDraw <= 0 || draw >= maxDraw) {
+                return MAX_BUCKET;
+            }
+            int bucket = (int) Math.ceil((double) draw * MAX_BUCKET / maxDraw);
+            return Math.max(1, Math.min(MAX_BUCKET, bucket));
+        }
+
+        /** Whether to resend: a state flip at once; any other change once {@value #MIN_SPACING_TICKS} ticks have passed. */
+        public static boolean resendDue(@Nullable FieldState sentState, int sentBucket, boolean sentLockdown, long sentAt,
+                FieldState state, int bucket, boolean lockdown, long now) {
+            if (sentState != state) {
+                return true;
+            }
+            if (sentBucket == bucket && sentLockdown == lockdown) {
+                return false;
+            }
+            return sentAt == Long.MIN_VALUE || now < sentAt || now - sentAt >= MIN_SPACING_TICKS;
+        }
     }
 }

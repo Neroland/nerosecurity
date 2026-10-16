@@ -3,6 +3,7 @@ package za.co.neroland.nerosecurity.client;
 import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.menu.HubPayloads.HubSnapshot;
+import za.co.neroland.nerosecurity.privacy.PrivacyPayloads.PrivacySnapshot;
 
 /**
  * The client's only security mirror: the last hub snapshot the server sent, for the open hub screen to
@@ -16,6 +17,8 @@ public final class ClientHubState {
 
     private static @Nullable HubSnapshot current;
     private static long version;
+    private static @Nullable PrivacySnapshot privacy;
+    private static long privacyVersion;
 
     private ClientHubState() {
     }
@@ -34,8 +37,25 @@ public final class ClientHubState {
         return version;
     }
 
+    /** The Privacy tab's last answer (counts and settings only). */
+    public static void acceptPrivacy(PrivacySnapshot snapshot) {
+        privacy = snapshot;
+        privacyVersion++;
+    }
+
+    public static @Nullable PrivacySnapshot privacy() {
+        return privacy;
+    }
+
+    /** Increments on every privacy snapshot. */
+    public static long privacyVersion() {
+        return privacyVersion;
+    }
+
     public static void clear() {
         current = null;
         version++;
+        privacy = null;
+        privacyVersion++;
     }
 }

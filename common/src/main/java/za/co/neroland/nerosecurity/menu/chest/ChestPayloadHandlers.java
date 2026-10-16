@@ -16,6 +16,8 @@ import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.block.DeviceAccessSettings;
 import za.co.neroland.nerosecurity.block.DeviceSettingsRules;
+import za.co.neroland.nerosecurity.block.SecurityDevice;
+import za.co.neroland.nerosecurity.block.chest.GatedChestAccess;
 import za.co.neroland.nerosecurity.block.chest.SecureChestBlockEntity;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
@@ -56,6 +58,7 @@ public final class ChestPayloadHandlers {
             AccessDecision decision = resolveConfigure(player, chest, installation);
             if (!decision.allowed()) {
                 player.sendOverlayMessage(decision.message());
+                SecurityDevice.denyFeedback(player, chest.getBlockPos());
                 return;
             }
             BlockPos pos = chest.getBlockPos().immutable();
@@ -89,8 +92,9 @@ public final class ChestPayloadHandlers {
             }
             boolean ownerOrAdmin = decision.admin() || decision.effective() == AccessLevel.OWNER;
             if (!DeviceSettingsRules.mayApply(ownerOrAdmin, current.minLevel(), wanted.minLevel())) {
-                player.sendSystemMessage(Component.translatable("chest.nerosecurity.owner_only_setting"));
-                refresh(player, chest);
+                Component refusal = Component.translatable("chest.nerosecurity.owner_only_setting");
+                player.sendSystemMessage(refusal);
+                refresh(player, chest, false, refusal);
                 return;
             }
             if (!wanted.equals(current)) {
@@ -100,32 +104,41 @@ public final class ChestPayloadHandlers {
                             DevicePos.of(level, chest.getBlockPos()), player.getUUID(), System.currentTimeMillis()));
                 }
             }
-            player.sendOverlayMessage(Component.translatable("chest.nerosecurity.configured"));
-            refresh(player, chest);
+            Component done = Component.translatable("chest.nerosecurity.configured");
+            player.sendOverlayMessage(done);
+            refresh(player, chest, true, done);
         });
     }
 
     /** Sends the display snapshot. {@code decision} is null for an unlinked chest. */
     static void sendSnapshot(ServerPlayer player, SecureChestBlockEntity chest, @Nullable Installation installation,
             @Nullable AccessDecision decision) {
+        sendSnapshot(player, chest, installation, decision, true, null);
+    }
+
+    /** As above, carrying the outcome of the action that produced it for the screen's footer. */
+    static void sendSnapshot(ServerPlayer player, SecureChestBlockEntity chest, @Nullable Installation installation,
+            @Nullable AccessDecision decision, boolean ok, @Nullable Component message) {
         DeviceAccessSettings settings = chest.settings();
         AccessLevel viewer = decision == null ? AccessLevel.OWNER : decision.effective();
+        boolean lockdown = SecureChestBlockEntity.lockdownActive(installation);
+        AccessLevel policy = installation == null ? null : installation.automationLevel();
         Services.NETWORK.sendToPlayer(player, new ChestSnapshot(chest.getBlockPos().immutable(), settings.minLevel(),
-                settings.keycardOnly(), installation == null ? null : installation.automationLevel(),
-                chest.isAutomationAllowed(), SecureChestBlockEntity.lockdownActive(installation),
-                installation != null, viewer));
+                settings.keycardOnly(), policy, chest.isAutomationAllowed(), lockdown, installation != null, viewer,
+                GatedChestAccess.why(installation != null, policy, settings, lockdown), ok, message));
     }
 
     /** Re-sends the snapshot while the player may still configure the chest; closes the screen otherwise. */
-    private static void refresh(ServerPlayer player, SecureChestBlockEntity chest) {
+    private static void refresh(ServerPlayer player, SecureChestBlockEntity chest, boolean ok,
+            @Nullable Component message) {
         Installation installation = chest.installation();
         if (installation == null) {
-            sendSnapshot(player, chest, null, null);
+            sendSnapshot(player, chest, null, null, ok, message);
             return;
         }
         AccessDecision decision = resolveConfigure(player, chest, installation);
         if (decision.allowed()) {
-            sendSnapshot(player, chest, installation, decision);
+            sendSnapshot(player, chest, installation, decision, ok, message);
         } else {
             player.closeContainer();
             player.sendSystemMessage(decision.message());

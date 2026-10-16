@@ -1,6 +1,4 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/ender_eye"
-  }
+  "textures": {"layer0": "nerosecurity:item/encryption_module"}
 }

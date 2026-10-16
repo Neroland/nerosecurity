@@ -102,6 +102,9 @@ public final class ClaimsCompat {
     /**
      * The projection rule: may a field place blocks in this chunk? True when claims are inactive, or when at least
      * one real owner (never the erasure tombstone) may interact at the chunk's centre column.
+     *
+     * <p>Note: this rule is 2-D and column-wide (it probes one position at y=0 per chunk), which is right for
+     * per-chunk claim mods such as OPAC; a 3-D (cuboid) claim provider would need the field positions' y-range.
      */
     public static boolean mayBuild(@Nullable MinecraftServer server, Identifier dimension, int chunkX, int chunkZ,
             Set<UUID> owners) {

@@ -12,8 +12,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -36,6 +34,8 @@ import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.registry.AlarmRegistrations;
+import za.co.neroland.nerosecurity.sound.AlarmTones;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 
 /**
  * The alarm's block entity: which event types it listens to, what it does when one fires, and how long
@@ -63,6 +63,9 @@ public class AlarmBlockEntity extends BlockEntity {
     // --- transient ------------------------------------------------------------------------------
     private int activeTicks;
     private int pulseTicks;
+    /** Ticks the two-tone siren keeps sounding, and how long it has sounded (see {@link AlarmTones}). */
+    private int soundTicks;
+    private int soundElapsed;
     /** Set once removal starts, so a firing published during our own removal never touches this block. */
     private boolean removing;
     private long playerBreakAt = Long.MIN_VALUE;
@@ -127,7 +130,9 @@ public class AlarmBlockEntity extends BlockEntity {
 
     /** Whether this alarm reacts right now for {@code installation}. */
     public boolean armed(@Nullable Installation installation, long now) {
-        return AlarmRules.armed(installation != null, now, silencedUntil, NeroSecurityConfig.isLockdownEnabled(),
+        // The installation-wide silence (set from the companion app, reaching unloaded alarms too) counts as well.
+        long silence = installation == null ? silencedUntil : Math.max(silencedUntil, installation.alarmSilencedUntil());
+        return AlarmRules.armed(installation != null, now, silence, NeroSecurityConfig.isLockdownEnabled(),
                 installation != null && installation.lockdown().active());
     }
 
@@ -170,7 +175,13 @@ public class AlarmBlockEntity extends BlockEntity {
             serverLevel.setBlock(worldPosition, next, Block.UPDATE_ALL);
         }
         if (responses.contains(AlarmResponse.SOUND)) {
-            serverLevel.playSound(null, worldPosition, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 0.6F);
+            // The two-tone siren: tone A now, then alternating every AlarmTones.PERIOD_TICKS while it sounds.
+            soundTicks = Math.max(1, NeroSecurityConfig.alarmActiveTicks());
+            soundElapsed = 0;
+            SecuritySounds tone = AlarmTones.toneAt(0);
+            if (tone != null) {
+                tone.play(serverLevel, worldPosition);
+            }
         }
         if (AlarmRules.attemptsLockdown(responses)) {
             // Every other guard (server switches, severity, cooldown, never extending, this alarm being a
@@ -195,6 +206,14 @@ public class AlarmBlockEntity extends BlockEntity {
         }
         if (alarm.activeTicks > 0) {
             alarm.activeTicks--;
+        }
+        if (alarm.soundTicks > 0) {
+            alarm.soundTicks--;
+            alarm.soundElapsed++;
+            SecuritySounds tone = alarm.soundTicks > 0 ? AlarmTones.toneAt(alarm.soundElapsed) : null;
+            if (tone != null) {
+                tone.play(level, pos);
+            }
         }
         if (alarm.activeTicks == 0 && state.getValue(AlarmBlock.ACTIVE)) {
             next = next.setValue(AlarmBlock.ACTIVE, Boolean.FALSE);

@@ -1,5 +1,6 @@
 package za.co.neroland.nerosecurity.block.field;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 
@@ -7,7 +8,9 @@ import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -34,8 +37,13 @@ import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerolandcore.registry.BlockCodecs;
 
+import za.co.neroland.nerosecurity.access.AccessAction;
+import za.co.neroland.nerosecurity.access.AccessLevel;
+import za.co.neroland.nerosecurity.access.AccessResolver;
+import za.co.neroland.nerosecurity.access.MembershipSource;
 import za.co.neroland.nerosecurity.client.ClientFieldPassability;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
+import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.registry.FieldRegistrations;
 
 /**
@@ -170,6 +178,45 @@ public class ForceFieldBlock extends BaseEntityBlock {
             return;
         }
         emitter.absorb(LoadSource.MELEE, player.getUUID(), 0.0D, 0);
+    }
+
+    // --- breaking -------------------------------------------------------------------------------
+
+    /**
+     * Whether {@code player} may remove the field block at {@code pos} by breaking it. Hardness -1 already stops
+     * survival mining, but a creative-mode player destroys a block without hardness or {@code attack}; the three
+     * loader break hooks call this before every player break, creative included. Allowed: an orphan (it removes itself
+     * anyway), a block of an unlinked emitter, a stored owner of the installation (membership rows only: a keycard or
+     * an integration grant never counts) and a server operator. Anyone else is refused, and the attempt loads the
+     * emitter exactly like a melee hit (so creative mode is no way round the meter).
+     */
+    public static boolean mayBreak(ServerLevel level, BlockPos pos, ServerPlayer player) {
+        if (level == null || pos == null || player == null) {
+            return false;
+        }
+        try {
+            ForceFieldEmitterBlockEntity emitter = FieldProjector.emitterFor(level, pos);
+            if (emitter == null) {
+                return true; // an orphan: it would remove itself on the next hit or random tick
+            }
+            Installation installation = emitter.installationNow(level);
+            if (installation == null) {
+                return true; // an unlinked emitter projects nothing; its blocks are going anyway
+            }
+            boolean allowed = AccessResolver.DEFAULT.resolve(player, installation, AccessAction.CONFIGURE_DEVICE,
+                    AccessLevel.OWNER, emitter.devicePos(level), Set.of(MembershipSource.ID)).allowed();
+            if (!allowed) {
+                emitter.absorb(LoadSource.MELEE, player.getUUID(), 0.0D, 0);
+            }
+            return allowed;
+        } catch (RuntimeException e) {
+            return false; // fail closed: the block stays
+        }
+    }
+
+    /** Tells the player a refused break was refused. */
+    public static void refuseBreak(ServerPlayer player) {
+        player.sendOverlayMessage(Component.translatable("field.nerosecurity.break_refused"));
     }
 
     /** A projectile hits the block: the emitter takes projectile load unless its shooter is permitted. */

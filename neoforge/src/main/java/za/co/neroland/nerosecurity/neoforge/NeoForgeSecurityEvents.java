@@ -11,6 +11,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import za.co.neroland.nerosecurity.block.SecurityHubBlock;
+import za.co.neroland.nerosecurity.block.field.ForceFieldBlock;
 import za.co.neroland.nerosecurity.command.SecurityCommands;
 import za.co.neroland.nerosecurity.server.ServerHooks;
 
@@ -36,6 +37,12 @@ public final class NeoForgeSecurityEvents {
                     && !SecurityHubBlock.mayBreak(level, event.getPos(), player)) {
                 event.setCanceled(true);
                 SecurityHubBlock.refuseBreak(player);
+            } else if (event.getState().getBlock() instanceof ForceFieldBlock
+                    && event.getLevel() instanceof ServerLevel level
+                    && event.getPlayer() instanceof ServerPlayer player
+                    && !ForceFieldBlock.mayBreak(level, event.getPos(), player)) {
+                event.setCanceled(true);
+                ForceFieldBlock.refuseBreak(player);
             }
         });
         NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> ServerHooks.fireStarted(event.getServer()));

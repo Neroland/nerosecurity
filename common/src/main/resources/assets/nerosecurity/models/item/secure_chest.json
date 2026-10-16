@@ -1,0 +1,50 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "body": "nerosecurity:block/secure_chest_body",
+    "lid": "nerosecurity:block/secure_chest_lid",
+    "plate": "nerosecurity:block/secure_chest_plate",
+    "particle": "nerosecurity:block/secure_chest_body"
+  },
+  "elements": [
+    {
+      "name": "body",
+      "from": [1, 0, 1],
+      "to": [15, 10, 15],
+      "faces": {
+        "north": {"texture": "#body"},
+        "south": {"texture": "#body"},
+        "east": {"texture": "#body"},
+        "west": {"texture": "#body"},
+        "up": {"texture": "#body"},
+        "down": {"texture": "#body"}
+      }
+    },
+    {
+      "name": "lid",
+      "from": [1, 10, 1],
+      "to": [15, 14, 15],
+      "faces": {
+        "north": {"texture": "#lid"},
+        "south": {"texture": "#lid"},
+        "east": {"texture": "#lid"},
+        "west": {"texture": "#lid"},
+        "up": {"texture": "#lid"},
+        "down": {"texture": "#lid"}
+      }
+    },
+    {
+      "name": "plate",
+      "from": [6, 7, -0.5],
+      "to": [10, 13, 1],
+      "faces": {
+        "north": {"texture": "#plate", "uv": [0, 0, 16, 16]},
+        "south": {"texture": "#plate"},
+        "east": {"texture": "#plate"},
+        "west": {"texture": "#plate"},
+        "up": {"texture": "#plate"},
+        "down": {"texture": "#plate"}
+      }
+    }
+  ]
+}

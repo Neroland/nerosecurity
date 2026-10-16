@@ -116,6 +116,7 @@ public final class SecurityCommands {
                                 .then(InstallationArgument.argument(InstallationArgument.Scope.ALL)
                                         .executes(ctx -> runSafely(ctx.getSource(), "admin dissolve", () -> adminDissolve(ctx)))))));
         BindCommands.register(dispatcher);
+        za.co.neroland.nerosecurity.link.AlertCommands.register(dispatcher);
     }
 
     // --- player subcommands ---------------------------------------------------------------------

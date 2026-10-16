@@ -42,6 +42,13 @@ public final class NeroSecurityConfig {
                     + "scrubbed of your account name. Set false to opt out of all of it (takes effect "
                     + "on restart). See PRIVACY.md");
 
+    // --- Rendering (client-local) ------------------------------------------------
+
+    private static final ConfigValue<Boolean> RENDER_ANIMATIONS_ENABLED = SCHEMA.bool(
+            "renderAnimationsEnabled", true, false,
+            "Client only. false = security devices draw a still frame instead of animating (doors, lids, "
+                    + "beams, cameras, alarm beacons and field cores keep their shape but do not move).");
+
     // --- Kill switches (server-authoritative) --------------------------------
 
     private static final ConfigValue<Boolean> LOCKDOWN_ENABLED = SCHEMA.bool(
@@ -397,6 +404,57 @@ public final class NeroSecurityConfig {
     private static final ConfigValue<Integer> FIELD_BREACH_EVENT_COOLDOWN_TICKS = SCHEMA.intRange(
             "fieldBreachEventCooldownTicks", 200, 20, 6000, true,
             "One force-field-attacked event per attacker per emitter per this many ticks.");
+
+    // --- NeroLink (server-authoritative) --------------------------------------
+
+    private static final ConfigValue<Boolean> LINK_MODULE_ENABLED = SCHEMA.bool(
+            "linkModuleEnabled", true, true,
+            "-- NeroLink -- Whether NeroSecurity registers its module (sections, actions, live events) with "
+                    + "Neroland Core's link API for the NeroLink companion app. Takes effect on restart.");
+
+    private static final ConfigValue<Boolean> PUSH_NOTIFICATIONS_ENABLED = SCHEMA.bool(
+            "pushNotificationsEnabled", true, true,
+            "Kill switch: companion-app notifications, stored alerts and in-game login summaries for security "
+                    + "events. While false nothing is sent or stored; the app can still read installations.");
+
+    private static final ConfigValue<Integer> PUSH_COOLDOWN_SECONDS = SCHEMA.intRange(
+            "pushCooldownSeconds", 60, 10, 3600, true,
+            "At most one notification per installation per this many seconds; later events are counted into "
+                    + "it (\"+N more\"). Lockdown changes bypass it.");
+
+    private static final ConfigValue<Integer> PUSH_DENIED_THRESHOLD = SCHEMA.intRange(
+            "pushDeniedThreshold", 3, 1, 50, true,
+            "Denied-access events (doors, chests, keycards) within pushDeniedWindowSeconds before one "
+                    + "\"Repeated access denied\" notification. Single denials are not notified.");
+
+    private static final ConfigValue<Integer> PUSH_DENIED_WINDOW_SECONDS = SCHEMA.intRange(
+            "pushDeniedWindowSeconds", 60, 10, 3600, true,
+            "The window pushDeniedThreshold counts in, per installation.");
+
+    private static final ConfigValue<String> LINK_LOCKDOWN_MODE = SCHEMA.string(
+            "linkLockdownMode", "off", true,
+            "Whether the companion app may change lockdown: off = never (default); release = may only clear a "
+                    + "lockdown; full = may also start one. With release or full, a lost or unlocked phone can "
+                    + "unseal (and with full also seal) its owner's bases. Anything else reads as off.");
+
+    private static final ConfigValue<Boolean> LINK_LOCKDOWN_ALLOW_OFFLINE = SCHEMA.bool(
+            "linkLockdownAllowOffline", false, true,
+            "Whether the app's lockdown action works while the owner is not logged in to the game. This is "
+                    + "the point of the feature, and also the stolen-phone trade-off.");
+
+    private static final ConfigValue<Boolean> LINK_ACTION_ACK_ENABLED = SCHEMA.bool(
+            "linkActionAckEnabled", true, true,
+            "Whether the companion app may acknowledge the player's own security alerts.");
+
+    private static final ConfigValue<Boolean> LINK_ACTION_SILENCE_ENABLED = SCHEMA.bool(
+            "linkActionSilenceEnabled", true, true,
+            "Whether the companion app may silence an installation's alarms for up to alarmSilenceMaxMinutes "
+                    + "(owners only; a lockdown still overrides the silence).");
+
+    private static final ConfigValue<Boolean> LOGIN_ALERT_SUMMARY_ENABLED = SCHEMA.bool(
+            "loginAlertSummaryEnabled", true, true,
+            "Whether a player gets one private chat line with unread security-alert counts shortly after "
+                    + "joining. Counts only, never the alerts' text.");
 
     private static final AtomicBoolean RETENTION_CLAMP_WARNED = new AtomicBoolean();
 
@@ -777,6 +835,82 @@ public final class NeroSecurityConfig {
      */
     public static boolean isTelemetryEnabled() {
         return TELEMETRY.get();
+    }
+
+    /**
+     * Client-local: whether security-device renderers animate (default true). When false every renderer
+     * draws its still frame. Never server-authoritative; read by client renderers only.
+     */
+    public static boolean renderAnimationsEnabled() {
+        return RENDER_ANIMATIONS_ENABLED.get();
+    }
+
+    // --- NeroLink ---------------------------------------------------------------------------------
+
+    /** What the companion app's lockdown action may do. */
+    public enum LinkLockdownMode {
+        /** Never (the default). */
+        OFF,
+        /** May only clear an active lockdown. */
+        RELEASE,
+        /** May also start or confirm one. */
+        FULL;
+
+        public String jsonName() {
+            return name().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
+    public static boolean isLinkModuleEnabled() {
+        return LINK_MODULE_ENABLED.get();
+    }
+
+    public static boolean isPushNotificationsEnabled() {
+        return PUSH_NOTIFICATIONS_ENABLED.get();
+    }
+
+    public static int pushCooldownSeconds() {
+        return PUSH_COOLDOWN_SECONDS.get();
+    }
+
+    public static int pushDeniedThreshold() {
+        return PUSH_DENIED_THRESHOLD.get();
+    }
+
+    public static int pushDeniedWindowSeconds() {
+        return PUSH_DENIED_WINDOW_SECONDS.get();
+    }
+
+    public static LinkLockdownMode linkLockdownMode() {
+        return parseLinkLockdownMode(LINK_LOCKDOWN_MODE.get());
+    }
+
+    /** {@code off|release|full}, case-insensitive and trimmed; anything else (junk, missing) is OFF. Pure. */
+    public static LinkLockdownMode parseLinkLockdownMode(@Nullable String raw) {
+        if (raw == null) {
+            return LinkLockdownMode.OFF;
+        }
+        return switch (raw.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "release" -> LinkLockdownMode.RELEASE;
+            case "full" -> LinkLockdownMode.FULL;
+            default -> LinkLockdownMode.OFF;
+        };
+    }
+
+    public static boolean isLinkLockdownAllowOffline() {
+        return LINK_LOCKDOWN_ALLOW_OFFLINE.get();
+    }
+
+    public static boolean isLinkActionAckEnabled() {
+        return LINK_ACTION_ACK_ENABLED.get();
+    }
+
+    public static boolean isLinkActionSilenceEnabled() {
+        return LINK_ACTION_SILENCE_ENABLED.get();
+    }
+
+    public static boolean isLoginAlertSummaryEnabled() {
+        return LOGIN_ALERT_SUMMARY_ENABLED.get();
     }
 
     /** Registers the schema with Core's ConfigManager. Called once from common init. */

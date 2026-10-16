@@ -4,89 +4,90 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 
+import org.jetbrains.annotations.Nullable;
+
 import za.co.neroland.nerosecurity.audit.AnonymousEvent;
-import za.co.neroland.nerosecurity.event.SecuritySeverity;
+import za.co.neroland.nerosecurity.client.SecurityColours;
+import za.co.neroland.nerosecurity.client.screen.SecurityScreen;
+import za.co.neroland.nerosecurity.client.screen.monitor.MonitorRows.Row;
+import za.co.neroland.nerosecurity.client.widget.ScrollRegion;
+import za.co.neroland.nerosecurity.client.widget.SectionBox;
+import za.co.neroland.nerosecurity.client.widget.SecurityButton;
+import za.co.neroland.nerosecurity.client.widget.SentenceList;
+import za.co.neroland.nerosecurity.client.widget.Status;
+import za.co.neroland.nerosecurity.client.widget.StatusDot;
+import za.co.neroland.nerosecurity.client.widget.WidgetColours;
+import za.co.neroland.nerosecurity.client.widget.WidgetText;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorMenu;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorPayloads.MonitorRefresh;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorSnapshot;
-import za.co.neroland.nerosecurity.menu.monitor.MonitorSnapshot.DeviceKind;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorSnapshot.DeviceRow;
-import za.co.neroland.nerosecurity.menu.monitor.MonitorSnapshot.DeviceState;
-import za.co.neroland.nerosecurity.platform.Services;
 
 /**
- * A deliberately plain, text-only monitor screen (a later stage adds the animated screen face): a
- * one-line title (installation name and status), then the cameras, the laser grids and the recent
- * events as sentences, in one scrollable list, and a Refresh button. It draws only what the server's
- * last snapshot says. There is no imagery and no name anywhere: event sentences say only whether a
- * player was involved.
+ * The Security Monitor: text only, never a picture. Title "<installation> — <status>", a status row with a
+ * shaped glyph, then two columns: SENSORS on the left (cameras and laser grid nodes, each a status glyph, a
+ * block position and a state word, scrollable) and RECENT EVENTS on the right (a {@link SentenceList} of
+ * anonymous sentences, scrollable), with a Refresh button bottom-right that asks the server for a new
+ * {@link MonitorSnapshot}.
+ *
+ * <p>It draws only what the server's last snapshot says. No name, UUID or position of a person is anywhere in
+ * the snapshot, so none can be drawn: an event sentence says only whether <em>a player</em> was involved. Ages
+ * are relative and keep counting while the screen is open. Read-only except for Refresh.
  *
  * <p>CLIENT-ONLY.
  */
-public class MonitorScreen extends AbstractContainerScreen<MonitorMenu> {
+public class MonitorScreen extends SecurityScreen<MonitorMenu> {
 
-    private static final int W = 256;
-    private static final int H = 192;
-    private static final int PANEL = 0xFF141C26;
-    private static final int EDGE = 0xFF2A3A4D;
-    private static final int TROUGH = 0xFF0B1119;
-    private static final int TITLE = 0xFFD6ECFF;
-    private static final int HEADING = 0xFFB8D4F0;
-    private static final int SUBTLE = 0xFF8DA0B4;
-    private static final int OK = 0xFF7FD68A;
-    private static final int WARN = 0xFFFFB454;
-    private static final int ALERT = 0xFFFF5A5A;
-    private static final int LIST_X = 8;
-    private static final int LIST_Y = 22;
-    private static final int LIST_W = 224;
-    private static final int ROW_H = 10;
-    private static final int ROWS = 14;
-    /** Ticks the Refresh button stays disabled waiting for an answer before it gives up. */
-    private static final int REFRESH_TIMEOUT_TICKS = 40;
+    private static final int W = 276;
+    private static final int H = 210;
+    private static final int STATUS_Y = 30;
+    private static final int BOX_Y0 = 44;
+    private static final int BOX_Y1 = 172;
+    private static final int LEFT_X0 = PAD;
+    private static final int LEFT_X1 = 122;
+    private static final int RIGHT_X0 = 130;
+    private static final int RIGHT_X1 = W - PAD;
+    private static final int INNER_PAD = 4;
+    private static final int LINE = SentenceList.LINE_HEIGHT;
+    private static final int BUTTON_W = 64;
+    private static final int BUTTON_H = 16;
+    private static final int BUTTON_Y = 176;
+    /** Rebuild the aged sentences this often, so "N min ago" keeps counting. */
+    private static final int REAGE_TICKS = 20;
 
-    private record Line(FormattedCharSequence text, int colour) {
-    }
-
-    private final List<Line> lines = new ArrayList<>();
-    private Button refreshButton;
-    private Button upButton;
-    private Button downButton;
-    private int scroll;
-    private long builtVersion = -1L;
+    private SensorList sensors;
+    private SentenceList events;
+    private SecurityButton refreshButton;
+    private long builtVersion = Long.MIN_VALUE;
     private int ticks;
-    /** The snapshot version a refresh is waiting on; the button stays disabled until it changes. */
-    private long awaiting = -1L;
-    private int awaitingSince;
 
     public MonitorScreen(MonitorMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, W, H);
-        this.titleLabelX = 8;
-        this.titleLabelY = 7;
+        super(menu, inventory, title, W, H, false, ClientMonitorState::version);
+        setSubtitle(Component.translatable("monitor.nerosecurity.subtitle"));
     }
 
     @Override
-    protected void init() {
-        super.init();
-        int x = this.leftPos;
-        int y = this.topPos;
-        this.upButton = addRenderableWidget(Button.builder(Component.literal("^"), b -> scrollBy(-1))
-                .bounds(x + LIST_X + LIST_W + 2, y + LIST_Y, 14, 14).build());
-        this.downButton = addRenderableWidget(Button.builder(Component.literal("v"), b -> scrollBy(1))
-                .bounds(x + LIST_X + LIST_W + 2, y + LIST_Y + ROWS * ROW_H - 14, 14, 14).build());
-        this.refreshButton = addRenderableWidget(Button.builder(
-                Component.translatable("monitor.nerosecurity.button.refresh"), b -> refresh())
-                .bounds(x + W - 8 - 80, y + H - 24, 80, 16).build());
-        rebuild();
-        refreshWidgets();
+    protected void initWidgets() {
+        int x = left();
+        int y = top();
+        int contentTop = SectionBox.contentTop(y + BOX_Y0);
+        int contentHeight = y + BOX_Y1 - INNER_PAD - contentTop;
+        this.sensors = addScrollRegion(new SensorList(x + LEFT_X0 + INNER_PAD, contentTop,
+                LEFT_X1 - LEFT_X0 - 2 * INNER_PAD, contentHeight));
+        this.events = addScrollRegion(new SentenceList(x + RIGHT_X0 + INNER_PAD, contentTop,
+                RIGHT_X1 - RIGHT_X0 - 2 * INNER_PAD, contentHeight));
+        this.refreshButton = addRenderableWidget(SecurityButton.of(x + RIGHT_X1 - BUTTON_W, y + BUTTON_Y,
+                BUTTON_W, BUTTON_H, Component.translatable("monitor.nerosecurity.button.refresh"), b -> refresh()));
+        this.builtVersion = Long.MIN_VALUE;
     }
 
-    private static MonitorSnapshot snapshot() {
+    // --- state ----------------------------------------------------------------------------------
+
+    private static @Nullable MonitorSnapshot snapshot() {
         return ClientMonitorState.current();
     }
 
@@ -95,36 +96,55 @@ public class MonitorScreen extends AbstractContainerScreen<MonitorMenu> {
         return Math.max(0L, (System.currentTimeMillis() - ClientMonitorState.receivedAt()) / 1000L);
     }
 
-    private boolean waiting() {
-        return awaiting >= 0 && awaiting == ClientMonitorState.version() && ticks - awaitingSince < REFRESH_TIMEOUT_TICKS;
+    private static Component statusText(MonitorSnapshot snap) {
+        int release = (int) Math.max(0L, snap.autoReleaseInSeconds() - elapsedSeconds());
+        return MonitorText.status(snap.lockdown(), snap.source(), release);
     }
 
-    private void refreshWidgets() {
-        this.refreshButton.active = snapshot() != null && !waiting();
-        int max = maxScroll();
-        this.scroll = Math.max(0, Math.min(this.scroll, max));
-        this.upButton.active = this.scroll > 0;
-        this.downButton.active = this.scroll < max;
+    @Override
+    protected void refreshWidgets() {
+        this.ticks++;
+        MonitorSnapshot snap = snapshot();
+        this.refreshButton.setEnabled(snap != null, Component.translatable("ui.nerosecurity.waiting"));
+        if (snap == null) {
+            setTitleLine(this.title);
+            return;
+        }
+        setTitleLine(Component.translatable("monitor.nerosecurity.title", snap.installationName(), statusText(snap)));
+        long version = ClientMonitorState.version();
+        if (version != this.builtVersion || this.ticks % REAGE_TICKS == 0) {
+            this.builtVersion = version;
+            rebuild(snap);
+        }
     }
 
-    private int maxScroll() {
-        return Math.max(0, this.lines.size() - ROWS);
+    private void rebuild(MonitorSnapshot snap) {
+        this.sensors.setRows(MonitorRows.of(snap));
+        long extra = elapsedSeconds();
+        List<SentenceList.Row> rows = new ArrayList<>(snap.events().size());
+        if (!snap.auditDisabled()) {
+            for (AnonymousEvent event : snap.events()) {
+                rows.add(SentenceList.event(event, extra));
+            }
+        }
+        this.events.setEmpty(Component.translatable(snap.auditDisabled()
+                ? "monitor.nerosecurity.audit_disabled" : "monitor.nerosecurity.none"));
+        this.events.setRows(rows);
     }
 
-    private void scrollBy(int delta) {
-        this.scroll = Math.max(0, Math.min(maxScroll(), this.scroll + delta));
-        refreshWidgets();
+    @Override
+    protected void onSnapshot(boolean answeredIntent) {
+        MonitorSnapshot snap = snapshot();
+        if (snap != null) {
+            feedbackFromSnapshot(snap.ok(), snap.message(), answeredIntent);
+        }
     }
 
     private void refresh() {
         MonitorSnapshot snap = snapshot();
-        if (snap == null) {
-            return;
+        if (snap != null) {
+            sendIntent(new MonitorRefresh(snap.pos()));
         }
-        this.awaiting = ClientMonitorState.version();
-        this.awaitingSince = this.ticks;
-        Services.NETWORK.sendToServer(new MonitorRefresh(snap.pos()));
-        refreshWidgets();
     }
 
     /** The snapshot is display-only and is dropped as soon as the screen closes. */
@@ -134,117 +154,123 @@ public class MonitorScreen extends AbstractContainerScreen<MonitorMenu> {
         super.removed();
     }
 
-    @Override
-    public void containerTick() {
-        super.containerTick();
-        this.ticks++;
-        // Rebuild when a snapshot arrives, and once a second so "N minutes ago" keeps ageing.
-        if (this.builtVersion != ClientMonitorState.version() || this.ticks % 20 == 0) {
-            rebuild();
-        }
-        refreshWidgets();
-    }
-
-    // --- content --------------------------------------------------------------------------------
-
-    private void rebuild() {
-        this.builtVersion = ClientMonitorState.version();
-        this.lines.clear();
-        MonitorSnapshot snap = snapshot();
-        if (snap == null) {
-            return;
-        }
-        long extra = elapsedSeconds();
-        heading(Component.translatable("monitor.nerosecurity.cameras"));
-        if (snap.camerasDisabled()) {
-            add(Component.translatable("monitor.nerosecurity.cameras_disabled"), SUBTLE);
-        } else {
-            devices(snap, DeviceKind.CAMERA);
-        }
-        heading(Component.translatable("monitor.nerosecurity.lasers"));
-        devices(snap, DeviceKind.LASER);
-        heading(Component.translatable("monitor.nerosecurity.events"));
-        if (snap.auditDisabled()) {
-            add(Component.translatable("monitor.nerosecurity.audit_disabled"), SUBTLE);
-        } else if (snap.events().isEmpty()) {
-            add(Component.translatable("monitor.nerosecurity.none"), SUBTLE);
-        } else {
-            for (AnonymousEvent event : snap.events()) {
-                add(MonitorText.sentence(event, extra), severityColour(event.severity()));
-            }
-        }
-    }
-
-    private void devices(MonitorSnapshot snap, DeviceKind kind) {
-        boolean any = false;
-        for (DeviceRow row : snap.devices()) {
-            if (row.kind() != kind) {
-                continue;
-            }
-            any = true;
-            add(Component.literal("  ").append(MonitorText.position(row.pos())).append(" — ")
-                    .append(Component.translatable(row.state().translationKey())), stateColour(row.state()));
-        }
-        if (!any) {
-            add(Component.literal("  ").append(Component.translatable("monitor.nerosecurity.pos.none")), SUBTLE);
-        }
-    }
-
-    private void heading(Component text) {
-        add(text, HEADING);
-    }
-
-    private void add(Component text, int colour) {
-        for (FormattedCharSequence part : this.font.split(text, LIST_W - 4)) {
-            this.lines.add(new Line(part, colour));
-        }
-    }
-
-    private static int stateColour(DeviceState state) {
-        return switch (state) {
-            case ARMED -> OK;
-            case UNPOWERED, UNPAIRED -> WARN;
-            case UNLOADED -> SUBTLE;
-        };
-    }
-
-    private static int severityColour(SecuritySeverity severity) {
-        if (severity == SecuritySeverity.CRITICAL) {
-            return ALERT;
-        }
-        return severity == SecuritySeverity.WARN ? WARN : TITLE;
-    }
-
     // --- drawing --------------------------------------------------------------------------------
 
     @Override
-    public void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        int x = this.leftPos;
-        int y = this.topPos;
-        g.fill(x - 1, y - 1, x + W + 1, y + H + 1, EDGE);
-        g.fill(x, y, x + W, y + H, PANEL);
-        g.fill(x + LIST_X - 1, y + LIST_Y - 1, x + LIST_X + LIST_W, y + LIST_Y + ROWS * ROW_H + 1, TROUGH);
-        super.extractContents(g, mouseX, mouseY, partialTick);
-        int end = Math.min(this.lines.size(), this.scroll + ROWS);
-        for (int i = this.scroll; i < end; i++) {
-            Line line = this.lines.get(i);
-            g.text(this.font, line.text(), x + LIST_X + 2, y + LIST_Y + 1 + (i - this.scroll) * ROW_H, line.colour(), false);
+    protected void extractPanel(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        int x = left();
+        int y = top();
+        MonitorSnapshot snap = snapshot();
+        if (snap != null) {
+            Status status = MonitorRows.installationStatus(snap.lockdown());
+            StatusDot.draw(g, font(), x + PAD, y + STATUS_Y, status, statusText(snap));
+        }
+        Component sensorsCaption = Component.translatable("monitor.nerosecurity.section.sensors",
+                snap == null ? 0 : MonitorRows.sensorCount(snap));
+        SectionBox.draw(g, font(), x + LEFT_X0, y + BOX_Y0, x + LEFT_X1, y + BOX_Y1, sensorsCaption);
+        SectionBox.draw(g, font(), x + RIGHT_X0, y + BOX_Y0, x + RIGHT_X1, y + BOX_Y1,
+                Component.translatable("monitor.nerosecurity.section.events"));
+        if (snap != null) {
+            this.sensors.extract(g);
+            this.events.extract(g, font());
         }
     }
 
-    @Override
-    protected void extractLabels(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        MonitorSnapshot snap = snapshot();
-        if (snap == null) {
-            g.text(this.font, this.title, this.titleLabelX, this.titleLabelY, TITLE, false);
-            return;
+    /**
+     * The SENSORS column: headings, one line per sensor (status glyph, position, state word) and wrapped notes,
+     * 11 px a line, scrolled by the wheel. Hovering a sensor line shows the full sentence
+     * ("Security Camera at 10, 67, -1, unpowered").
+     */
+    private final class SensorList implements ScrollRegion {
+
+        private final int x;
+        private final int y;
+        private final int width;
+        private final int height;
+        private List<Row> rows = List.of();
+        private int scroll;
+        private int lineCount;
+
+        private record Line(Row row, FormattedCharSequence text, @Nullable Component full) {
         }
-        int release = (int) Math.max(0L, snap.autoReleaseInSeconds() - elapsedSeconds());
-        Component title = Component.translatable("monitor.nerosecurity.title", snap.installationName(),
-                MonitorText.status(snap.lockdown(), snap.source(), release));
-        List<FormattedCharSequence> parts = this.font.split(title, W - 16);
-        if (!parts.isEmpty()) {
-            g.text(this.font, parts.get(0), this.titleLabelX, this.titleLabelY, snap.lockdown() ? ALERT : TITLE, false);
+
+        SensorList(int x, int y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+
+        void setRows(List<Row> rows) {
+            this.rows = List.copyOf(rows);
+        }
+
+        private int visibleLines() {
+            return Math.max(1, height / LINE);
+        }
+
+        private List<Line> layout() {
+            List<Line> out = new ArrayList<>();
+            for (Row row : rows) {
+                switch (row.kind()) {
+                    case HEADING -> out.add(new Line(row, Component.translatable(row.key()).getVisualOrderText(), null));
+                    case NOTE, WARNING -> {
+                        for (FormattedCharSequence part : WidgetText.wrap(font(), Component.translatable(row.key()), width)) {
+                            out.add(new Line(row, part, null));
+                        }
+                    }
+                    case DEVICE -> {
+                        DeviceRow device = row.device();
+                        Component state = Component.translatable(device.state().translationKey());
+                        Component text = MonitorText.position(device.pos()).copy().append("  ").append(state);
+                        Component full = Component.translatable("device.nerosecurity.tooltip",
+                                Component.translatable(MonitorRows.blockKey(device.kind())),
+                                MonitorText.position(device.pos()), state);
+                        int room = width - StatusDot.SIZE - 4;
+                        out.add(new Line(row, WidgetText.fit(font(), text, room), full));
+                    }
+                }
+            }
+            return out;
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+            if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + height) {
+                return false;
+            }
+            int max = Math.max(0, lineCount - visibleLines());
+            scroll = Math.max(0, Math.min(scroll + (scrollY > 0 ? -1 : 1), max));
+            return true;
+        }
+
+        void extract(GuiGraphicsExtractor g) {
+            List<Line> lines = layout();
+            lineCount = lines.size();
+            int max = visibleLines();
+            scroll = Math.max(0, Math.min(scroll, Math.max(0, lineCount - max)));
+            int end = Math.min(lineCount, scroll + max);
+            for (int i = scroll; i < end; i++) {
+                Line line = lines.get(i);
+                int ly = y + (i - scroll) * LINE;
+                switch (line.row().kind()) {
+                    case HEADING -> g.text(font(), line.text(), x, ly, SecurityColours.SUBTLE, false);
+                    case NOTE -> g.text(font(), line.text(), x, ly, SecurityColours.SUBTLE, false);
+                    case WARNING -> g.text(font(), line.text(), x, ly, SecurityColours.opaque(SecurityColours.WARN), false);
+                    case DEVICE -> {
+                        DeviceRow device = line.row().device();
+                        StatusDot.drawGlyph(g, x, ly + 1, MonitorRows.status(device.state()));
+                        g.text(font(), line.text(), x + StatusDot.SIZE + 4, ly, WidgetColours.TEXT, false);
+                        explain(g, x, ly, width, LINE, line.full());
+                    }
+                }
+            }
+            if (scroll > 0) {
+                g.fill(x + width - 5, y, x + width - 1, y + 1, SecurityColours.SUBTLE);
+            }
+            if (scroll < lineCount - max) {
+                g.fill(x + width - 5, y + height - 1, x + width - 1, y + height, SecurityColours.SUBTLE);
+            }
         }
     }
 }

@@ -1,9 +1,59 @@
 {
-  "parent": "minecraft:block/orientable",
-  "textures": {
-    "top": "nerosecurity:block/laser_grid_node_side",
-    "side": "nerosecurity:block/laser_grid_node_side",
-    "front": "nerosecurity:block/laser_grid_node_lens",
-    "particle": "nerosecurity:block/laser_grid_node_side"
-  }
+  "parent": "minecraft:block/block",
+  "textures": {"housing": "nerosecurity:block/laser_grid_node_housing", "lens": "nerosecurity:block/laser_grid_node_lens_off", "particle": "nerosecurity:block/laser_grid_node_housing"},
+  "elements": [
+    {
+      "name": "plate",
+      "from": [2, 2, 12],
+      "to": [14, 14, 16],
+      "faces": {
+        "north": {"texture": "#housing", "uv": [0, 0, 16, 16]},
+        "south": {"texture": "#housing", "cullface": "south"},
+        "east": {"texture": "#housing"},
+        "west": {"texture": "#housing"},
+        "up": {"texture": "#housing"},
+        "down": {"texture": "#housing"}
+      }
+    },
+    {
+      "name": "barrel",
+      "from": [5, 5, 4],
+      "to": [11, 11, 12],
+      "faces": {
+        "north": {"texture": "#housing"},
+        "south": {"texture": "#housing"},
+        "east": {"texture": "#housing"},
+        "west": {"texture": "#housing"},
+        "up": {"texture": "#housing"},
+        "down": {"texture": "#housing"}
+      }
+    },
+    {
+      "name": "ring",
+      "from": [4, 4, 2],
+      "to": [12, 12, 4],
+      "faces": {
+        "north": {"texture": "#housing", "uv": [2, 2, 14, 14]},
+        "south": {"texture": "#housing"},
+        "east": {"texture": "#housing"},
+        "west": {"texture": "#housing"},
+        "up": {"texture": "#housing"},
+        "down": {"texture": "#housing"}
+      }
+    },
+    {
+      "name": "lens",
+      "from": [6, 6, 1],
+      "to": [10, 10, 2],
+      "faces": {
+        "north": {"texture": "#lens", "uv": [0, 0, 16, 16]},
+        "south": {"texture": "#lens"},
+        "east": {"texture": "#lens"},
+        "west": {"texture": "#lens"},
+        "up": {"texture": "#lens"},
+        "down": {"texture": "#lens"}
+      },
+      "shade": false
+    }
+  ]
 }

@@ -1,6 +1,4 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "nerosecurity:item/keycard_encrypted"
-  }
+  "textures": {"layer0": "nerosecurity:item/keycard_base", "layer1": "nerosecurity:item/keycard_band_encrypted"}
 }

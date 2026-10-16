@@ -1,18 +1,32 @@
 package za.co.neroland.nerosecurity.client.screen.field;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
+
+import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.access.AccessLevel;
+import za.co.neroland.nerosecurity.client.SecurityColours;
+import za.co.neroland.nerosecurity.client.screen.SecurityScreen;
+import za.co.neroland.nerosecurity.client.screen.field.FieldText.Dim;
+import za.co.neroland.nerosecurity.client.widget.Gauge;
+import za.co.neroland.nerosecurity.client.widget.LevelLadder;
+import za.co.neroland.nerosecurity.client.widget.LevelMeaning;
+import za.co.neroland.nerosecurity.client.widget.SectionBox;
+import za.co.neroland.nerosecurity.client.widget.Segmented;
+import za.co.neroland.nerosecurity.client.widget.Status;
+import za.co.neroland.nerosecurity.client.widget.StatusDot;
+import za.co.neroland.nerosecurity.client.widget.Stepper;
+import za.co.neroland.nerosecurity.client.widget.Toggle;
+import za.co.neroland.nerosecurity.client.widget.WidgetColours;
+import za.co.neroland.nerosecurity.client.widget.WidgetText;
 import za.co.neroland.nerosecurity.field.FieldGeometry;
 import za.co.neroland.nerosecurity.field.FieldSettings;
 import za.co.neroland.nerosecurity.field.FieldShape;
@@ -20,146 +34,142 @@ import za.co.neroland.nerosecurity.field.FieldState;
 import za.co.neroland.nerosecurity.menu.field.FieldMenu;
 import za.co.neroland.nerosecurity.menu.field.FieldPayloads.FieldConfigure;
 import za.co.neroland.nerosecurity.menu.field.FieldPayloads.FieldSnapshot;
-import za.co.neroland.nerosecurity.platform.Services;
 
 /**
- * The force field settings screen, deliberately plain (a later stage restyles it): shape and on/off toggles, distance
- * and size steppers (clamped to the emitter's range and the area cap from the snapshot; the server re-validates), the
- * four "who may pass" level buttons, keycard-only, a live power / state / load line and the four module slots. It draws
- * only what the server sent; every button sends an intent the server re-authorises, and the buttons stay disabled until
- * the next snapshot.
+ * "Who can walk through this field?" — the force field emitter screen on the {@link SecurityScreen} hull: the
+ * level ladder with its meaning line, the Field on / Keycard only toggles, the wall / shell shape control, the
+ * distance, width, height and depth steppers (clamped to the emitter's range and the area cap, sent once after
+ * ten quiet ticks), the power and load gauges, the status row, an amber validation line and the UPGRADES box
+ * around the four module slots. It draws only what the server sent; every control sends a {@link FieldConfigure}
+ * the server re-validates and re-authorises, and the controls are held until the next snapshot. Disabled
+ * controls always say why.
  *
  * <p>CLIENT-ONLY.
  */
-public class FieldSettingsScreen extends AbstractContainerScreen<FieldMenu> {
+public class FieldSettingsScreen extends SecurityScreen<FieldMenu> {
 
-    private static final int W = 176;
-    private static final int H = 246;
-    private static final int PANEL = 0xFF141C26;
-    private static final int EDGE = 0xFF2A3A4D;
-    private static final int TROUGH = 0xFF0B1119;
-    private static final int TITLE = 0xFFD6ECFF;
-    private static final int SUBTLE = 0xFF8DA0B4;
-    private static final int GOOD = 0xFF6BE38A;
-    private static final int WARN = 0xFFFFB454;
-    private static final int BAD = 0xFFFF6B6B;
+    public static final int W = 276;
+    public static final int H = 214;
 
-    private static final AccessLevel[] LEVELS = {
-            AccessLevel.PUBLIC, AccessLevel.MEMBER, AccessLevel.OFFICER, AccessLevel.OWNER };
+    private static final int LADDER_Y = 30;
+    private static final int MEANING_Y = 52;
+    private static final int TOGGLES_Y = 76;
+    private static final int KEYCARD_X = 84;
+    private static final int SHAPE_Y = 92;
+    private static final int SHAPE_X = 48;
+    private static final int SHAPE_W = 100;
+    private static final int STEPPERS_Y = 110;
+    private static final int STEPPER_ROW_H = 18;
+    private static final int STEPPER_X0 = 62;
+    private static final int LABEL_X1 = 134;
+    private static final int STEPPER_X1 = 176;
+    private static final int GAUGES_Y = 148;
+    private static final int POWER_LABEL_W = 36;
+    private static final int POWER_W = 128;
+    private static final int LOAD_X = 150;
+    private static final int LOAD_LABEL_W = 30;
+    private static final int STATE_Y = 160;
+    private static final int INVALID_Y = 172;
+    private static final int BOX_X0 = 184;
+    private static final int BOX_X1 = 268;
+    private static final int BOX_Y0 = 76;
+    private static final int BOX_Y1 = 106;
+    private static final int CONTROL_H = 16;
+    private static final int LINE = 10;
 
-    /** What a stepper changes. */
-    private enum Dim { OFFSET, WIDTH, HEIGHT, DEPTH }
-
-    private Button shapeButton;
-    private Button enabledButton;
-    private Button keycardButton;
-    private final Button[] levelButtons = new Button[LEVELS.length];
-    private final Button[] minus = new Button[Dim.values().length];
-    private final Button[] plus = new Button[Dim.values().length];
-    /** The snapshot version a sent intent is waiting on; buttons stay disabled until it changes. */
-    private long awaiting = -1L;
+    private LevelLadder ladder;
+    private Toggle enabled;
+    private Toggle keycardOnly;
+    private Segmented shape;
+    private final Map<Dim, Stepper> steppers = new EnumMap<>(Dim.class);
 
     public FieldSettingsScreen(FieldMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, W, H);
-        this.titleLabelX = 8;
-        this.titleLabelY = 6;
-        this.inventoryLabelX = FieldMenu.INVENTORY_X;
-        this.inventoryLabelY = FieldMenu.INVENTORY_Y - 10;
+        super(menu, inventory, title, W, H, true, ClientFieldState::version);
+        setTitleLine(Component.translatable("field.nerosecurity.title"));
+        setSubtitle(Component.translatable("field.nerosecurity.subtitle"));
     }
 
-    @Override
-    protected void init() {
-        super.init();
-        int x = this.leftPos;
-        int y = this.topPos;
-        this.shapeButton = addRenderableWidget(Button.builder(Component.empty(), b -> toggleShape())
-                .bounds(x + 8, y + 16, 78, 16).build());
-        this.enabledButton = addRenderableWidget(Button.builder(Component.empty(), b -> toggleEnabled())
-                .bounds(x + 90, y + 16, 78, 16).build());
-        for (Dim dim : Dim.values()) {
-            int column = dim.ordinal() % 2;
-            int row = dim.ordinal() / 2;
-            int bx = x + 8 + column * 82;
-            int by = y + 36 + row * 18;
-            this.minus[dim.ordinal()] = addRenderableWidget(Button.builder(Component.literal("-"), b -> step(dim, -1))
-                    .bounds(bx, by, 14, 16).build());
-            this.plus[dim.ordinal()] = addRenderableWidget(Button.builder(Component.literal("+"), b -> step(dim, 1))
-                    .bounds(bx + 64, by, 14, 16).build());
-        }
-        for (int i = 0; i < LEVELS.length; i++) {
-            AccessLevel level = LEVELS[i];
-            this.levelButtons[i] = addRenderableWidget(Button.builder(level.displayName(), b -> setLevel(level))
-                    .bounds(x + 8 + i * 40, y + 74, 38, 16).build());
-        }
-        this.keycardButton = addRenderableWidget(Button.builder(Component.empty(), b -> toggleKeycard())
-                .bounds(x + 8, y + 92, 160, 16).build());
-        refreshWidgets();
-    }
-
-    private FieldSnapshot snapshot() {
+    private static @Nullable FieldSnapshot snapshot() {
         return ClientFieldState.current();
     }
 
-    private boolean waiting() {
-        return awaiting >= 0 && awaiting == ClientFieldState.version();
-    }
-
-    private void refreshWidgets() {
-        FieldSnapshot snap = snapshot();
-        boolean ready = snap != null && !waiting();
-        AccessLevel viewer = snap == null ? AccessLevel.PUBLIC : snap.viewerLevel();
-        FieldSettings settings = snap == null ? FieldSettings.DEFAULT : snap.settings();
-        boolean ownerLocked = viewer != AccessLevel.OWNER && settings.access().minLevel() == AccessLevel.OWNER;
-        boolean editable = ready && !ownerLocked;
-
-        this.shapeButton.setMessage(Component.translatable("field.nerosecurity.shape",
-                Component.translatable("field.nerosecurity.shape." + settings.shape().jsonName())));
-        this.shapeButton.active = editable && fits(snap, toggledShape(settings));
-        this.enabledButton.setMessage(CommonComponents.optionStatus(
-                Component.translatable("field.nerosecurity.enabled"), settings.enabled()));
-        this.enabledButton.active = editable;
+    @Override
+    protected void initWidgets() {
+        int x = left();
+        int y = top();
+        ladder = addGroup(new LevelLadder(x + PAD, y + LADDER_Y, this::setLevel));
+        enabled = addRenderableWidget(new Toggle(x + PAD, y + TOGGLES_Y,
+                Component.translatable("field.nerosecurity.enabled"), this::setEnabled));
+        keycardOnly = addRenderableWidget(new Toggle(x + KEYCARD_X, y + TOGGLES_Y,
+                Component.translatable("door.nerosecurity.toggle.keycard_only"), this::setKeycardOnly));
+        keycardOnly.setHelp(Component.translatable("door.nerosecurity.toggle.keycard_only.hint"));
+        shape = addGroup(new Segmented(x + SHAPE_X, y + SHAPE_Y, SHAPE_W, CONTROL_H, List.of(
+                Component.translatable("field.nerosecurity.shape.plane"),
+                Component.translatable("field.nerosecurity.shape.box")), this::setShape));
+        steppers.clear();
         for (Dim dim : Dim.values()) {
-            boolean usable = dim != Dim.DEPTH || settings.shape() == FieldShape.BOX;
-            this.minus[dim.ordinal()].active = editable && usable && fits(snap, stepped(settings, dim, -1));
-            this.plus[dim.ordinal()].active = editable && usable && fits(snap, stepped(settings, dim, 1));
+            int column = dim.ordinal() % 2;
+            int row = dim.ordinal() / 2;
+            Stepper stepper = new Stepper(x + (column == 0 ? STEPPER_X0 : STEPPER_X1),
+                    y + STEPPERS_Y + row * STEPPER_ROW_H, 1, 1, v -> stepped(dim, v));
+            steppers.put(dim, addRenderableWidget(stepper));
         }
-        for (int i = 0; i < LEVELS.length; i++) {
-            AccessLevel level = LEVELS[i];
-            boolean selected = snap != null && settings.access().minLevel() == level;
-            Button button = this.levelButtons[i];
-            button.setMessage(selected
-                    ? Component.literal("[").append(level.displayName()).append("]")
-                    : level.displayName());
-            boolean ownerOnly = viewer != AccessLevel.OWNER
-                    && (level == AccessLevel.OWNER || settings.access().minLevel() == AccessLevel.OWNER);
-            button.active = ready && !selected && !ownerOnly;
-            button.setTooltip(ownerOnly ? Tooltip.create(Component.translatable("door.nerosecurity.owner_only_setting"))
-                    : Tooltip.create(Component.translatable(level.meaningKey())));
-        }
-        this.keycardButton.setMessage(Component.translatable("chest.nerosecurity.toggle.keycard_only",
-                CommonComponents.optionStatus(settings.access().keycardOnly())));
-        this.keycardButton.active = editable;
     }
 
-    /** Whether {@code s} fits the emitter as the snapshot describes it (the server checks again). */
-    private static boolean fits(FieldSnapshot snap, FieldSettings s) {
-        return snap != null && FieldGeometry.validate(s, snap.range(), snap.maxArea()).isEmpty();
-    }
-
-    private static FieldSettings toggledShape(FieldSettings s) {
-        if (s.shape() == FieldShape.PLANE) {
-            return s.withShape(FieldShape.BOX).withSize(s.width(), s.height(), Math.max(3, s.depth()));
+    @Override
+    protected void refreshWidgets() {
+        FieldSnapshot snap = snapshot();
+        if (snap == null) {
+            Component waiting = Component.translatable("ui.nerosecurity.waiting");
+            ladder.select(null);
+            ladder.disableAll(waiting);
+            enabled.disable(waiting);
+            keycardOnly.disable(waiting);
+            shape.select(-1);
+            shape.disableAll(waiting);
+            steppers.values().forEach(s -> s.disable(waiting));
+            return;
         }
-        return s.withShape(FieldShape.PLANE).withSize(s.width(), s.height(), 1);
+        FieldSettings settings = snap.settings();
+        ladder.select(settings.access().minLevel());
+        enabled.setChecked(settings.enabled());
+        keycardOnly.setChecked(settings.access().keycardOnly());
+        shape.select(settings.shape().ordinal());
+        for (Dim dim : Dim.values()) {
+            Stepper stepper = steppers.get(dim);
+            stepper.visible = dim != Dim.DEPTH || settings.shape() == FieldShape.BOX;
+            stepper.setRange(FieldText.min(dim, settings.shape()),
+                    FieldText.max(settings, dim, snap.range(), snap.maxArea()));
+            stepper.setValue(FieldText.value(settings, dim));
+        }
+
+        boolean ownerOrAdmin = snap.admin() || snap.viewerLevel() == AccessLevel.OWNER;
+        String why = FieldText.editWhy(snap.serverEnabled(), menu.linked(), settings.access().minLevel(), ownerOrAdmin);
+        if (why != null) {
+            Component reason = Component.translatable(why);
+            ladder.disableAll(reason);
+            enabled.disable(reason);
+            keycardOnly.disable(reason);
+            shape.disableAll(reason);
+            steppers.values().forEach(s -> s.disable(reason));
+            return;
+        }
+        ladder.enableAll();
+        ladder.restrictOwner(snap.viewerLevel(), snap.admin(), Component.translatable(FieldText.OWNER_ONLY_KEY));
+        enabled.enable();
+        keycardOnly.enable();
+        steppers.values().forEach(Stepper::enable);
+        // The other shape is offered only if it would fit; otherwise its segment says which rule it breaks.
+        shape.enableAll();
+        FieldShape other = settings.shape() == FieldShape.PLANE ? FieldShape.BOX : FieldShape.PLANE;
+        Optional<String> broken = FieldGeometry.validate(reshaped(settings, other), snap.range(), snap.maxArea());
+        broken.ifPresent(key -> shape.disable(other.ordinal(), invalidText(key, snap)));
     }
 
-    private static FieldSettings stepped(FieldSettings s, Dim dim, int direction) {
-        return switch (dim) {
-            case OFFSET -> s.withOffset(s.offset() + direction);
-            case WIDTH -> s.withSize(s.width() + 2 * direction, s.height(), s.depth());
-            case HEIGHT -> s.withSize(s.width(), s.height() + 2 * direction, s.depth());
-            case DEPTH -> s.withSize(s.width(), s.height(), s.depth() + 2 * direction);
-        };
+    @Override
+    protected void onSnapshot(boolean answeredIntent) {
+        // FieldSnapshot carries no (ok, message) tail yet; an answered intent reads "Saved.".
+        feedbackFromSnapshot(true, null, answeredIntent);
     }
 
     /** The snapshot is display-only and is dropped as soon as the screen closes. */
@@ -169,42 +179,38 @@ public class FieldSettingsScreen extends AbstractContainerScreen<FieldMenu> {
         super.removed();
     }
 
-    @Override
-    public void containerTick() {
-        super.containerTick();
-        refreshWidgets();
+    // --- settings arithmetic --------------------------------------------------------------------
+
+    private static FieldSettings reshaped(FieldSettings s, FieldShape wanted) {
+        if (wanted == FieldShape.BOX) {
+            return s.withShape(FieldShape.BOX).withSize(s.width(), s.height(), Math.max(3, s.depth()));
+        }
+        return s.withShape(FieldShape.PLANE).withSize(s.width(), s.height(), 1);
     }
 
-    // --- intents --------------------------------------------------------------------------------
+    /** The snapshot's settings with every stepper's current (possibly still pending) value applied. */
+    private FieldSettings candidate(FieldSnapshot snap) {
+        FieldSettings s = snap.settings();
+        for (Dim dim : Dim.values()) {
+            Stepper stepper = steppers.get(dim);
+            if (stepper != null && stepper.visible) {
+                s = FieldText.with(s, dim, FieldText.snap(dim, stepper.value(), FieldText.value(snap.settings(), dim)));
+            }
+        }
+        return s;
+    }
+
+    private Component invalidText(String key, FieldSnapshot snap) {
+        Integer argument = FieldText.invalidArgument(key, snap.range(), snap.maxArea());
+        return argument == null ? Component.translatable(key) : Component.translatable(key, argument);
+    }
+
+    // --- intents (the server re-validates and re-resolves every one) ----------------------------
 
     private void send(FieldSettings wanted) {
         FieldSnapshot snap = snapshot();
-        if (snap == null) {
-            return;
-        }
-        this.awaiting = ClientFieldState.version();
-        Services.NETWORK.sendToServer(new FieldConfigure(snap.pos(), wanted));
-        refreshWidgets();
-    }
-
-    private void toggleShape() {
-        FieldSnapshot snap = snapshot();
         if (snap != null) {
-            send(toggledShape(snap.settings()));
-        }
-    }
-
-    private void toggleEnabled() {
-        FieldSnapshot snap = snapshot();
-        if (snap != null) {
-            send(snap.settings().withEnabled(!snap.settings().enabled()));
-        }
-    }
-
-    private void step(Dim dim, int direction) {
-        FieldSnapshot snap = snapshot();
-        if (snap != null) {
-            send(stepped(snap.settings(), dim, direction));
+            sendIntent(new FieldConfigure(snap.pos(), wanted));
         }
     }
 
@@ -215,89 +221,103 @@ public class FieldSettingsScreen extends AbstractContainerScreen<FieldMenu> {
         }
     }
 
-    private void toggleKeycard() {
+    private void setEnabled(boolean on) {
         FieldSnapshot snap = snapshot();
         if (snap != null) {
-            send(snap.settings().withAccess(snap.settings().access().withKeycardOnly(!snap.settings().access().keycardOnly())));
+            send(snap.settings().withEnabled(on));
+        }
+    }
+
+    private void setKeycardOnly(boolean on) {
+        FieldSnapshot snap = snapshot();
+        if (snap != null) {
+            send(snap.settings().withAccess(snap.settings().access().withKeycardOnly(on)));
+        }
+    }
+
+    private void setShape(int index) {
+        FieldSnapshot snap = snapshot();
+        FieldShape[] shapes = FieldShape.values();
+        if (snap != null && index >= 0 && index < shapes.length) {
+            send(reshaped(snap.settings(), shapes[index]));
+        }
+    }
+
+    /** A stepper settled (ten quiet ticks): send every dimension as the steppers now show it. */
+    private void stepped(Dim dim, int value) {
+        FieldSnapshot snap = snapshot();
+        if (snap != null) {
+            send(candidate(snap));
         }
     }
 
     // --- drawing --------------------------------------------------------------------------------
 
     @Override
-    public void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        int x = this.leftPos;
-        int y = this.topPos;
-        g.fill(x - 1, y - 1, x + W + 1, y + H + 1, EDGE);
-        g.fill(x, y, x + W, y + H, PANEL);
-        for (Slot slot : this.menu.slots) {
-            if (slot.isActive()) {
-                g.fill(x + slot.x - 1, y + slot.y - 1, x + slot.x + 17, y + slot.y + 17, TROUGH);
-            }
-        }
-        super.extractContents(g, mouseX, mouseY, partialTick);
-        drawSteppers(g);
-        drawStatus(g);
-    }
-
-    private void drawSteppers(GuiGraphicsExtractor g) {
-        FieldSettings settings = snapshot() == null ? FieldSettings.DEFAULT : snapshot().settings();
-        for (Dim dim : Dim.values()) {
-            int column = dim.ordinal() % 2;
-            int row = dim.ordinal() / 2;
-            int bx = this.leftPos + 8 + column * 82;
-            int by = this.topPos + 36 + row * 18;
-            Component label = switch (dim) {
-                case OFFSET -> Component.translatable("field.nerosecurity.offset", settings.offset());
-                case WIDTH -> Component.translatable("field.nerosecurity.width", settings.width());
-                case HEIGHT -> Component.translatable("field.nerosecurity.height", settings.height());
-                case DEPTH -> Component.translatable("field.nerosecurity.depth",
-                        settings.shape() == FieldShape.BOX ? String.valueOf(settings.depth()) : "-");
-            };
-            int textWidth = this.font.width(label);
-            g.text(this.font, label, bx + 14 + Math.max(0, (50 - textWidth) / 2), by + 4, SUBTLE, false);
-        }
-    }
-
-    private void drawStatus(GuiGraphicsExtractor g) {
+    protected void extractPanel(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        int x = left();
+        int y = top();
+        LevelMeaning.draw(g, font, x + PAD, y + MEANING_Y, LevelLadder.WIDTH, ladder.selected());
         FieldSnapshot snap = snapshot();
-        int x = this.leftPos + 8;
-        int y = this.topPos + 112;
-        g.text(this.font, Component.translatable("sensor.nerosecurity.power", this.menu.energy(), this.menu.capacity()),
-                x, y, SUBTLE, false);
-        Component line;
-        int colour;
-        if (snap != null && !snap.serverEnabled()) {
-            line = Component.translatable("field.nerosecurity.disabled_server");
-            colour = WARN;
-        } else if (!this.menu.linked()) {
-            line = Component.translatable("device.nerosecurity.unlinked");
-            colour = SUBTLE;
+        FieldSettings settings = snap == null ? FieldSettings.DEFAULT : snap.settings();
+
+        // Labels take the existing "Shape: %s" / "Distance: %s" keys with an empty argument: the control after
+        // each one shows the value.
+        g.text(font, Component.translatable("field.nerosecurity.shape", ""), x + PAD, y + SHAPE_Y + 4, WidgetColours.TEXT, false);
+        stepperLabel(g, x + PAD, y + STEPPERS_Y, "field.nerosecurity.offset");
+        stepperLabel(g, x + LABEL_X1, y + STEPPERS_Y, "field.nerosecurity.width");
+        stepperLabel(g, x + PAD, y + STEPPERS_Y + STEPPER_ROW_H, "field.nerosecurity.height");
+        if (settings.shape() == FieldShape.BOX) {
+            stepperLabel(g, x + LABEL_X1, y + STEPPERS_Y + STEPPER_ROW_H, "field.nerosecurity.depth");
+        }
+
+        long energy = menu.energy();
+        long capacity = menu.capacity();
+        g.text(font, Component.translatable("field.nerosecurity.power"), x + PAD, y + GAUGES_Y, WidgetColours.TEXT, false);
+        Gauge.draw(g, font, x + PAD + POWER_LABEL_W, y + GAUGES_Y, POWER_W - POWER_LABEL_W,
+                capacity <= 0 ? 0f : energy / (float) capacity,
+                menu.state() == FieldState.BROWNOUT ? SecurityColours.WARN : SecurityColours.INK_CYAN,
+                Component.literal(String.format(Locale.ROOT, "%,d / %,d", energy, capacity)));
+        int load = menu.loadPercent();
+        g.text(font, Component.translatable("field.nerosecurity.load"), x + LOAD_X, y + GAUGES_Y, WidgetColours.TEXT, false);
+        Gauge.draw(g, font, x + LOAD_X + LOAD_LABEL_W, y + GAUGES_Y, W - PAD - LOAD_X - LOAD_LABEL_W, load / 100f,
+                load >= 100 ? SecurityColours.LOCK : (load >= 80 ? SecurityColours.WARN : SecurityColours.FIELD),
+                Component.literal(String.format(Locale.ROOT, "%d %%", load)));
+
+        boolean serverEnabled = snap == null || snap.serverEnabled();
+        FieldText.Row row = FieldText.state(serverEnabled, menu.linked(), menu.lockdown(), menu.state());
+        Component text;
+        if (row.detailed()) {
+            int maxStrength = snap == null ? menu.effectiveStrength() : snap.maxStrength();
+            text = Component.translatable(FieldText.STATUS_KEY, Component.translatable(row.key()), menu.effectiveStrength(),
+                    maxStrength, menu.placed(), menu.area(), menu.drawPerTick(), load);
+        } else if (row.cooldown()) {
+            text = Component.translatable(row.key(), menu.cooldownSeconds());
         } else {
-            FieldState state = this.menu.state();
-            Component stateName = state == FieldState.OVERLOADED
-                    ? Component.translatable(state.translationKey(), this.menu.cooldownSeconds())
-                    : Component.translatable(state.translationKey());
-            int maxStrength = snap == null ? this.menu.effectiveStrength() : snap.maxStrength();
-            line = Component.translatable("field.nerosecurity.status", stateName, this.menu.effectiveStrength(),
-                    maxStrength, this.menu.area(), this.menu.drawPerTick(), this.menu.loadPercent());
-            colour = switch (state) {
-                case PROJECTING -> GOOD;
-                case OVERLOADED -> BAD;
-                default -> WARN;
-            };
+            text = Component.translatable(row.key());
         }
-        List<FormattedCharSequence> lines = this.font.split(line, W - 16);
-        for (int i = 0; i < Math.min(2, lines.size()); i++) {
-            g.text(this.font, lines.get(i), x, y + 10 + i * 9, colour, false);
+        int room = W - 2 * PAD;
+        StatusDot.drawGlyph(g, x + PAD, y + STATE_Y + 1, row.status());
+        int tx = x + PAD + StatusDot.SIZE + 4;
+        WidgetText.drawFitted(g, font, text, tx, y + STATE_Y, room - (StatusDot.SIZE + 4), WidgetColours.TEXT);
+        if (WidgetText.overflows(font, text, room - (StatusDot.SIZE + 4))) {
+            explain(g, x + PAD, y + STATE_Y, room, 9, text);
         }
-        g.text(this.font, Component.translatable("door.nerosecurity.modules"), x, FieldMenu.MODULE_Y + this.topPos + 4,
-                SUBTLE, false);
+
+        if (snap != null) {
+            FieldGeometry.validate(candidate(snap), snap.range(), snap.maxArea()).ifPresent(key -> {
+                Component warning = invalidText(key, snap);
+                StatusDot.drawGlyph(g, x + PAD, y + INVALID_Y + 1, Status.WARN);
+                WidgetText.drawWrapped(g, font, warning, tx, y + INVALID_Y, room - (StatusDot.SIZE + 4), LINE,
+                        SecurityColours.opaque(SecurityColours.WARN));
+            });
+        }
+
+        SectionBox.draw(g, font, x + BOX_X0, y + BOX_Y0, x + BOX_X1, y + BOX_Y1,
+                Component.translatable("field.nerosecurity.section.upgrades"));
     }
 
-    @Override
-    protected void extractLabels(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        g.text(this.font, this.title, this.titleLabelX, this.titleLabelY, TITLE, false);
-        g.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, SUBTLE, false);
+    private void stepperLabel(GuiGraphicsExtractor g, int x, int y, String key) {
+        g.text(font, Component.translatable(key, ""), x, y + 4, WidgetColours.TEXT, false);
     }
 }

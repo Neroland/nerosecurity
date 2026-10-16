@@ -38,10 +38,11 @@ import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
 public class FieldMenu extends AbstractContainerMenu {
 
     public static final int MODULE_SLOTS = ForceFieldEmitterBlockEntity.MODULE_SLOTS;
-    public static final int MODULE_X = 98;
-    public static final int MODULE_Y = 138;
+    /** Slot positions match the screen hull: modules inside the UPGRADES box, inventory at inventoryRowsY(214). */
+    public static final int MODULE_X = 190;
+    public static final int MODULE_Y = 84;
     public static final int INVENTORY_X = 8;
-    public static final int INVENTORY_Y = 164;
+    public static final int INVENTORY_Y = 228;
 
     public static final int DATA_ENERGY_LO = 0;
     public static final int DATA_ENERGY_HI = 1;
@@ -57,7 +58,9 @@ public class FieldMenu extends AbstractContainerMenu {
     public static final int DATA_AREA = 11;
     public static final int DATA_RANGE = 12;
     public static final int DATA_FLAGS = 13;
-    public static final int DATA_COUNT = 14;
+    /** Field blocks actually placed (next to {@link #DATA_AREA}, the count the shape asks for). */
+    public static final int DATA_PLACED = 14;
+    public static final int DATA_COUNT = 15;
 
     public static final int FLAG_LINKED = 1;
     public static final int FLAG_LOCKDOWN = 2;
@@ -141,6 +144,7 @@ public class FieldMenu extends AbstractContainerMenu {
                     case DATA_AREA -> Math.min(0x7FFF, emitter.area());
                     case DATA_RANGE -> emitter.range();
                     case DATA_FLAGS -> flags(emitter);
+                    case DATA_PLACED -> Math.min(0x7FFF, emitter.projectedCount());
                     default -> 0;
                 };
             }
@@ -218,6 +222,11 @@ public class FieldMenu extends AbstractContainerMenu {
 
     public int area() {
         return Math.max(0, data.get(DATA_AREA));
+    }
+
+    /** Field blocks actually placed; fewer than {@link #area()} means holes (junk, water, a claim, an entity). */
+    public int placed() {
+        return Math.max(0, data.get(DATA_PLACED));
     }
 
     public int range() {

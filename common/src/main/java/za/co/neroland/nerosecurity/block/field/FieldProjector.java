@@ -29,14 +29,17 @@ import za.co.neroland.nerosecurity.registry.FieldRegistrations;
 /**
  * Places and removes an emitter's field blocks (server). The rules, every one of them a "skip", never a "make room":
  * <ul>
- *   <li>only into air ({@code isAir()}): a field never replaces a block, a fluid or another field;</li>
+ *   <li>only into air, or into a replaceable plant-like block with no fluid and no block entity (short grass, a snow
+ *       layer, {@link #isFree}): a field never replaces a real block, a fluid, a waterlogged block or another
+ *       field;</li>
  *   <li>only into loaded chunks inside the world: a chunk is never loaded or force-loaded for a field;</li>
  *   <li>never into a block a living entity's box touches (an entity is never trapped or crushed);</li>
  *   <li>never into a chunk where no owner of the installation may build according to the claim mod
  *       ({@link ClaimsCompat#mayBuild}; true when no claim mod is active).</li>
  * </ul>
- * A skipped position is retried on the next reconcile. Removal only ever touches a field block whose block entity
- * points back at this emitter.
+ * A skipped position is retried on the next reconcile; one skipped only because an entity stood in it is also retried
+ * every {@link ForceFieldEmitterBlockEntity#HELD_RETRY_TICKS} ticks ({@link #retryHeld}), so the gap closes as soon as
+ * the entity moves. Removal only ever touches a field block whose block entity points back at this emitter.
  *
  * <p><b>Cost.</b> One reconcile per emitter per {@code fieldReprojectIntervalTicks} (and right after a settings or
  * state change): at most {@code maxFieldArea} block reads, one entity query over the missing positions' bounds, one
@@ -54,6 +57,7 @@ public final class FieldProjector {
      */
     public static boolean reconcile(ServerLevel level, ForceFieldEmitterBlockEntity emitter, @Nullable Installation installation) {
         Set<BlockPos> projected = emitter.projectedMutable();
+        emitter.heldMutable().clear(); // recomputed below from this pass's entity query
         Set<BlockPos> wanted = emitter.fieldState() == FieldState.PROJECTING && installation != null
                 ? new LinkedHashSet<>(FieldGeometry.positions(emitter.getBlockPos(), emitter.facing(), emitter.settings()))
                 : Set.of();
@@ -86,14 +90,61 @@ public final class FieldProjector {
         if (missing.isEmpty()) {
             return changed;
         }
-        List<AABB> occupied = occupants(level, missing);
+        return place(level, emitter, installation, missing) || changed;
+    }
+
+    /**
+     * Retries only the positions the last reconcile skipped because an entity stood in them (one small entity query
+     * over those positions). Nothing when the field is not up.
+     *
+     * @return whether the emitter's set of owned positions changed
+     */
+    public static boolean retryHeld(ServerLevel level, ForceFieldEmitterBlockEntity emitter, @Nullable Installation installation) {
+        Set<BlockPos> held = emitter.heldMutable();
+        if (held.isEmpty()) {
+            return false;
+        }
+        if (emitter.fieldState() != FieldState.PROJECTING || installation == null) {
+            held.clear();
+            return false;
+        }
+        Set<BlockPos> projected = emitter.projectedMutable();
+        List<BlockPos> candidates = new ArrayList<>(held.size());
+        for (BlockPos p : held) {
+            if (!projected.contains(p)) {
+                candidates.add(p);
+            }
+        }
+        held.clear();
+        return !candidates.isEmpty() && place(level, emitter, installation, candidates);
+    }
+
+    /**
+     * Whether a field may be placed into {@code state}: air, or a replaceable block (short grass, a snow layer) with no
+     * fluid and no block entity. Never a fluid, a waterlogged block, a real block or another field.
+     */
+    static boolean isFree(BlockState state) {
+        if (state.isAir()) {
+            return true;
+        }
+        return state.canBeReplaced() && state.getFluidState().isEmpty() && !state.hasBlockEntity()
+                && !(state.getBlock() instanceof ForceFieldBlock);
+    }
+
+    /** Places field blocks at the free, claim-allowed, unoccupied {@code candidates}; records entity-held ones. */
+    private static boolean place(ServerLevel level, ForceFieldEmitterBlockEntity emitter, Installation installation,
+            List<BlockPos> candidates) {
+        Set<BlockPos> projected = emitter.projectedMutable();
+        Set<BlockPos> held = emitter.heldMutable();
+        boolean changed = false;
+        List<AABB> occupied = occupants(level, candidates);
         Identifier dimension = level.dimension().identifier();
         Map<Long, Boolean> claimOk = new HashMap<>();
         BlockState fieldState = FieldRegistrations.FIELD_BLOCK.get().defaultBlockState()
                 .setValue(ForceFieldBlock.LOCKDOWN, emitter.lockdownBoost());
         BlockPos emitterPos = emitter.getBlockPos().immutable();
-        for (BlockPos p : missing) {
-            if (!level.isInWorldBounds(p) || !level.isLoaded(p) || !level.getBlockState(p).isAir()) {
+        for (BlockPos p : candidates) {
+            if (!level.isInWorldBounds(p) || !level.isLoaded(p) || !isFree(level.getBlockState(p))) {
                 continue;
             }
             int chunkX = p.getX() >> 4;
@@ -104,7 +155,11 @@ public final class FieldProjector {
                 ok = mayBuild(level, dimension, chunkX, chunkZ, installation);
                 claimOk.put(chunkKey, ok);
             }
-            if (!ok || touchesEntity(occupied, p)) {
+            if (!ok) {
+                continue;
+            }
+            if (touchesEntity(occupied, p)) {
+                held.add(p.immutable());
                 continue;
             }
             if (!level.setBlock(p, fieldState, Block.UPDATE_ALL)) {
@@ -123,6 +178,7 @@ public final class FieldProjector {
 
     /** Removes every loaded block this emitter owns and forgets them all (unloaded ones become orphans). */
     public static void collapse(ServerLevel level, ForceFieldEmitterBlockEntity emitter) {
+        emitter.heldMutable().clear();
         Set<BlockPos> projected = emitter.projectedMutable();
         if (projected.isEmpty()) {
             return;

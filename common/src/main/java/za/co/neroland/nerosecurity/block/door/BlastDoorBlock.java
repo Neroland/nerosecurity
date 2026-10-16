@@ -30,6 +30,8 @@ public class BlastDoorBlock extends AbstractSecurityDoorBlock {
         registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(OPEN, false)
+                .setValue(ANIMATING, false)
+                .setValue(SEALED, false)
                 .setValue(PART, BlastPart.BOTTOM_LEFT));
     }
 
@@ -40,7 +42,7 @@ public class BlastDoorBlock extends AbstractSecurityDoorBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, OPEN, PART);
+        builder.add(FACING, OPEN, ANIMATING, SEALED, PART);
     }
 
     /** The direction of the right-hand column, as seen looking at the door's front. */

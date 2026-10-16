@@ -6,12 +6,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
+import za.co.neroland.nerosecurity.feedback.FeedbackPayloads;
 
 /**
  * Marker for blocks that can be linked to an installation with the linking tool. A block counts as a
@@ -41,5 +43,20 @@ public interface SecurityDevice {
 
     /** Called on the server thread after the device was unlinked from {@code installationId}. */
     default void onUnlinked(ServerLevel level, BlockPos pos, UUID installationId) {
+    }
+
+    /**
+     * The deny feedback every gated device sends in the same code path as its action-bar refusal: one
+     * {@code DeviceFeedback(DENIED)} to {@code player} only, so their client plays the deny sound and flashes
+     * the device's LED. {@code pos} is the device position (the controller for a multi-block device). The
+     * reason travels only in the action-bar text the caller already sent.
+     */
+    static void denyFeedback(ServerPlayer player, BlockPos pos) {
+        FeedbackPayloads.denied(player, pos);
+    }
+
+    /** The quiet counterpart for a permitted use: {@code DeviceFeedback(ACCEPTED)} to {@code player} only. */
+    static void acceptFeedback(ServerPlayer player, BlockPos pos) {
+        FeedbackPayloads.accepted(player, pos);
     }
 }

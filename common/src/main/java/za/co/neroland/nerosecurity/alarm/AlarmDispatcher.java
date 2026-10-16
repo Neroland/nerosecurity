@@ -13,6 +13,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 
+import org.jetbrains.annotations.Nullable;
+
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.block.DeviceIds;
 import za.co.neroland.nerosecurity.block.alarm.AlarmBlockEntity;
@@ -194,15 +196,42 @@ public final class AlarmDispatcher {
         return out;
     }
 
-    /** A lockdown began on {@code installation}: clear the silence on every loaded alarm of it. */
+    /** A lockdown began on {@code installation}: clear the silence on every loaded alarm of it, and its own. */
     public static void armAll(MinecraftServer server, Installation installation) {
         if (server == null || installation == null) {
             return;
         }
-        Installation current = SecurityInstallations.get(server).byId(installation.id()).orElse(installation);
+        SecurityInstallations store = SecurityInstallations.get(server);
+        store.setAlarmSilencedUntil(installation.id(), 0L);
+        Installation current = store.byId(installation.id()).orElse(installation);
         for (Loaded loaded : loadedAlarms(levels(server), current)) {
             loaded.alarm().rearm();
         }
+    }
+
+    /**
+     * Silences every alarm of {@code installation} until {@code until} (epoch ms; the caller has authorised
+     * and bounded it): the installation-wide deadline in the store, which alarms in unloaded chunks consult
+     * when they next react, and each loaded alarm's own (never force-loaded). A lockdown still overrides it.
+     * {@code server} may be null (plain-JVM tests): then only the store is written.
+     *
+     * @return how many loaded alarms were silenced directly
+     */
+    public static int silenceAll(@Nullable MinecraftServer server, SecurityInstallations store,
+            Installation installation, long until) {
+        if (store == null || installation == null || !store.setAlarmSilencedUntil(installation.id(), until)) {
+            return 0;
+        }
+        if (server == null) {
+            return 0;
+        }
+        Installation current = store.byId(installation.id()).orElse(installation);
+        int silenced = 0;
+        for (Loaded loaded : loadedAlarms(levels(server), current)) {
+            loaded.alarm().silenceUntil(until);
+            silenced++;
+        }
+        return silenced;
     }
 
     /** Server stop: forget windows and queued firings (they belong to that server). */

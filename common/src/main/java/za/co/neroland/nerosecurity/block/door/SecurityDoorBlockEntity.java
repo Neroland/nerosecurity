@@ -37,6 +37,8 @@ import za.co.neroland.nerosecurity.access.AccessDecision;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.block.DeviceAccessSettings;
+import za.co.neroland.nerosecurity.block.SecurityDevice;
+import za.co.neroland.nerosecurity.block.VisualState;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 import za.co.neroland.nerosecurity.energy.InputOnlyEnergy;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
@@ -49,6 +51,7 @@ import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.menu.door.DoorPayloadHandlers;
 import za.co.neroland.nerosecurity.menu.door.SecurityDoorMenu;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
 
@@ -64,6 +67,13 @@ import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
  * <p>Animation: {@link #openTicks} runs from 0 (closed) to {@link #openDuration()} (fully open) toward
  * {@link #opening}. Both are synced to the client in the update tag (only when the door starts or
  * finishes moving) together with the game time of that change, so a renderer can interpolate.
+ *
+ * <p>The update tag carries only what the renderer needs ({@value #KEY_OPEN_TICKS}, {@value #KEY_OPENING},
+ * {@value #KEY_SYNC_TIME}, {@value #KEY_DURATION}, {@value #KEY_MIN_LEVEL}, {@value #KEY_RECORDING},
+ * {@value #KEY_POWER_LOW}, {@value #KEY_SEALED}, {@value #KEY_HARDNESS}); settings, modules, energy and side
+ * configuration stay on the server. The visual block-state properties
+ * {@link AbstractSecurityDoorBlock#ANIMATING} and {@link AbstractSecurityDoorBlock#SEALED} follow the same
+ * ticks; sounds come from {@link SecuritySounds}.
  */
 public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implements MenuProvider {
 
@@ -73,11 +83,17 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
     private static final String KEY_SETTINGS = "Settings";
     private static final String KEY_REDSTONE = "RedstoneMode";
     private static final String KEY_MODULES = "Modules";
-    private static final String KEY_OPEN_TICKS = "OpenTicks";
-    private static final String KEY_OPENING = "Opening";
+    public static final String KEY_OPEN_TICKS = "OpenTicks";
+    public static final String KEY_OPENING = "Opening";
     private static final String KEY_AUTO_CLOSE = "AutoClose";
-    private static final String KEY_DURATION = "Duration";
-    private static final String KEY_CHANGED_AT = "ChangedAt";
+    /** Update-tag keys (renderer only). */
+    public static final String KEY_DURATION = "Duration";
+    public static final String KEY_SYNC_TIME = "SyncTime";
+    public static final String KEY_MIN_LEVEL = "MinLevel";
+    public static final String KEY_RECORDING = "Recording";
+    public static final String KEY_POWER_LOW = "PowerLow";
+    public static final String KEY_SEALED = "Sealed";
+    public static final String KEY_HARDNESS = "Hardness";
     /** Bound on the denied-event cooldown map before stale entries are pruned. */
     private static final int COOLDOWN_PRUNE_SIZE = 32;
 
@@ -95,8 +111,16 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
     private boolean openedByRedstone;
     private boolean brokenByPlayer;
     private long changedAt;
-    /** Client copy of the server's duration (modules are synced too, but the config base is not). */
+    /** Client copy of the server's duration (the config base and the modules are not synced). */
     private int clientDuration = -1;
+    /** Client copies of the renderer-only update-tag fields; on the server, the last values sent. */
+    private AccessLevel visualMinLevel = AccessLevel.MEMBER;
+    private boolean visualRecording;
+    private boolean visualPowerLow;
+    private boolean visualSealed;
+    private int visualHardness;
+    private boolean visualSent;
+    private long visualSentAt = Long.MIN_VALUE;
     private final Map<UUID, Long> deniedAt = new HashMap<>();
 
     public SecurityDoorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -137,8 +161,34 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         return modules;
     }
 
+    /** Hardness modules fitted (the client reads the synced count, for its break-progress prediction). */
     public int hardnessModules() {
+        if (level != null && level.isClientSide()) {
+            return visualHardness;
+        }
         return modules.count(SecurityModule.HARDNESS);
+    }
+
+    // --- renderer reads (synced; on the server these are the values last sent) ------------------
+
+    /** The door's minimum level, for the status LED colour. */
+    public AccessLevel renderMinLevel() {
+        return visualMinLevel;
+    }
+
+    /** Linked and the audit log is on: the recording LED blinks. */
+    public boolean renderRecording() {
+        return visualRecording;
+    }
+
+    /** Linked, power required, and not enough stored to open: the status LED shows the warning blink. */
+    public boolean renderPowerLow() {
+        return visualPowerLow;
+    }
+
+    /** The installation is in lockdown: clamps on, the status LED strobes. */
+    public boolean renderSealed() {
+        return visualSealed;
     }
 
     public int openTicks() {
@@ -250,11 +300,13 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
                 openTicks = duration;
                 door.setOpen(level, pos, true);
                 autoCloseTicks = NeroSecurityConfig.doorAutoCloseTicks();
+                (isBlast() ? SecuritySounds.BLAST_SETTLE : SecuritySounds.DOOR_SETTLE).play(level, pos);
                 sync();
             }
         } else if (!opening && openTicks > 0) {
             openTicks--;
             if (openTicks == 0) {
+                (isBlast() ? SecuritySounds.BLAST_SETTLE : SecuritySounds.DOOR_SETTLE).play(level, pos);
                 sync();
             }
         } else if (openTicks > duration) {
@@ -294,6 +346,74 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
             powerLostReported = false;
             setChanged();
         }
+
+        // 6. Visual state (renderer only): ANIMATING / SEALED on every part, the LED inputs in the update tag.
+        updateVisuals(level, pos, door, linked, lockdown);
+    }
+
+    /**
+     * Server: re-derives the seal and the LED inputs now instead of on the next tick (the lockdown hook's
+     * accelerator). The next tick would reach the same answer.
+     */
+    public void refreshVisual(ServerLevel serverLevel) {
+        if (isRemoved() || !(getBlockState().getBlock() instanceof AbstractSecurityDoorBlock door)) {
+            return;
+        }
+        Installation installation = SecurityInstallations.get(serverLevel.getServer())
+                .atDevice(devicePos(serverLevel)).orElse(null);
+        updateVisuals(serverLevel, worldPosition, door, installation != null, lockdownActive(installation));
+    }
+
+    /** The minimum spacing of visual-only update-tag resends (a lockdown flip is never held back). */
+    private static final int VISUAL_SYNC_MIN_TICKS = 10;
+
+    private boolean isBlast() {
+        return getBlockState().getBlock() instanceof BlastDoorBlock;
+    }
+
+    /**
+     * Brings the visual block-state properties and the renderer's update-tag fields up to date. Block states
+     * change only on a flip (with the clamp sound when {@code SEALED} flips); the update tag is re-sent only
+     * when an LED input changed, at most every {@link #VISUAL_SYNC_MIN_TICKS} unless the seal flipped.
+     */
+    private void updateVisuals(Level level, BlockPos pos, AbstractSecurityDoorBlock door, boolean linked,
+            boolean lockdown) {
+        boolean sealed = lockdown; // lockdownActive() already requires a linked installation
+        boolean animating = DoorRules.animating(opening, openTicks);
+        BlockState now = level.getBlockState(pos);
+        if (now.getBlock() == door) {
+            boolean wasSealed = now.getValue(AbstractSecurityDoorBlock.SEALED);
+            if (now.getValue(AbstractSecurityDoorBlock.ANIMATING) != animating || wasSealed != sealed) {
+                door.setVisual(level, pos, animating, sealed);
+                if (wasSealed != sealed) {
+                    (sealed ? SecuritySounds.CLAMP : SecuritySounds.UNCLAMP).play(level, pos);
+                }
+            }
+        }
+        AccessLevel minLevel = settings.minLevel();
+        boolean recording = VisualState.recording(linked, NeroSecurityConfig.isAuditLogEnabled());
+        boolean powerLow = DoorRules.powerLow(linked, NeroSecurityConfig.doorsRequirePower(), energy.getAmount(),
+                NeroSecurityConfig.doorOpenCost());
+        int hardness = modules.count(SecurityModule.HARDNESS);
+        boolean changed = !visualSent || minLevel != visualMinLevel || recording != visualRecording
+                || powerLow != visualPowerLow || sealed != visualSealed || hardness != visualHardness;
+        if (!changed) {
+            return;
+        }
+        long time = level.getGameTime();
+        boolean urgent = !visualSent || sealed != visualSealed;
+        if (!urgent && visualSentAt != Long.MIN_VALUE && time - visualSentAt < VISUAL_SYNC_MIN_TICKS
+                && time >= visualSentAt) {
+            return; // picked up on a later tick
+        }
+        visualSent = true;
+        visualSentAt = time;
+        visualMinLevel = minLevel;
+        visualRecording = recording;
+        visualPowerLow = powerLow;
+        visualSealed = sealed;
+        visualHardness = hardness;
+        sync();
     }
 
     private void startOpening(@Nullable UUID actor, boolean privileged, @Nullable Installation installation) {
@@ -305,6 +425,9 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
             energy.consume(cost);
         }
         sync();
+        if (level != null) {
+            (isBlast() ? SecuritySounds.BLAST_OPEN : SecuritySounds.DOOR_OPEN).play(level, worldPosition);
+        }
         if (installation != null && level instanceof ServerLevel serverLevel) {
             publish(SecurityEventType.DOOR_OPENED, installation, serverLevel, actor);
         }
@@ -313,6 +436,7 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
     /** Starts closing: {@code OPEN} turns false at once, so the door is solid again immediately. */
     public void close() {
         boolean wasMoving = opening || openTicks > 0;
+        boolean wasOpening = opening;
         opening = false;
         autoCloseTicks = 0;
         openedPrivileged = false;
@@ -322,6 +446,9 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         }
         if (wasMoving) {
             sync();
+        }
+        if (wasOpening && level != null) {
+            (isBlast() ? SecuritySounds.BLAST_CLOSE : SecuritySounds.DOOR_CLOSE).play(level, worldPosition);
         }
     }
 
@@ -360,14 +487,17 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
                 settings.minLevel(), at, settings.grantingSources());
         if (!decision.allowed()) {
             player.sendOverlayMessage(decision.message());
+            SecurityDevice.denyFeedback(player, worldPosition);
             denied(player, installation, serverLevel);
             return;
         }
         if (!DoorRules.passesPowerGate(decision, hasPowerToOpen())) {
             player.sendOverlayMessage(Component.translatable("door.nerosecurity.no_power"));
+            SecurityDevice.denyFeedback(player, worldPosition);
             denied(player, installation, serverLevel);
             return;
         }
+        SecurityDevice.acceptFeedback(player, worldPosition);
         if (opening) {
             close(); // closing is never denied to someone allowed to open, and emits nothing
         } else {
@@ -387,6 +517,7 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         AccessDecision decision = resolveConfigure(player, installation, at);
         if (!decision.allowed()) {
             player.sendOverlayMessage(decision.message());
+            SecurityDevice.denyFeedback(player, worldPosition);
             return;
         }
         DoorPayloadHandlers.sendSnapshot(player, this, installation, decision);
@@ -498,8 +629,15 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         this.openTicks = Math.max(0, input.getIntOr(KEY_OPEN_TICKS, 0));
         this.opening = input.getBooleanOr(KEY_OPENING, false);
         this.autoCloseTicks = Math.max(0, input.getIntOr(KEY_AUTO_CLOSE, 0));
+        // Renderer-only fields: present in the client's update tag, never written to disk.
         this.clientDuration = input.getIntOr(KEY_DURATION, -1);
-        this.changedAt = input.getLongOr(KEY_CHANGED_AT, 0L);
+        this.changedAt = input.getLongOr(KEY_SYNC_TIME, 0L);
+        this.visualMinLevel = AccessLevel.byName(input.getStringOr(KEY_MIN_LEVEL, "")).orElse(AccessLevel.MEMBER);
+        this.visualRecording = input.getBooleanOr(KEY_RECORDING, false);
+        this.visualPowerLow = input.getBooleanOr(KEY_POWER_LOW, false);
+        this.visualSealed = input.getBooleanOr(KEY_SEALED, false);
+        this.visualHardness = Math.max(0, input.getIntOr(KEY_HARDNESS, 0));
+        this.visualSent = false;
     }
 
     @Override
@@ -507,12 +645,22 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
-    /** Everything a renderer needs: open state, the server's duration and when the movement changed. */
+    /**
+     * Only what the renderer needs (S3-11): the movement, its anchor and duration, and the LED inputs. Never the
+     * settings, modules, energy, side configuration or anything about a player.
+     */
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = saveCustomOnly(registries);
+        CompoundTag tag = new CompoundTag();
+        tag.putInt(KEY_OPEN_TICKS, openTicks);
+        tag.putBoolean(KEY_OPENING, opening);
+        tag.putLong(KEY_SYNC_TIME, changedAt);
         tag.putInt(KEY_DURATION, openDuration());
-        tag.putLong(KEY_CHANGED_AT, changedAt);
+        tag.putString(KEY_MIN_LEVEL, visualMinLevel.jsonName());
+        tag.putBoolean(KEY_RECORDING, visualRecording);
+        tag.putBoolean(KEY_POWER_LOW, visualPowerLow);
+        tag.putBoolean(KEY_SEALED, visualSealed);
+        tag.putInt(KEY_HARDNESS, visualHardness);
         return tag;
     }
 

@@ -1,6 +1,4 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/amethyst_shard"
-  }
+  "textures": {"layer0": "nerosecurity:item/strength_module"}
 }

@@ -1,6 +1,4 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/spyglass"
-  }
+  "textures": {"layer0": "nerosecurity:item/range_module"}
 }

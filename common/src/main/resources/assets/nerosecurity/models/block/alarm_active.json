@@ -1,9 +1,47 @@
 {
-  "parent": "minecraft:block/cube_bottom_top",
-  "textures": {
-    "top": "nerosecurity:block/alarm_top_active",
-    "bottom": "nerosecurity:block/alarm_bottom",
-    "side": "nerosecurity:block/alarm_side_active",
-    "particle": "nerosecurity:block/alarm_side"
-  }
+  "parent": "minecraft:block/block",
+  "render_type": "minecraft:translucent",
+  "textures": {"base": "nerosecurity:block/alarm_base", "dome": "nerosecurity:block/alarm_dome_on", "particle": "nerosecurity:block/alarm_base"},
+  "elements": [
+    {
+      "name": "base",
+      "from": [3, 0, 3],
+      "to": [13, 3, 13],
+      "faces": {
+        "north": {"texture": "#base"},
+        "south": {"texture": "#base"},
+        "east": {"texture": "#base"},
+        "west": {"texture": "#base"},
+        "up": {"texture": "#base"},
+        "down": {"texture": "#base", "cullface": "down"}
+      }
+    },
+    {
+      "name": "dome",
+      "from": [4, 3, 4],
+      "to": [12, 10, 12],
+      "faces": {
+        "north": {"texture": "#dome"},
+        "south": {"texture": "#dome"},
+        "east": {"texture": "#dome"},
+        "west": {"texture": "#dome"},
+        "up": {"texture": "#dome"},
+        "down": {"texture": "#dome"}
+      },
+      "shade": false
+    },
+    {
+      "name": "cap",
+      "from": [5, 10, 5],
+      "to": [11, 11, 11],
+      "faces": {
+        "north": {"texture": "#base"},
+        "south": {"texture": "#base"},
+        "east": {"texture": "#base"},
+        "west": {"texture": "#base"},
+        "up": {"texture": "#base"},
+        "down": {"texture": "#base"}
+      }
+    }
+  ]
 }

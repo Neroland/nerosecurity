@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.block.SecurityHubBlock;
+import za.co.neroland.nerosecurity.block.field.ForceFieldBlock;
 import za.co.neroland.nerosecurity.command.SecurityCommands;
 import za.co.neroland.nerosecurity.server.ServerHooks;
 
@@ -36,6 +37,13 @@ public final class NeroSecurityFabric implements ModInitializer {
                     && player instanceof ServerPlayer serverPlayer
                     && !SecurityHubBlock.mayBreak(serverLevel, pos, serverPlayer)) {
                 SecurityHubBlock.refuseBreak(serverPlayer);
+                return false;
+            }
+            // Force field blocks: only an owner or an operator removes one, in creative too.
+            if (state.getBlock() instanceof ForceFieldBlock && level instanceof ServerLevel serverLevel
+                    && player instanceof ServerPlayer serverPlayer
+                    && !ForceFieldBlock.mayBreak(serverLevel, pos, serverPlayer)) {
+                ForceFieldBlock.refuseBreak(serverPlayer);
                 return false;
             }
             return true;

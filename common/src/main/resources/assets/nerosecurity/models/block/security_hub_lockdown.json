@@ -1,0 +1,38 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "top": "nerosecurity:block/security_hub_top",
+    "side": "nerosecurity:block/security_hub_side",
+    "back": "nerosecurity:block/security_hub_back",
+    "front": "nerosecurity:block/security_hub_front_lockdown",
+    "particle": "nerosecurity:block/security_hub_side"
+  },
+  "elements": [
+    {
+      "name": "body",
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": {"texture": "#front", "cullface": "north"},
+        "south": {"texture": "#back", "cullface": "south"},
+        "east": {"texture": "#side", "cullface": "east"},
+        "west": {"texture": "#side", "cullface": "west"},
+        "up": {"texture": "#top", "cullface": "up"},
+        "down": {"texture": "#top", "cullface": "down"}
+      }
+    },
+    {
+      "name": "bezel",
+      "from": [1, 1, -0.5],
+      "to": [15, 15, 0],
+      "faces": {
+        "north": {"texture": "#front", "uv": [1, 1, 15, 15]},
+        "south": {"texture": "#side"},
+        "east": {"texture": "#side"},
+        "west": {"texture": "#side"},
+        "up": {"texture": "#side"},
+        "down": {"texture": "#side"}
+      }
+    }
+  ]
+}

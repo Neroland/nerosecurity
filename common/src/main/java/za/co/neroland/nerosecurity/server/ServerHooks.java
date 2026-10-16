@@ -9,6 +9,8 @@ import java.util.function.Consumer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
+import org.jetbrains.annotations.Nullable;
+
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 
 /**
@@ -57,7 +59,18 @@ public final class ServerHooks {
     private static final List<PlayerLeave> LEAVE = new CopyOnWriteArrayList<>();
     private static final Set<String> WARNED = ConcurrentHashMap.newKeySet();
 
+    /** The running server between "started" and "stopping"; null otherwise. The one server holder. */
+    private static volatile @Nullable MinecraftServer current;
+
     private ServerHooks() {
+    }
+
+    /**
+     * The running server, or null before the first server has started and after it began stopping. For
+     * callers that are handed no server (Core's link API passes only a player UUID). Server thread only.
+     */
+    public static @Nullable MinecraftServer currentServer() {
+        return current;
     }
 
     // --- registration (common code) ---------------------------------------------------------------
@@ -85,11 +98,15 @@ public final class ServerHooks {
     // --- dispatch (loaders) -----------------------------------------------------------------------
 
     public static void fireStarted(MinecraftServer server) {
+        if (server != null) {
+            current = server;
+        }
         fire(STARTED, server, (listener, s) -> listener.on(s), "started");
     }
 
     public static void fireStopping(MinecraftServer server) {
         fire(STOPPING, server, (listener, s) -> listener.on(s), "stopping");
+        current = null;
     }
 
     public static void fireTick(MinecraftServer server) {
@@ -142,6 +159,7 @@ public final class ServerHooks {
         JOIN.clear();
         LEAVE.clear();
         WARNED.clear();
+        current = null;
     }
 
     /** Tests only: dispatches to a consumer list the same isolated way. */

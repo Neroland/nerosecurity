@@ -16,7 +16,8 @@ public final class FieldSnapshots {
 
     public static FieldSnapshot build(ServerLevel level, ForceFieldEmitterBlockEntity emitter, AccessDecision decision) {
         return new FieldSnapshot(emitter.getBlockPos().immutable(), emitter.settings(), emitter.strength(),
-                NeroSecurityConfig.maxFieldStrength(), emitter.range(), emitter.area(), NeroSecurityConfig.maxFieldArea(),
+                NeroSecurityConfig.maxFieldStrength(), emitter.range(), emitter.area(), emitter.projectedCount(),
+                NeroSecurityConfig.maxFieldArea(),
                 emitter.drawPerTick(), emitter.energyAmount(), emitter.energyCapacity(), emitter.fieldState(),
                 emitter.loadFraction(), emitter.cooldownSeconds(level.getGameTime()),
                 decision.admin() ? AccessLevel.OWNER : decision.effective(), decision.admin(),

@@ -11,6 +11,7 @@ import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 
 import za.co.neroland.nerosecurity.block.SecurityHubBlock;
+import za.co.neroland.nerosecurity.block.field.ForceFieldBlock;
 import za.co.neroland.nerosecurity.command.SecurityCommands;
 import za.co.neroland.nerosecurity.server.ServerHooks;
 
@@ -35,6 +36,12 @@ public final class ForgeSecurityEvents {
                     && !SecurityHubBlock.mayBreak(level, event.getPos(), player)) {
                 event.setResult(Result.DENY);
                 SecurityHubBlock.refuseBreak(player);
+            } else if (event.getState().getBlock() instanceof ForceFieldBlock
+                    && event.getLevel() instanceof ServerLevel level
+                    && event.getPlayer() instanceof ServerPlayer player
+                    && !ForceFieldBlock.mayBreak(level, event.getPos(), player)) {
+                event.setResult(Result.DENY);
+                ForceFieldBlock.refuseBreak(player);
             }
         });
         ServerStartedEvent.BUS.addListener(event -> ServerHooks.fireStarted(event.getServer()));

@@ -78,6 +78,8 @@ public final class Installation {
     private @Nullable Integer boundStation;
     private boolean notifyOfficers;
     private @Nullable Integer auditRetentionDaysOverride;
+    /** Epoch ms until which every alarm of this installation is silent (0 = none). A timestamp, no player. */
+    private long alarmSilencedUntil;
 
     public Installation(UUID id, UUID firstOwner, String name, long createdAt, byte[] secret) {
         this.id = id;
@@ -183,6 +185,14 @@ public final class Installation {
 
     public @Nullable Integer auditRetentionDaysOverride() {
         return auditRetentionDaysOverride;
+    }
+
+    /**
+     * Epoch ms until which every alarm of this installation stays silent, 0 when none: set by the companion
+     * app's silence action so alarms in unloaded chunks pick it up too. A lockdown still overrides it.
+     */
+    public long alarmSilencedUntil() {
+        return alarmSilencedUntil;
     }
 
     /** The next serial the ledger will issue. Never reused: it only ever increases. */
@@ -301,6 +311,10 @@ public final class Installation {
 
     void setAuditRetentionDaysOverride(@Nullable Integer days) {
         this.auditRetentionDaysOverride = days;
+    }
+
+    void setAlarmSilencedUntil(long until) {
+        this.alarmSilencedUntil = Math.max(0L, until);
     }
 
     Map<Long, CardRecord> rawCards() {

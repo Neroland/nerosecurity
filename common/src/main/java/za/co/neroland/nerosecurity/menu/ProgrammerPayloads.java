@@ -64,10 +64,11 @@ public final class ProgrammerPayloads {
     /**
      * Server truth for the open programmer screen. Sent only to a player the resolver just allowed to view
      * this programmer. {@code viewerLevel} is the effective level (an operator shows as OWNER);
-     * {@code message} is the last action's outcome, server-authored, or null. Display only.
+     * {@code message} is the last action's outcome, server-authored, or null, and {@code ok} says whether
+     * that outcome was a success (green footer) or a refusal (red). Display only.
      */
     public record ProgrammerSnapshot(BlockPos pos, AccessLevel viewerLevel, boolean hasModule,
-            AccessLevel basicMaxLevel, int cardsIssued, int cardCap, @Nullable Component message)
+            AccessLevel basicMaxLevel, int cardsIssued, int cardCap, boolean ok, @Nullable Component message)
             implements CustomPacketPayload {
 
         public static final Type<ProgrammerSnapshot> TYPE = new Type<>(id("programmer_snapshot"));
@@ -81,6 +82,7 @@ public final class ProgrammerPayloads {
             writeLevel(buf, value.basicMaxLevel);
             buf.writeVarInt(Math.max(0, value.cardsIssued));
             buf.writeVarInt(Math.max(0, value.cardCap));
+            buf.writeBoolean(value.ok);
             buf.writeBoolean(value.message != null);
             if (value.message != null) {
                 ComponentSerialization.TRUSTED_STREAM_CODEC.encode(buf, value.message);
@@ -94,8 +96,9 @@ public final class ProgrammerPayloads {
             AccessLevel basicMax = readLevel(buf);
             int issued = Math.max(0, buf.readVarInt());
             int cap = Math.max(0, buf.readVarInt());
+            boolean ok = buf.readBoolean();
             Component message = buf.readBoolean() ? ComponentSerialization.TRUSTED_STREAM_CODEC.decode(buf) : null;
-            return new ProgrammerSnapshot(pos, viewer, hasModule, basicMax, issued, cap, message);
+            return new ProgrammerSnapshot(pos, viewer, hasModule, basicMax, issued, cap, ok, message);
         }
 
         @Override

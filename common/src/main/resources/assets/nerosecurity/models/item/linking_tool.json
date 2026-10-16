@@ -1,6 +1,4 @@
 {
   "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "nerosecurity:item/linking_tool"
-  }
+  "textures": {"layer0": "nerosecurity:item/linking_tool"}
 }

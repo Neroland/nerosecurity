@@ -1,9 +1,78 @@
 {
-  "parent": "minecraft:block/orientable",
+  "parent": "minecraft:block/block",
   "textures": {
-    "top": "nerosecurity:block/keycard_programmer_top",
-    "side": "nerosecurity:block/keycard_programmer_side",
-    "front": "nerosecurity:block/keycard_programmer_front",
-    "particle": "nerosecurity:block/keycard_programmer_side"
-  }
+    "base": "nerosecurity:block/keycard_programmer_base",
+    "desk": "nerosecurity:block/keycard_programmer_desk",
+    "screen": "nerosecurity:block/keycard_programmer_screen",
+    "particle": "nerosecurity:block/keycard_programmer_base"
+  },
+  "elements": [
+    {
+      "name": "plinth",
+      "from": [0, 0, 0],
+      "to": [16, 4, 16],
+      "faces": {
+        "north": {"texture": "#base", "cullface": "north"},
+        "south": {"texture": "#base", "cullface": "south"},
+        "east": {"texture": "#base", "cullface": "east"},
+        "west": {"texture": "#base", "cullface": "west"},
+        "up": {"texture": "#base"},
+        "down": {"texture": "#base", "cullface": "down"}
+      }
+    },
+    {
+      "name": "column",
+      "from": [3, 4, 3],
+      "to": [13, 10, 13],
+      "faces": {
+        "north": {"texture": "#base"},
+        "south": {"texture": "#base"},
+        "east": {"texture": "#base"},
+        "west": {"texture": "#base"},
+        "up": {"texture": "#base"},
+        "down": {"texture": "#base"}
+      }
+    },
+    {
+      "name": "desk",
+      "from": [1, 10, 1],
+      "to": [15, 13, 15],
+      "faces": {
+        "north": {"texture": "#desk"},
+        "south": {"texture": "#desk"},
+        "east": {"texture": "#desk"},
+        "west": {"texture": "#desk"},
+        "up": {"texture": "#desk", "uv": [0, 0, 16, 16]},
+        "down": {"texture": "#desk"}
+      }
+    },
+    {
+      "name": "slot_lip",
+      "from": [5, 13, 2],
+      "to": [11, 14, 8],
+      "faces": {
+        "north": {"texture": "#desk"},
+        "south": {"texture": "#desk"},
+        "east": {"texture": "#desk"},
+        "west": {"texture": "#desk"},
+        "up": {"texture": "#desk"},
+        "down": {"texture": "#desk"}
+      }
+    },
+    {
+      "name": "screen",
+      "from": [2, 13, 9],
+      "to": [14, 14, 15],
+      "faces": {
+        "north": {"texture": "#base"},
+        "south": {"texture": "#base"},
+        "east": {"texture": "#base"},
+        "west": {"texture": "#base"},
+        "up": {"texture": "#screen", "uv": [2, 4, 14, 12]},
+        "down": {"texture": "#base"}
+      },
+      "shade": false,
+      "rotation": {"origin": [8, 13, 9], "axis": "x", "angle": -22.5}
+    }
+  ]
 }

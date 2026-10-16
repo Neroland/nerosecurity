@@ -74,6 +74,7 @@ who may use a protected block. None of it leaves the server except the hub-scree
 | When the installation was **created** (a timestamp) | to tell old installations from new ones in operator tools | one timestamp per installation, never per player |
 | A random **per-installation secret** (32 bytes) | to sign the installation's keycards, so a forged or edited card is refused | random bytes with no personal content; never sent to clients, logged or reported |
 | The **card ledger**: one row per issued keycard with its serial number, level, an encrypted yes/no flag, when it was issued, and — only for a card its writer chose to bind to themself — that player's UUID as the bound owner | to check, on every use, that a presented card was really issued here, has not been revoked or wiped, and (for a bound card) is being presented by its holder | no names; most rows carry no player at all; capped per installation (`keycardsPerInstallation`); a row is deleted when its card is revoked or wiped |
+| An installation's **alarm-silence time** (a timestamp), set when its owner silences its alarms from the companion app | so alarms in unloaded chunks stay silent too | one timestamp per installation, no player in it; a lockdown clears it |
 
 **Keycards.** A keycard item carries only its installation's random id, its level, serial number, encrypted
 and bound yes/no flags, when it was issued, a 16-byte signature, and the installation's name as a label —
@@ -91,7 +92,8 @@ the chest**: no items, counts or slots — and at most one "changed" event per o
 hoppers and other automation carry no player and are rate-limited. Laser grids and cameras raise "laser
 grid tripped" and "motion detected" events for anyone or anything the installation does not permit; players
 the installation permits produce no event (unless the server sets `privacyCameraLogsMembers=true`). Events
-never leave the server; they are written to the audit log below.
+never leave the server, except as described in "Notifications on your phone" below; they are written to the
+audit log below.
 
 - **Pets count as their owner.** A tamed animal is judged by its owner's access: a stranger's pet crossing a
   beam raises an event that names **the pet's owner**, even when the owner is nowhere near.
@@ -158,6 +160,89 @@ lockdown drill) in Neroland Core's progression store: three yes/no flags per pla
 UUID, used only to let a quest pack know you reached them. They are never read to decide access. Neroland
 Core removes them with the same erasure request described above.
 
+**Force fields and integrations.**
+
+- **Bindings store organisation ids only.** An owner can bind an installation to a NeroFactions faction, a
+  NeroColonies colony or a Nerospace station (`/nerosecurity bind`). The installation stores the faction's id, the
+  colony's id or the station's number, and the most the binding may grant (MEMBER, the default, or OFFICER, only
+  when the owner types it) — never the player who bound it and never a list of the organisation's members.
+  Membership is asked of the other mod on the same server each time an access decision is made; it is not copied.
+  Only a stored owner of the installation (or a server operator) can bind or unbind; a keycard or another
+  integration cannot.
+- **What a bound organisation's members can see.** A member of a bound faction or colony (and a bound station's
+  current owner) gets access by their rank in that organisation, never above the binding's max level, and so sees
+  what that level allows. At MEMBER: the installation's bindings (`/nerosecurity bind <installation>`), including
+  whether a binding is suspended, which tells them that no owner is still in that organisation. At OFFICER (a station
+  binding always grants its owner OFFICER): also the hub screen, with the installation's owners' and members' display
+  names (see "Shown on screen" above), and the audit log.
+- **Suspension.** When no owner is still a member of a bound faction or colony, the binding grants nothing until one
+  is again. A "faction suspended" or "colony suspended" row is logged at most once per binding per server session; it
+  names no player and no organisation.
+- **Binding rows.** "Faction / colony / station bound" and "unbound" rows name the owner (or operator) who did it,
+  as the actor, like any other audit row.
+- **Claims are consulted only to deny.** With Open Parties and Claims installed, NeroSecurity asks it, on the same
+  server, whether the acting player may use a protected block at that position, and whether an owner of the
+  installation may build where a force field would be placed. A claim can only take access away, never grant it.
+  Nothing from the claim mod is stored or logged.
+- **Force field passability sync.** Every few ticks, each player within an emitter's range plus 16 blocks is sent
+  one yes/no value saying whether **they** may walk through that emitter's field, with the emitter's position, so
+  their game predicts the same collision the server decides. It is sent only to that player and never carries
+  anyone else's answer, level, name or UUID; their game forgets it on disconnect, and the server never reads it
+  back.
+- **Field events.** A "force field attacked" row names the attacker by UUID: the player who hit the field, or the
+  player who shot a projectile at it (an explosion names nobody). It is logged at most once per attacker per emitter
+  every `fieldBreachEventCooldownTicks`. "Force field obstructed" (the field could not place all of its blocks;
+  at most once every five minutes per emitter), "overloaded", "collapsed" and "restored" rows name nobody. Every
+  field row carries the emitter's position (the owner's own block), never the position of the field block, so it
+  never traces where a player stood. They follow the same retention, cap and erasure as every other audit row.
+- **Residual.** While an installation is in lockdown its force fields change colour, which anyone within sight
+  can see.
+
+## Notifications on your phone (NeroLink companion app)
+
+If this server runs the NeroLink bridge and you have paired the NeroLink app and switched the **Security**
+notification category on (it is off until you do), NeroSecurity sends you a notification when something
+happens at an installation you own — or, if the owner chose "notify officers", one where you are an officer.
+Owners and officers are found from the installation's stored member list, never from who is nearby.
+
+**What a notification contains.** Two short lines: what happened and which installation — for example
+*"Laser grid tripped"* / *"Orbital Lab (+3 more)"* — and a link that opens that installation in the app.
+That is all. It never contains another player's name or id, a position, a dimension, a time other than the
+delivery time your phone adds, or anything about what is inside your base. Notifications are grouped: at
+most one per installation per minute (`pushCooldownSeconds`), with a count of further events; a lockdown
+change is sent at once. The text is visible on a locked phone's screen, which is why it says no more than that.
+
+**Who handles it on the way.** The notification leaves the game server through the NeroLink relay
+(`nerorelay.neroserver.xyz`, a service operated for the Neroland community) and is delivered by Google
+Firebase Cloud Messaging on Android and Apple Push Notification service on iOS. The relay and these services
+are **third-party processors**: they see the two lines above, the notification category (`nerosecurity`), your
+app's push token and the server's relay id, for as long as delivery takes. The relay keeps a delivery
+cooldown of about a minute per player and category and does not store notification text. Its own retention
+and erasure behaviour is described by the NeroLink bridge's privacy notes; NeroSecurity relies on them and
+cannot change them.
+
+**What stays on the server.** The same event is also stored as an **alert** in Neroland Core's per-player
+alert list (text identical to the notification), so you see it the next time you open the app or log in —
+one private chat line with counts only ("3 unread security alerts (2 installations)"). Alerts are removed
+when you acknowledge them, after the audit retention period, and by a data-erasure request.
+
+**What the app can see.** When you open the app it reads, over an authenticated connection, the
+installations you own or belong to, their devices' status, and recent events as sentences ("Door forced —
+Door 2, 4 minutes ago"). Devices are named by kind and number, never by coordinates. Who did something is
+shown only as "a player" unless an owner or officer taps **Show who**; that tap is recorded in the
+installation's own log as a log read, exactly like reading the log in game, and shows the player's display
+name from the server's local cache — never an id. Players who opted out of being named appear as
+"a player (anonymous)" everywhere, including on the phone.
+
+**What the app can do.** Acknowledge your own alerts and silence an installation's alarms for a while. Changing
+lockdown from the app is **disabled unless the server operator enables it** (`linkLockdownMode`); an operator
+can allow clearing a lockdown only, or starting one too, and can require you to be logged in to the game
+at the time. The app can never add or remove members, change levels or write keycards.
+
+Switching it off: a server operator sets `pushNotificationsEnabled=false` (no notifications, alerts or login
+summaries for anyone on that server) or `linkModuleEnabled=false` (the app sees nothing from NeroSecurity);
+you switch the Security category off in the app, or unpair the app.
+
 ## Legal basis and your rights (GDPR / POPIA)
 
 The audit log and the sensors' presence events are processed on the basis of the base owner's **legitimate
@@ -170,6 +255,10 @@ Installation data (including the card ledger) and milestones are processed becau
 use — a protected base only works if the server knows who may open it (GDPR Art. 6(1)(b) and (f); POPIA
 s11(1)(b) and (f)). They are kept for as long as the installation exists, and removed on an erasure request
 or by the server's inactivity retention sweep if the server owner has enabled one.
+
+Companion-app notifications and stored alerts are part of the service the installation's owner chose to use
+(GDPR Art. 6(1)(b); POPIA s11(1)(b)); the events they describe are processed under the legitimate interest
+stated above.
 
 Error reports are processed on the basis of **legitimate interest** (GDPR Art. 6(1)(f); POPIA
 s11(1)(f)): keeping the mod functional and crash-free, using the minimum data necessary. They

@@ -11,12 +11,15 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.access.AccessDecision;
+import za.co.neroland.nerosecurity.block.VisualState;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
@@ -40,6 +43,34 @@ public class SecurityMonitorBlockEntity extends BlockEntity implements MenuProvi
 
     public SecurityMonitorBlockEntity(BlockPos pos, BlockState state) {
         super(MonitorRegistrations.BLOCK_ENTITY.get(), pos, state);
+    }
+
+    /** Server tick: re-derive {@link SecurityMonitorBlock#LOCKDOWN} on the staggered cadence. */
+    public void visualTick(Level level, BlockPos pos) {
+        if (level instanceof ServerLevel serverLevel && VisualState.refreshDue(level.getGameTime(), pos.asLong())) {
+            refreshVisual(serverLevel);
+        }
+    }
+
+    /**
+     * Server: sets {@link SecurityMonitorBlock#LOCKDOWN} from the store (looked up by position now) when it
+     * differs. Called by the visual refresh, on link/unlink and by the lockdown hook.
+     */
+    public void refreshVisual(ServerLevel serverLevel) {
+        if (isRemoved()) {
+            return;
+        }
+        BlockState state = serverLevel.getBlockState(worldPosition);
+        if (!(state.getBlock() instanceof SecurityMonitorBlock)) {
+            return;
+        }
+        Installation installation = SecurityInstallations.get(serverLevel.getServer())
+                .atDevice(DevicePos.of(serverLevel, worldPosition)).orElse(null);
+        boolean lockdown = VisualState.lockdownShown(installation);
+        if (state.getValue(SecurityMonitorBlock.LOCKDOWN) != lockdown) {
+            serverLevel.setBlock(worldPosition, state.setValue(SecurityMonitorBlock.LOCKDOWN, lockdown),
+                    Block.UPDATE_CLIENTS);
+        }
     }
 
     /**

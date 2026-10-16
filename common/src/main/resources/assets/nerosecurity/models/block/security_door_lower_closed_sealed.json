@@ -1,0 +1,103 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "frame": "nerosecurity:block/security_door_frame",
+    "panel": "nerosecurity:block/security_door_panel",
+    "clamp": "nerosecurity:block/security_door_clamp",
+    "haz": "nerosecurity:block/blast_door_panel",
+    "particle": "nerosecurity:block/security_door_frame"
+  },
+  "elements": [
+    {
+      "name": "jamb_l",
+      "from": [0, 0, 0],
+      "to": [2, 16, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "jamb_r",
+      "from": [14, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "threshold",
+      "from": [2, 0, 0],
+      "to": [14, 2, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#haz", "uv": [0, 13, 12, 15]},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "panel_l",
+      "from": [2, 0, 6],
+      "to": [8, 16, 10],
+      "faces": {
+        "north": {"texture": "#panel", "uv": [0, 8, 6, 16]},
+        "south": {"texture": "#panel", "uv": [0, 8, 6, 16]},
+        "east": {"texture": "#panel"},
+        "west": {"texture": "#panel"},
+        "up": {"texture": "#panel"},
+        "down": {"texture": "#panel"}
+      }
+    },
+    {
+      "name": "panel_r",
+      "from": [8, 0, 6],
+      "to": [14, 16, 10],
+      "faces": {
+        "north": {"texture": "#panel", "uv": [0, 8, 6, 16]},
+        "south": {"texture": "#panel", "uv": [0, 8, 6, 16]},
+        "east": {"texture": "#panel"},
+        "west": {"texture": "#panel"},
+        "up": {"texture": "#panel"},
+        "down": {"texture": "#panel"}
+      }
+    },
+    {
+      "name": "clamp_top",
+      "from": [2, 11, 5],
+      "to": [14, 13, 11],
+      "faces": {
+        "north": {"texture": "#clamp"},
+        "south": {"texture": "#clamp"},
+        "east": {"texture": "#clamp"},
+        "west": {"texture": "#clamp"},
+        "up": {"texture": "#clamp"},
+        "down": {"texture": "#clamp"}
+      }
+    },
+    {
+      "name": "clamp_bot",
+      "from": [2, 3, 5],
+      "to": [14, 5, 11],
+      "faces": {
+        "north": {"texture": "#clamp"},
+        "south": {"texture": "#clamp"},
+        "east": {"texture": "#clamp"},
+        "west": {"texture": "#clamp"},
+        "up": {"texture": "#clamp"},
+        "down": {"texture": "#clamp"}
+      }
+    }
+  ]
+}

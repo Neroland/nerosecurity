@@ -1,6 +1,3 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "nerosecurity:block/force_field_emitter"
-  }
+  "model": {"type": "minecraft:model", "model": "nerosecurity:item/force_field_emitter"}
 }

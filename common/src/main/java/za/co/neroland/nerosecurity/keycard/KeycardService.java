@@ -12,6 +12,7 @@ import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
+import za.co.neroland.nerosecurity.block.field.FieldPassability;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
@@ -188,6 +189,7 @@ public final class KeycardService {
         if (!store(actor).revokeCard(installation.id(), serial)) {
             return fail("command.nerosecurity.keycards.not_found");
         }
+        FieldPassability.bump(); // a revoked card stops passing force fields this tick
         publish(SecurityEventType.KEYCARD_REVOKED, installation, null, actor.getUUID());
         return ServiceResult.success(Component.translatable("command.nerosecurity.keycards.revoked", serial));
     }
@@ -203,6 +205,7 @@ public final class KeycardService {
         if (removed < 0) {
             return fail("tool.nerosecurity.hub_gone");
         }
+        FieldPassability.bump();
         publish(SecurityEventType.KEYCARD_REVOKED, installation, null, actor.getUUID());
         return ServiceResult.success(Component.translatable("command.nerosecurity.keycards.revoked_all", removed));
     }

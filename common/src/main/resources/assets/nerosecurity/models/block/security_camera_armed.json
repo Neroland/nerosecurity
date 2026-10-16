@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {"mount": "nerosecurity:block/security_camera_mount_armed", "particle": "nerosecurity:block/security_camera_mount_armed"},
+  "elements": [
+    {
+      "name": "mount",
+      "from": [5, 5, 14],
+      "to": [11, 11, 16],
+      "faces": {
+        "north": {"texture": "#mount", "uv": [0, 0, 16, 16]},
+        "south": {"texture": "#mount", "cullface": "south"},
+        "east": {"texture": "#mount"},
+        "west": {"texture": "#mount"},
+        "up": {"texture": "#mount"},
+        "down": {"texture": "#mount"}
+      }
+    },
+    {
+      "name": "arm",
+      "from": [7, 7, 10],
+      "to": [9, 9, 14],
+      "faces": {
+        "north": {"texture": "#mount"},
+        "south": {"texture": "#mount"},
+        "east": {"texture": "#mount"},
+        "west": {"texture": "#mount"},
+        "up": {"texture": "#mount"},
+        "down": {"texture": "#mount"}
+      }
+    }
+  ]
+}

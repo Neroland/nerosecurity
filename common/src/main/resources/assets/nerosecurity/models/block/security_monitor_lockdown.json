@@ -1,0 +1,33 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {"bezel": "nerosecurity:block/security_monitor_bezel", "screen": "nerosecurity:block/security_monitor_screen_lockdown", "particle": "nerosecurity:block/security_monitor_bezel"},
+  "elements": [
+    {
+      "name": "bracket",
+      "from": [5, 5, 3],
+      "to": [11, 11, 16],
+      "faces": {
+        "north": {"texture": "#bezel"},
+        "south": {"texture": "#bezel", "cullface": "south"},
+        "east": {"texture": "#bezel"},
+        "west": {"texture": "#bezel"},
+        "up": {"texture": "#bezel"},
+        "down": {"texture": "#bezel"}
+      }
+    },
+    {
+      "name": "panel",
+      "from": [1, 1, 0],
+      "to": [15, 15, 3],
+      "faces": {
+        "north": {"texture": "#screen", "uv": [1, 1, 15, 15]},
+        "south": {"texture": "#bezel"},
+        "east": {"texture": "#bezel"},
+        "west": {"texture": "#bezel"},
+        "up": {"texture": "#bezel"},
+        "down": {"texture": "#bezel"}
+      },
+      "shade": false
+    }
+  ]
+}

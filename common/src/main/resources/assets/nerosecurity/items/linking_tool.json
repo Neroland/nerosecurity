@@ -1,1 +1,9 @@
-{ "model": { "type": "minecraft:model", "model": "nerosecurity:item/linking_tool" } }
+{
+  "model": {
+    "type": "minecraft:condition",
+    "property": "minecraft:has_component",
+    "component": "nerosecurity:selected_hub",
+    "on_true": {"type": "minecraft:model", "model": "nerosecurity:item/linking_tool_on"},
+    "on_false": {"type": "minecraft:model", "model": "nerosecurity:item/linking_tool"}
+  }
+}

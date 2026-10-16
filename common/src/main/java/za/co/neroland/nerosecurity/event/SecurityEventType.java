@@ -71,7 +71,9 @@ public enum SecurityEventType {
     /** No owner is still a member of the bound colony, so the binding grants nothing. */
     COLONY_SUSPENDED(SecuritySeverity.WARN),
     STATION_BOUND(SecuritySeverity.INFO),
-    STATION_UNBOUND(SecuritySeverity.INFO);
+    STATION_UNBOUND(SecuritySeverity.INFO),
+    /** A force field has placed fewer blocks than its shape asks for over two reconciles (no actor; rate-limited). */
+    FIELD_OBSTRUCTED(SecuritySeverity.WARN);
 
     public final SecuritySeverity defaultSeverity;
 

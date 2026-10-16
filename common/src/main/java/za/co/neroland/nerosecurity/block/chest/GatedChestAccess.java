@@ -46,6 +46,28 @@ public final class GatedChestAccess {
     }
 
     /**
+     * The reason behind {@link #automationAllowed}: {@link AutomationWhy#OK} exactly when it answers true,
+     * otherwise the first rule that refused (off, keycard-only, lockdown, then the level).
+     */
+    public static AutomationWhy why(boolean linked, @Nullable AccessLevel policy,
+            @Nullable DeviceAccessSettings settings, boolean lockdownActive) {
+        if (!linked) {
+            return AutomationWhy.OK;
+        }
+        AccessLevel actor = cappedPolicy(policy);
+        if (actor == null || settings == null) {
+            return AutomationWhy.OFF;
+        }
+        if (settings.keycardOnly()) {
+            return AutomationWhy.KEYCARD;
+        }
+        if (lockdownActive) {
+            return AutomationWhy.LOCKDOWN;
+        }
+        return actor.atLeast(settings.minLevel()) ? AutomationWhy.OK : AutomationWhy.LEVEL;
+    }
+
+    /**
      * The virtual actor's level for a stored policy: {@code null} (off) for nothing or PUBLIC, and never
      * above OFFICER whatever the store says.
      */

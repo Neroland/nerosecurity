@@ -85,6 +85,22 @@ public final class DoorRules {
         return lockdownActive && !openedPrivileged;
     }
 
+    /**
+     * The door's {@code ANIMATING} look: from the moment it starts opening until it is shut and still again
+     * (so an open door is drawn by the renderer with its panels retracted).
+     */
+    public static boolean animating(boolean opening, int openTicks) {
+        return opening || openTicks > 0;
+    }
+
+    /**
+     * The door's power-low LED: a linked door that needs power and cannot afford an open. An unlinked door, or
+     * a server that does not require power, never shows it.
+     */
+    public static boolean powerLow(boolean linked, boolean requirePower, long energy, long openCost) {
+        return linked && !hasPowerToOpen(requirePower, energy, openCost);
+    }
+
     /** Whether a denied event may be published again for one actor at one door. */
     public static boolean deniedEventDue(long lastAt, long now, int cooldownTicks) {
         return lastAt == Long.MIN_VALUE || now - lastAt >= Math.max(0, cooldownTicks);

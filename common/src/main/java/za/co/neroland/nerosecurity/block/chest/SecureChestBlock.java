@@ -18,6 +18,8 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -31,6 +33,7 @@ import za.co.neroland.nerolandcore.registry.BlockCodecs;
 import za.co.neroland.nerosecurity.block.DeviceAccessSettings;
 import za.co.neroland.nerosecurity.block.SecurityDevice;
 import za.co.neroland.nerosecurity.menu.chest.ChestPayloadHandlers;
+import za.co.neroland.nerosecurity.registry.ChestRegistrations;
 
 /**
  * The Secure Chest: a 27-slot chest that checks access when opened and lets automation in only when
@@ -67,7 +70,27 @@ public class SecureChestBlock extends BaseEntityBlock implements SecurityDevice 
     public void onLinked(ServerLevel level, BlockPos pos, UUID installationId) {
         if (level.getBlockEntity(pos) instanceof SecureChestBlockEntity chest) {
             chest.applySettings(DeviceAccessSettings.DEFAULT);
+            chest.refreshVisual(level);
         }
+    }
+
+    /** An unlinked chest stops showing the recording LED and its level plate at once. */
+    @Override
+    public void onUnlinked(ServerLevel level, BlockPos pos, UUID installationId) {
+        if (level.getBlockEntity(pos) instanceof SecureChestBlockEntity chest) {
+            chest.refreshVisual(level);
+        }
+    }
+
+    /** Server only: the staggered visual refresh (level plate colour, recording LED). */
+    @Override
+    public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state,
+            BlockEntityType<T> type) {
+        if (level.isClientSide()) {
+            return null;
+        }
+        return createTickerHelper(type, ChestRegistrations.SECURE_CHEST_BLOCK_ENTITY.get(),
+                (lvl, pos, st, chest) -> chest.visualTick(lvl, pos));
     }
 
     @Override

@@ -19,6 +19,7 @@ import za.co.neroland.nerosecurity.client.screen.door.ClientDoorState;
 import za.co.neroland.nerosecurity.client.screen.field.ClientFieldState;
 import za.co.neroland.nerosecurity.client.screen.monitor.ClientMonitorState;
 import za.co.neroland.nerosecurity.client.screen.sensor.ClientSensorState;
+import za.co.neroland.nerosecurity.feedback.FeedbackPayloads;
 import za.co.neroland.nerosecurity.menu.HubPayloadHandlers;
 import za.co.neroland.nerosecurity.menu.HubPayloads;
 import za.co.neroland.nerosecurity.menu.ProgrammerPayloads;
@@ -29,6 +30,7 @@ import za.co.neroland.nerosecurity.menu.field.FieldPayloads;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorPayloads;
 import za.co.neroland.nerosecurity.menu.sensor.SensorPayloads;
 import za.co.neroland.nerosecurity.platform.Services;
+import za.co.neroland.nerosecurity.privacy.PrivacyPayloads;
 
 /**
  * The cross-loader payload registry: NeroSecurity declares its payloads here once (type + stream
@@ -130,6 +132,9 @@ public final class SecurityNetwork {
         MonitorPayloads.declare();
         // Stage 4: the force field settings screen, plus the local player's own field passability.
         FieldPayloads.declare();
+        // Stage 5: the hub's Privacy tab (bound to the open hub menu) and per-player device feedback.
+        PrivacyPayloads.declare();
+        FeedbackPayloads.declare();
     }
 
     /**

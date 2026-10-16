@@ -1,10 +1,21 @@
 package za.co.neroland.nerosecurity.fabric;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
+import za.co.neroland.nerosecurity.client.BerCommand;
+import za.co.neroland.nerosecurity.client.feedback.ClientDeviceFeedback;
+import za.co.neroland.nerosecurity.client.render.ClientBlockEntityRenderers;
+import za.co.neroland.nerosecurity.client.render.DoorChestHubRenderers;
+import za.co.neroland.nerosecurity.client.render.SensorFieldRenderers;
 import za.co.neroland.nerosecurity.client.screen.KeycardProgrammerScreen;
 import za.co.neroland.nerosecurity.client.screen.SecurityHubScreen;
 import za.co.neroland.nerosecurity.client.screen.alarm.AlarmScreen;
@@ -40,6 +51,21 @@ public final class NeroSecurityFabricClient implements ClientModInitializer {
         MenuScreens.register(AlarmRegistrations.ALARM_MENU.get(), AlarmScreen::new);
         MenuScreens.register(MonitorRegistrations.MENU.get(), MonitorScreen::new);
         MenuScreens.register(FieldRegistrations.FIELD_MENU.get(), FieldSettingsScreen::new);
+
+        ClientBlockEntityRenderers.registerAll(new ClientBlockEntityRenderers.Sink() {
+                    @Override
+                    public <T extends BlockEntity, S extends BlockEntityRenderState> void register(
+                            BlockEntityType<? extends T> type, BlockEntityRendererProvider<T, S> provider) {
+                        BlockEntityRendererRegistry.register(type, provider);
+                    }
+                },
+                DoorChestHubRenderers::register,
+                SensorFieldRenderers::register);
+        // Deny/accept sound and flash for the acting player (DeviceFeedback payload).
+        ClientDeviceFeedback.init();
+        // Client-only /nsber (BER budget readout).
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
+                BerCommand.register(dispatcher));
 
         // Drop any synced mirror caches on leaving a world/server, so one session's security state
         // can never be shown in the next (or on a server that does not run NeroSecurity).

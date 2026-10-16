@@ -1,7 +1,11 @@
 package za.co.neroland.nerosecurity.menu.chest;
 
+import io.netty.handler.codec.DecoderException;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -10,7 +14,9 @@ import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessLevel;
+import za.co.neroland.nerosecurity.block.chest.AutomationWhy;
 import za.co.neroland.nerosecurity.client.screen.chest.ClientChestState;
+import za.co.neroland.nerosecurity.menu.SnapshotMessages;
 import za.co.neroland.nerosecurity.network.SecurityNetwork;
 
 /**
@@ -71,16 +77,24 @@ public final class ChestPayloads {
      * @param lockdown          whether the installation is sealed by lockdown
      * @param linked            whether the chest is linked to an installation
      * @param viewerLevel       the viewer's effective level (OWNER for an operator, and on an unlinked chest)
+     * @param why               why automation is (or is not) allowed, computed on the server
+     * @param ok                whether {@code message} reports a success
+     * @param message           the outcome of the action that produced this snapshot, or null
      */
     public record ChestSnapshot(BlockPos pos, AccessLevel minLevel, boolean keycardOnly,
             @Nullable AccessLevel automation, boolean automationAllowed, boolean lockdown, boolean linked,
-            AccessLevel viewerLevel) implements CustomPacketPayload {
+            AccessLevel viewerLevel, AutomationWhy why, boolean ok, @Nullable Component message)
+            implements CustomPacketPayload {
 
         public static final Type<ChestSnapshot> TYPE = new Type<>(id("chest_snapshot"));
-        public static final StreamCodec<FriendlyByteBuf, ChestSnapshot> STREAM_CODEC =
+        public static final StreamCodec<RegistryFriendlyByteBuf, ChestSnapshot> STREAM_CODEC =
                 StreamCodec.of(ChestSnapshot::write, ChestSnapshot::read);
 
-        private static void write(FriendlyByteBuf buf, ChestSnapshot value) {
+        public ChestSnapshot {
+            why = why == null ? AutomationWhy.OFF : why;
+        }
+
+        private static void write(RegistryFriendlyByteBuf buf, ChestSnapshot value) {
             buf.writeBlockPos(value.pos);
             writeLevel(buf, value.minLevel);
             buf.writeBoolean(value.keycardOnly);
@@ -89,11 +103,28 @@ public final class ChestPayloads {
             buf.writeBoolean(value.lockdown);
             buf.writeBoolean(value.linked);
             writeLevel(buf, value.viewerLevel);
+            buf.writeVarInt(value.why.ordinal());
+            SnapshotMessages.write(buf, value.ok, value.message);
         }
 
-        private static ChestSnapshot read(FriendlyByteBuf buf) {
-            return new ChestSnapshot(buf.readBlockPos(), readLevel(buf), buf.readBoolean(), readOptionalLevel(buf),
-                    buf.readBoolean(), buf.readBoolean(), buf.readBoolean(), readLevel(buf));
+        private static ChestSnapshot read(RegistryFriendlyByteBuf buf) {
+            BlockPos pos = buf.readBlockPos();
+            AccessLevel minLevel = readLevel(buf);
+            boolean keycardOnly = buf.readBoolean();
+            AccessLevel automation = readOptionalLevel(buf);
+            boolean allowed = buf.readBoolean();
+            boolean lockdown = buf.readBoolean();
+            boolean linked = buf.readBoolean();
+            AccessLevel viewer = readLevel(buf);
+            int whyOrdinal = buf.readVarInt();
+            AutomationWhy[] whys = AutomationWhy.values();
+            if (whyOrdinal < 0 || whyOrdinal >= whys.length) {
+                throw new DecoderException("chest automation reason out of range");
+            }
+            boolean ok = SnapshotMessages.readOk(buf);
+            Component message = SnapshotMessages.readMessage(buf);
+            return new ChestSnapshot(pos, minLevel, keycardOnly, automation, allowed, lockdown, linked, viewer,
+                    whys[whyOrdinal], ok, message);
         }
 
         @Override

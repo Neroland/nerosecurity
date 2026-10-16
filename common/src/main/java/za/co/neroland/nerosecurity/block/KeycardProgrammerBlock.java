@@ -125,6 +125,7 @@ public class KeycardProgrammerBlock extends BaseEntityBlock implements SecurityD
         AccessDecision decision = ProgrammerPayloadHandlers.resolveView(serverPlayer, installation, at);
         if (!decision.allowed()) {
             serverPlayer.sendOverlayMessage(decision.message());
+            SecurityDevice.denyFeedback(serverPlayer, pos);
             return InteractionResult.SUCCESS;
         }
         ProgrammerPayloadHandlers.sendSnapshot(serverPlayer, programmer, installation, decision, null);

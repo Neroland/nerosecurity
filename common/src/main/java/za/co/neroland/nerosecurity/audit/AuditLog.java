@@ -91,6 +91,17 @@ public final class AuditLog {
         return entries.size();
     }
 
+    /** The time (epoch ms) of the oldest entry, or {@code 0} when the log is empty. */
+    public long oldestAt() {
+        long oldest = 0L;
+        for (AuditEntry entry : entries) {
+            if (oldest == 0L || entry.at() < oldest) {
+                oldest = entry.at();
+            }
+        }
+        return oldest;
+    }
+
     public boolean isEmpty() {
         return entries.isEmpty();
     }

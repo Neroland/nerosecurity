@@ -28,12 +28,16 @@ import za.co.neroland.nerosecurity.registry.ProgrammerRegistrations;
  */
 public class KeycardProgrammerMenu extends AbstractContainerMenu {
 
-    public static final int CARD_X = 12;
-    public static final int BLANK_X = 52;
-    public static final int MODULE_X = 92;
-    public static final int SLOTS_Y = 108;
-    public static final int INV_X = 37;
-    public static final int INV_Y = 150;
+    // Slot coordinates mirror the screen's layout: the three machine slots in one column down the left, the
+    // player inventory 14 px under a 162-px-tall panel. The screen's test checks they line up.
+    public static final int CARD_X = 20;
+    public static final int BLANK_X = 20;
+    public static final int MODULE_X = 20;
+    public static final int CARD_Y = 46;
+    public static final int BLANK_Y = 76;
+    public static final int MODULE_Y = 106;
+    public static final int INV_X = 69;
+    public static final int INV_Y = 176;
 
     private static final int DATA_HAS_MODULE = 0;
     private static final int MACHINE_SLOTS = KeycardProgrammerBlockEntity.SLOT_COUNT;
@@ -63,9 +67,9 @@ public class KeycardProgrammerMenu extends AbstractContainerMenu {
         this.access = access;
         this.pos = pos;
         this.data = data;
-        addSlot(new ProgrammerSlot(container, KeycardProgrammerBlockEntity.SLOT_CARD, CARD_X, SLOTS_Y));
-        addSlot(new ProgrammerSlot(container, KeycardProgrammerBlockEntity.SLOT_BLANK, BLANK_X, SLOTS_Y));
-        addSlot(new ProgrammerSlot(container, KeycardProgrammerBlockEntity.SLOT_MODULE, MODULE_X, SLOTS_Y));
+        addSlot(new ProgrammerSlot(container, KeycardProgrammerBlockEntity.SLOT_CARD, CARD_X, CARD_Y));
+        addSlot(new ProgrammerSlot(container, KeycardProgrammerBlockEntity.SLOT_BLANK, BLANK_X, BLANK_Y));
+        addSlot(new ProgrammerSlot(container, KeycardProgrammerBlockEntity.SLOT_MODULE, MODULE_X, MODULE_Y));
         addStandardInventorySlots(inventory, INV_X, INV_Y);
         addDataSlots(data);
     }

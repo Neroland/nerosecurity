@@ -1,1 +1,3 @@
-{ "model": { "type": "minecraft:model", "model": "nerosecurity:block/secure_chest" } }
+{
+  "model": {"type": "minecraft:model", "model": "nerosecurity:item/secure_chest"}
+}

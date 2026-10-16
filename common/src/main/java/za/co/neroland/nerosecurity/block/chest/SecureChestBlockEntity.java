@@ -7,8 +7,13 @@ import java.util.stream.IntStream;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,6 +27,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -32,8 +39,11 @@ import org.jetbrains.annotations.Nullable;
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
+import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.block.DeviceAccessSettings;
+import za.co.neroland.nerosecurity.block.SecurityDevice;
+import za.co.neroland.nerosecurity.block.VisualState;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
@@ -44,6 +54,7 @@ import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.registry.ChestRegistrations;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 
 /**
  * The secure chest's block entity: 27 slots, the shared {@link DeviceAccessSettings}, and the two
@@ -62,6 +73,10 @@ import za.co.neroland.nerosecurity.registry.ChestRegistrations;
  * straight past the automation gate. No lock code, no custom name, and contents never travel on the
  * item: breaking the chest always drops them.
  *
+ * <p>Rendering: the lid follows the vanilla chest's block event ({@value #EVENT_OPENERS}, the number of open
+ * sessions, never who), read through {@link #isOpenForRender()}; the update tag carries only
+ * {@value #KEY_MIN_LEVEL} and {@value #KEY_RECORDING} (never the items or the settings).
+ *
  * <p>The block entity holds no installation pointer; every check looks the installation up from the
  * store by position. Audit events carry the event type, the installation, this device's position and
  * (when a player acted) that player only: never a slot, an item, a count or a name.
@@ -76,6 +91,11 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     /** Bound on the transient deny-cooldown table, so a crowd cannot grow it without limit. */
     private static final int MAX_DENY_ENTRIES = 64;
     private static final Component TITLE = Component.translatable("container.nerosecurity.secure_chest");
+    /** Block event id carrying the open-session count (the vanilla chest's id). */
+    public static final int EVENT_OPENERS = 1;
+    /** Update-tag keys (renderer only). */
+    public static final String KEY_MIN_LEVEL = "MinLevel";
+    public static final String KEY_RECORDING = "Recording";
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SIZE, ItemStack.EMPTY);
     private DeviceAccessSettings settings = DeviceAccessSettings.DEFAULT;
@@ -88,6 +108,11 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     private long lastAutomationEventAt = Long.MIN_VALUE;
     /** Game time of the last player break, so the removal hook can tell a player break from anything else. */
     private long playerBreakAt = Long.MIN_VALUE;
+    /** Open sessions, as last signalled by the block event (both sides; a count, never who). */
+    private int openersForRender;
+    /** Renderer-only fields: the client's synced copy; on the server, the values last sent. */
+    private AccessLevel visualMinLevel = AccessLevel.MEMBER;
+    private boolean visualRecording;
 
     public SecureChestBlockEntity(BlockPos pos, BlockState state) {
         super(ChestRegistrations.SECURE_CHEST_BLOCK_ENTITY.get(), pos, state);
@@ -103,6 +128,75 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     public void applySettings(DeviceAccessSettings next) {
         this.settings = next == null ? DeviceAccessSettings.DEFAULT : next;
         super.setChanged(); // saves the chunk without counting as a contents change
+        if (level instanceof ServerLevel serverLevel) {
+            refreshVisual(serverLevel);
+        }
+    }
+
+    // --- rendering (synced; counts and device facts only) ----------------------------------------
+
+    /** Whether the lid should be open: someone has the chest open (from the block event). */
+    public boolean isOpenForRender() {
+        return openersForRender > 0;
+    }
+
+    /** The chest's minimum level, for the plate tint. */
+    public AccessLevel renderMinLevel() {
+        return visualMinLevel;
+    }
+
+    /** Linked and the audit log is on: the recording LED blinks. */
+    public boolean renderRecording() {
+        return visualRecording;
+    }
+
+    /** Server tick: re-derive the renderer fields on the staggered cadence. */
+    public void visualTick(Level tickLevel, BlockPos pos) {
+        if (tickLevel instanceof ServerLevel serverLevel
+                && VisualState.refreshDue(tickLevel.getGameTime(), pos.asLong())) {
+            refreshVisual(serverLevel);
+        }
+    }
+
+    /** Server: re-sends the update tag when the plate level or the recording notice changed. */
+    public void refreshVisual(ServerLevel serverLevel) {
+        if (isRemoved()) {
+            return;
+        }
+        AccessLevel minLevel = settings.minLevel();
+        boolean recording = VisualState.recording(installation());
+        if (minLevel != visualMinLevel || recording != visualRecording) {
+            visualMinLevel = minLevel;
+            visualRecording = recording;
+            BlockState state = getBlockState();
+            serverLevel.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** The open-session block event (vanilla chest pattern): both sides record the count. */
+    @Override
+    public boolean triggerEvent(int id, int param) {
+        if (id == EVENT_OPENERS) {
+            openersForRender = Math.max(0, param);
+            return true;
+        }
+        return super.triggerEvent(id, param);
+    }
+
+    /** Tells clients how many sessions are open now, and sounds the lid on the first open and last close. */
+    private void signalOpeners(int previous) {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        int current = sessions.size();
+        if (previous == 0 && current > 0) {
+            SecuritySounds.CHEST_OPEN.play(serverLevel, worldPosition);
+        } else if (previous > 0 && current == 0) {
+            SecuritySounds.CHEST_CLOSE.play(serverLevel, worldPosition);
+        }
+        if (previous != current) {
+            serverLevel.blockEvent(worldPosition, getBlockState().getBlock(), EVENT_OPENERS, current);
+        }
     }
 
     // --- installation lookups -------------------------------------------------------------------
@@ -155,9 +249,11 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
             AccessDecision decision = resolveOpen(player, installation);
             if (!decision.allowed()) {
                 player.sendOverlayMessage(decision.message());
+                SecurityDevice.denyFeedback(player, worldPosition);
                 reportDenied(player, installation);
                 return;
             }
+            SecurityDevice.acceptFeedback(player, worldPosition);
         }
         // Unlinked: a plain chest, no events.
         MenuOpener.open(player, this);
@@ -314,7 +410,9 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         if (isRemoved() || !(level instanceof ServerLevel) || !(user instanceof ServerPlayer player)) {
             return;
         }
+        int previous = sessions.size();
         sessions.put(player.getUUID(), Boolean.FALSE);
+        signalOpeners(previous);
         Installation installation = installation();
         if (installation != null) {
             publish(SecurityEventType.CHEST_OPENED, installation, player.getUUID());
@@ -326,7 +424,9 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         if (!(user instanceof ServerPlayer player)) {
             return;
         }
+        int previous = sessions.size();
         Boolean changed = sessions.remove(player.getUUID());
+        signalOpeners(previous);
         if (Boolean.TRUE.equals(changed)) {
             Installation installation = installation();
             if (installation != null) {
@@ -414,6 +514,23 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         items = NonNullList.withSize(SIZE, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         settings = DeviceAccessSettings.load(input.childOrEmpty(KEY_SETTINGS));
+        // Renderer-only fields: present in the client's update tag, never written to disk.
+        visualMinLevel = AccessLevel.byName(input.getStringOr(KEY_MIN_LEVEL, "")).orElse(settings.minLevel());
+        visualRecording = input.getBooleanOr(KEY_RECORDING, false);
+    }
+
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    /** Only what the renderer needs: never the items, the settings or anything about a player. */
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.putString(KEY_MIN_LEVEL, visualMinLevel.jsonName());
+        tag.putBoolean(KEY_RECORDING, visualRecording);
+        return tag;
     }
 
     // --- events ---------------------------------------------------------------------------------

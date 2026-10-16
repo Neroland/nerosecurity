@@ -22,6 +22,7 @@ import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.installation.ServiceResult;
 import za.co.neroland.nerosecurity.registry.NeroSecurityDataComponents;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 
 /**
  * The Linking Tool. Sneak-use on a hub selects it; use on a device links that device to the selected
@@ -73,7 +74,11 @@ public class LinkingToolItem extends Item {
         if (sneaking) {
             Optional<Installation> linked = store.atDevice(device);
             if (linked.isPresent()) {
-                player.sendOverlayMessage(InstallationService.unlinkDevice(player, linked.get(), device).message());
+                ServiceResult unlinked = InstallationService.unlinkDevice(player, linked.get(), device);
+                player.sendOverlayMessage(unlinked.message());
+                if (unlinked.ok()) {
+                    SecuritySounds.LINK.play(level, pos);
+                }
             } else {
                 player.sendOverlayMessage(Component.translatable("tool.nerosecurity.not_a_device"));
             }
@@ -98,6 +103,9 @@ public class LinkingToolItem extends Item {
         }
         ServiceResult result = InstallationService.linkDevice(player, installation.get(), level, pos);
         player.sendOverlayMessage(result.message());
+        if (result.ok()) {
+            SecuritySounds.LINK.play(level, pos);
+        }
         return InteractionResult.SUCCESS;
     }
 }

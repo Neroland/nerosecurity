@@ -16,8 +16,11 @@ public final class BreachCooldowns {
 
     /** Most attackers remembered per emitter. */
     public static final int MAX_ENTRIES = 64;
+    /** Fewest ticks between two melee hits by one attacker that each add load (5 per second, above any real swing rate). */
+    public static final int MELEE_SPACING_TICKS = 4;
 
     private final Map<UUID, Long> lastAt = new HashMap<>();
+    private final Map<UUID, Long> lastMeleeAt = new HashMap<>();
     private long explosionAt = Long.MIN_VALUE;
 
     /**
@@ -49,9 +52,34 @@ public final class BreachCooldowns {
         return true;
     }
 
+    /**
+     * Whether a melee hit by {@code actor} at {@code now} may add load; records it when so. At most one hit per
+     * {@value #MELEE_SPACING_TICKS} ticks per attacker counts, so the meter measures swings, not packets (a modified
+     * client or an autoclicker sends one attack per packet). Bounded like the event slots: when the map is full of
+     * attackers seen within the spacing, the hit adds nothing. A null actor (no player) is never spaced.
+     */
+    public boolean tryMelee(@Nullable UUID actor, long now) {
+        if (actor == null) {
+            return true;
+        }
+        Long at = lastMeleeAt.get(actor);
+        if (at != null && !expired(at, now, MELEE_SPACING_TICKS)) {
+            return false;
+        }
+        if (at == null && lastMeleeAt.size() >= MAX_ENTRIES) {
+            lastMeleeAt.values().removeIf(t -> expired(t, now, MELEE_SPACING_TICKS));
+            if (lastMeleeAt.size() >= MAX_ENTRIES) {
+                return false;
+            }
+        }
+        lastMeleeAt.put(actor, now);
+        return true;
+    }
+
     /** Drops every entry whose cooldown is over (or whose clock went backwards). */
     public void prune(long now, int cooldown) {
         lastAt.values().removeIf(at -> expired(at, now, cooldown));
+        lastMeleeAt.values().removeIf(at -> expired(at, now, MELEE_SPACING_TICKS));
         if (expired(explosionAt, now, cooldown)) {
             explosionAt = Long.MIN_VALUE;
         }
@@ -59,11 +87,17 @@ public final class BreachCooldowns {
 
     public void clear() {
         lastAt.clear();
+        lastMeleeAt.clear();
         explosionAt = Long.MIN_VALUE;
     }
 
     public int size() {
         return lastAt.size();
+    }
+
+    /** Attackers whose last melee hit is remembered. */
+    public int meleeSize() {
+        return lastMeleeAt.size();
     }
 
     private static boolean expired(long at, long now, int cooldown) {

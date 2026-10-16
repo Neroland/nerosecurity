@@ -194,6 +194,12 @@ public final class SecurityAuditLog extends SavedData {
         return log == null ? 0 : log.size();
     }
 
+    /** The time (epoch ms) of one installation's oldest row, {@code 0} when it has none. A count, not a row. */
+    public synchronized long oldestAt(UUID installationId) {
+        AuditLog log = installationId == null ? null : logs.get(installationId);
+        return log == null ? 0L : log.oldestAt();
+    }
+
     /** Conformance probe: does any row anywhere still name {@code actor}? */
     public synchronized boolean hasActorRows(UUID actor) {
         for (AuditLog log : logs.values()) {

@@ -1,8 +1,5 @@
 {
   "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "nerosecurity:block/force_field",
-    "particle": "nerosecurity:block/force_field"
-  },
+  "textures": {"all": "nerosecurity:block/force_field", "particle": "nerosecurity:block/force_field"},
   "render_type": "minecraft:translucent"
 }

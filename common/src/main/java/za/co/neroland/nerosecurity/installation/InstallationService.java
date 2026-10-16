@@ -462,6 +462,62 @@ public final class InstallationService {
         LockdownHooks.fire(server, installation, false);
     }
 
+    // --- remote lockdown (the companion app; link/SecurityLinkActions) ---------------------------
+    //
+    // The link action handler has already applied every guard (config switches, stored ownership,
+    // the resolver with no operator override, rate limit, idempotency) before calling these. They do
+    // the store write and publish the event with the requesting player as actor, exactly like the hub,
+    // but never record a drill milestone. {@code server} may be null (plain-JVM tests): the store and
+    // the event still happen, the world side effects (lockdown hooks) do not.
+
+    /** NORMAL to a manual lockdown entered by an owner. Returns the new state, or null if nothing changed. */
+    public static @Nullable Lockdown enterLockdownRemote(@Nullable MinecraftServer server, SecurityInstallations store,
+            UUID actor, Installation installation, long now) {
+        Installation current = store.byId(installation.id()).orElse(null);
+        if (current == null || current.lockdown().active()) {
+            return null;
+        }
+        Lockdown next = Lockdown.manual(now, true);
+        store.setLockdown(current.id(), next);
+        SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.LOCKDOWN_ENTERED, current.id(), null, actor, now));
+        if (server != null) {
+            applyLockdownEntered(server, current);
+        }
+        return next;
+    }
+
+    /** An active alarm lockdown becomes manual (no auto-release). Returns the new state, or null. */
+    public static @Nullable Lockdown confirmLockdownRemote(@Nullable MinecraftServer server, SecurityInstallations store,
+            UUID actor, Installation installation, long now) {
+        Installation current = store.byId(installation.id()).orElse(null);
+        if (current == null || !current.lockdown().isAlarm()) {
+            return null;
+        }
+        Lockdown next = current.lockdown().confirmed(true);
+        store.setLockdown(current.id(), next);
+        SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.LOCKDOWN_CONFIRMED, current.id(), null, actor, now));
+        return next;
+    }
+
+    /** Any active lockdown ends; leaving an alarm lockdown starts its cooldown. Returns NONE, or null. */
+    public static @Nullable Lockdown exitLockdownRemote(@Nullable MinecraftServer server, SecurityInstallations store,
+            UUID actor, Installation installation, long now) {
+        Installation current = store.byId(installation.id()).orElse(null);
+        if (current == null || !current.lockdown().active()) {
+            return null;
+        }
+        boolean wasAlarm = current.lockdown().isAlarm();
+        store.setLockdown(current.id(), Lockdown.NONE);
+        if (wasAlarm) {
+            store.setLastAlarmLockdownEndedAt(current.id(), now);
+        }
+        SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.LOCKDOWN_EXITED, current.id(), null, actor, now));
+        if (server != null) {
+            applyLockdownExited(server, current);
+        }
+        return Lockdown.NONE;
+    }
+
     // --- operator commands ----------------------------------------------------------------------
 
     public static ServiceResult adminUnlock(CommandSourceStack source, Installation installation) {

@@ -5,14 +5,21 @@
     "index": 0,
     "cases": [
       {
+        "when": ["public", "member", "officer", "owner"],
+        "model": {
+          "type": "minecraft:model",
+          "model": "nerosecurity:item/keycard_banded",
+          "tints": [
+            {"type": "minecraft:constant", "value": 16777215},
+            {"type": "minecraft:custom_model_data", "index": 0, "default": 10526880}
+          ]
+        }
+      },
+      {
         "when": "encrypted",
-        "model": { "type": "minecraft:model", "model": "nerosecurity:item/keycard_encrypted" }
+        "model": {"type": "minecraft:model", "model": "nerosecurity:item/keycard_encrypted"}
       }
     ],
-    "fallback": {
-      "type": "minecraft:model",
-      "model": "nerosecurity:item/keycard",
-      "tints": [ { "type": "minecraft:custom_model_data", "index": 0, "default": 16777215 } ]
-    }
+    "fallback": {"type": "minecraft:model", "model": "nerosecurity:item/keycard_blank"}
   }
 }

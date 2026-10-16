@@ -538,6 +538,19 @@ public final class SecurityInstallations extends SavedData {
         return true;
     }
 
+    /** Sets the installation-wide alarm silence deadline (epoch ms, 0 = none). Not personal data. */
+    public synchronized boolean setAlarmSilencedUntil(UUID id, long until) {
+        Installation installation = byId.get(id);
+        if (installation == null) {
+            return false;
+        }
+        if (installation.alarmSilencedUntil() != Math.max(0L, until)) {
+            installation.setAlarmSilencedUntil(until);
+            setDirty();
+        }
+        return true;
+    }
+
     /** Installations whose alarm lockdown is due to end by itself at {@code now}. Scheduler only. */
     public synchronized List<Installation> dueForAutoRelease(long now) {
         List<Installation> due = new ArrayList<>();
@@ -824,14 +837,17 @@ public final class SecurityInstallations extends SavedData {
 
     /**
      * One installation on disk: {@link Row}, {@link LedgerRow} and {@link BindingRow} keys side by side in one
-     * object, plus {@code last_alarm_lockdown_ended_at} (optional, 0 = never).
+     * object, plus {@code last_alarm_lockdown_ended_at} (optional, 0 = never) and {@code alarm_silenced_until}
+     * (optional, 0 = none; same schema version).
      */
-    private record Entry(Row row, LedgerRow ledger, BindingRow bindings, long lastAlarmLockdownEndedAt) {
+    private record Entry(Row row, LedgerRow ledger, BindingRow bindings, long lastAlarmLockdownEndedAt,
+            long alarmSilencedUntil) {
         static final Codec<Entry> CODEC = RecordCodecBuilder.create(inst -> inst.group(
                 Row.MAP_CODEC.forGetter(Entry::row),
                 LedgerRow.MAP_CODEC.forGetter(Entry::ledger),
                 BindingRow.MAP_CODEC.forGetter(Entry::bindings),
-                Codec.LONG.optionalFieldOf("last_alarm_lockdown_ended_at", 0L).forGetter(Entry::lastAlarmLockdownEndedAt)
+                Codec.LONG.optionalFieldOf("last_alarm_lockdown_ended_at", 0L).forGetter(Entry::lastAlarmLockdownEndedAt),
+                Codec.LONG.optionalFieldOf("alarm_silenced_until", 0L).forGetter(Entry::alarmSilencedUntil)
         ).apply(inst, Entry::new));
     }
 
@@ -872,7 +888,7 @@ public final class SecurityInstallations extends SavedData {
                     Optional.ofNullable(i.auditRetentionDaysOverride()), List.of()), ledger,
                     new BindingRow(Optional.ofNullable(i.boundColony()).map(UUID::toString),
                             i.colonyMaxLevel().jsonName()),
-                    i.lastAlarmLockdownEndedAt()));
+                    i.lastAlarmLockdownEndedAt(), i.alarmSilencedUntil()));
         }
         return new Root(SCHEMA_VERSION, rows);
     }
@@ -957,6 +973,7 @@ public final class SecurityInstallations extends SavedData {
             }
             row.lockdown().ifPresent(l -> installation.setLockdown(l.toLockdown()));
             installation.setLastAlarmLockdownEndedAt(entry.lastAlarmLockdownEndedAt());
+            installation.setAlarmSilencedUntil(entry.alarmSilencedUntil());
             row.boundFaction().map(Identifier::tryParse).ifPresent(installation::setBoundFaction);
             installation.setFactionMaxLevel(AccessLevel.byName(row.factionMaxLevel())
                     .filter(level -> level == AccessLevel.MEMBER || level == AccessLevel.OFFICER)

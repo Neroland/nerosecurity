@@ -7,15 +7,20 @@ import io.netty.handler.codec.DecoderException;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+
+import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.block.alarm.AlarmResponse;
 import za.co.neroland.nerosecurity.client.screen.alarm.ClientAlarmState;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
+import za.co.neroland.nerosecurity.menu.SnapshotMessages;
 import za.co.neroland.nerosecurity.network.SecurityNetwork;
 
 /**
@@ -88,13 +93,15 @@ public final class AlarmPayloads {
      * @param admin                            whether the viewer is acting as an operator
      * @param lockdownResponseAllowedByServer  whether the server lets any alarm trigger a lockdown
      * @param autoReleaseMinutes               how long an alarm lockdown lasts before it clears itself
+     * @param ok                               whether {@code message} reports a success
+     * @param message                          the outcome of the action that produced this snapshot, or null
      */
     public record AlarmSnapshot(BlockPos pos, Set<SecurityEventType> subscribed, Set<AlarmResponse> responses,
             int silencedForSeconds, AccessLevel viewerLevel, boolean admin, boolean lockdownResponseAllowedByServer,
-            int autoReleaseMinutes) implements CustomPacketPayload {
+            int autoReleaseMinutes, boolean ok, @Nullable Component message) implements CustomPacketPayload {
 
         public static final Type<AlarmSnapshot> TYPE = new Type<>(id("alarm_snapshot"));
-        public static final StreamCodec<FriendlyByteBuf, AlarmSnapshot> STREAM_CODEC =
+        public static final StreamCodec<RegistryFriendlyByteBuf, AlarmSnapshot> STREAM_CODEC =
                 StreamCodec.of(AlarmSnapshot::write, AlarmSnapshot::read);
 
         public AlarmSnapshot {
@@ -102,7 +109,7 @@ public final class AlarmPayloads {
             responses = Set.copyOf(responses);
         }
 
-        private static void write(FriendlyByteBuf buf, AlarmSnapshot value) {
+        private static void write(RegistryFriendlyByteBuf buf, AlarmSnapshot value) {
             buf.writeBlockPos(value.pos);
             writeSet(buf, value.subscribed.isEmpty() ? EnumSet.noneOf(SecurityEventType.class)
                     : EnumSet.copyOf(value.subscribed));
@@ -113,9 +120,10 @@ public final class AlarmPayloads {
             buf.writeBoolean(value.admin);
             buf.writeBoolean(value.lockdownResponseAllowedByServer);
             buf.writeVarInt(Math.max(0, value.autoReleaseMinutes));
+            SnapshotMessages.write(buf, value.ok, value.message);
         }
 
-        private static AlarmSnapshot read(FriendlyByteBuf buf) {
+        private static AlarmSnapshot read(RegistryFriendlyByteBuf buf) {
             BlockPos pos = buf.readBlockPos();
             EnumSet<SecurityEventType> subscribed = readTypes(buf);
             EnumSet<AlarmResponse> responses = readResponses(buf);
@@ -124,7 +132,9 @@ public final class AlarmPayloads {
             boolean admin = buf.readBoolean();
             boolean allowed = buf.readBoolean();
             int minutes = buf.readVarInt();
-            return new AlarmSnapshot(pos, subscribed, responses, silenced, viewer, admin, allowed, minutes);
+            boolean ok = SnapshotMessages.readOk(buf);
+            Component message = SnapshotMessages.readMessage(buf);
+            return new AlarmSnapshot(pos, subscribed, responses, silenced, viewer, admin, allowed, minutes, ok, message);
         }
 
         /** Whether the viewer may touch the lockdown checkbox (the server re-checks). */

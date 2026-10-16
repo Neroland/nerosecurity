@@ -2,13 +2,18 @@ package za.co.neroland.nerosecurity.menu.sensor;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
+import org.jetbrains.annotations.Nullable;
+
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.client.screen.sensor.ClientSensorState;
+import za.co.neroland.nerosecurity.menu.SnapshotMessages;
 import za.co.neroland.nerosecurity.network.SecurityNetwork;
 import za.co.neroland.nerosecurity.sensor.SensorSettings;
 
@@ -44,22 +49,31 @@ public final class SensorPayloads {
      * Server truth for the open sensor screen, sent only to a player just allowed to configure this
      * sensor. {@code viewerLevel} lets the screen disable the OWNER button for a non-owner; {@code laser}
      * hides the field-of-view control. Display only. Energy, armed and module count come through the
-     * menu's data slots.
+     * menu's data slots. {@code ok}/{@code message} are the outcome of the action that produced the snapshot.
      */
     public record SensorSnapshot(BlockPos pos, SensorSettings settings, boolean laser, boolean linked,
-            AccessLevel viewerLevel) implements CustomPacketPayload {
+            AccessLevel viewerLevel, boolean ok, @Nullable Component message) implements CustomPacketPayload {
 
         public static final Type<SensorSnapshot> TYPE = new Type<>(id("sensor_snapshot"));
-        public static final StreamCodec<FriendlyByteBuf, SensorSnapshot> STREAM_CODEC = StreamCodec.of(
+        public static final StreamCodec<RegistryFriendlyByteBuf, SensorSnapshot> STREAM_CODEC = StreamCodec.of(
                 (buf, v) -> {
                     buf.writeBlockPos(v.pos);
                     SensorSettings.STREAM_CODEC.encode(buf, v.settings);
                     buf.writeBoolean(v.laser);
                     buf.writeBoolean(v.linked);
                     AccessLevel.STREAM_CODEC.encode(buf, v.viewerLevel);
+                    SnapshotMessages.write(buf, v.ok, v.message);
                 },
-                buf -> new SensorSnapshot(buf.readBlockPos(), SensorSettings.STREAM_CODEC.decode(buf),
-                        buf.readBoolean(), buf.readBoolean(), AccessLevel.STREAM_CODEC.decode(buf)));
+                buf -> {
+                    BlockPos pos = buf.readBlockPos();
+                    SensorSettings settings = SensorSettings.STREAM_CODEC.decode(buf);
+                    boolean laser = buf.readBoolean();
+                    boolean linked = buf.readBoolean();
+                    AccessLevel viewer = AccessLevel.STREAM_CODEC.decode(buf);
+                    boolean ok = SnapshotMessages.readOk(buf);
+                    Component message = SnapshotMessages.readMessage(buf);
+                    return new SensorSnapshot(pos, settings, laser, linked, viewer, ok, message);
+                });
 
         public SensorSnapshot {
             settings = settings == null ? SensorSettings.DEFAULT : settings;

@@ -58,12 +58,19 @@ import za.co.neroland.nerosecurity.item.LinkingToolItem;
  *       starts, so the door is passable only while fully open.</li>
  *   <li>Anyone can break a door (raidability): hardness modules slow breaking and raise blast
  *       resistance, capped by {@code doorMaxBlastResistance}. Nothing makes a door unbreakable.</li>
+ *   <li>{@link #ANIMATING} and {@link #SEALED} are visual only (which model the client draws): animating
+ *       is true from the start of an open or close until the door is shut and still again; sealed is true
+ *       while the installation is in lockdown. Nothing reads them for access or collision.</li>
  * </ul>
  */
 public abstract class AbstractSecurityDoorBlock extends BaseEntityBlock implements SecurityDevice {
 
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
+    /** Visual: the panels are moving or open, so the renderer (not the static model) draws them. */
+    public static final BooleanProperty ANIMATING = BooleanProperty.create("animating");
+    /** Visual: the installation is in lockdown; the model adds the clamp bars. */
+    public static final BooleanProperty SEALED = BooleanProperty.create("sealed");
 
     /** Open = a thin panel against the back of the frame, so the door can still be clicked to close. */
     private static final VoxelShape OPEN_BACK_NORTH = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 2.0D);
@@ -136,7 +143,8 @@ public abstract class AbstractSecurityDoorBlock extends BaseEntityBlock implemen
                 return null;
             }
         }
-        return withPart(defaultBlockState().setValue(FACING, facing).setValue(OPEN, false), 0);
+        return withPart(defaultBlockState().setValue(FACING, facing).setValue(OPEN, false)
+                .setValue(ANIMATING, false).setValue(SEALED, false), 0);
     }
 
     @Override
@@ -175,6 +183,25 @@ public abstract class AbstractSecurityDoorBlock extends BaseEntityBlock implemen
             BlockState current = level.getBlockState(part);
             if (current.getBlock() == this && current.getValue(OPEN) != open) {
                 level.setBlock(part, current.setValue(OPEN, open), Block.UPDATE_ALL);
+            }
+        }
+    }
+
+    /**
+     * Sets the visual properties on every part of the door whose controller is at {@code controller}, only
+     * where they differ. Clients only: no neighbour or shape update, because neither property changes shape.
+     */
+    public void setVisual(Level level, BlockPos controller, boolean animating, boolean sealed) {
+        BlockState controllerState = level.getBlockState(controller);
+        if (controllerState.getBlock() != this) {
+            return;
+        }
+        for (BlockPos part : partPositions(controller, controllerState.getValue(FACING))) {
+            BlockState current = level.getBlockState(part);
+            if (current.getBlock() == this
+                    && (current.getValue(ANIMATING) != animating || current.getValue(SEALED) != sealed)) {
+                level.setBlock(part, current.setValue(ANIMATING, animating).setValue(SEALED, sealed),
+                        Block.UPDATE_CLIENTS);
             }
         }
     }

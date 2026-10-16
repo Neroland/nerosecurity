@@ -52,11 +52,31 @@ part lands, and the scope cuts are listed at the bottom.
   draw grows with area and strength; Strength and Range modules raise them up to `maxFieldStrength` and
   `fieldMaxRange`. Fields can be overloaded by sustained attacks or explosions (`forceFieldBreachable`, on by
   default) and come back after a cooldown, and the emitter itself can always be broken, so a field slows a raid
-  down rather than making a base unraidable. Fields only fill air, never trap an entity, and never project into
-  land another player's claim protects. The field blocks are immune to withers and the dragon.
+  down rather than making a base unraidable. Lockdown raises a field to full strength without resetting its
+  overload, breaking and re-placing an emitter does not skip its cooldown, and field blocks can only be removed
+  by their owners (or once their emitter is gone). Fields replace grass and snow but not real blocks or water;
+  if something blocks part of the shape, the installation logs that the field is obstructed. Fields only fill air (and replaceable plants or snow, which are not restored), are never placed where an entity is standing,
+  and never project into land another player's claim protects; note that a closed box can still enclose someone
+  who was already inside it. The field blocks are immune to withers and the dragon.
+- **`raid-server` preset** (documented values for PvP servers; every other key keeps its default):
+
+  | Key | Default | raid-server |
+  |---|---|---|
+  | `forceFieldBreachable` | true | true |
+  | `maxFieldStrength` | 5 | 3 |
+  | `maxFieldArea` | 400 | 256 |
+  | `fieldLoadCapacityPerStrength` | 40 | 25 |
+  | `fieldLoadDecayPerSecond` | 2.0 | 1.0 |
+  | `fieldExplosionLoadPerRadius` | 10 | 15 |
+  | `fieldMeleeLoad` | 1.0 | 1.5 |
+  | `forceFieldOverloadSeconds` | 60 | 180 |
+  | `fieldPowerPerBlockStrength` | 0.25 | 0.5 |
+  | `fieldLockdownRaisesToMax` | true | true |
+  | `doorMaxBlastResistance` | 3600 | 1200 |
 - **Optional integrations** (each only when that mod is installed; NeroSecurity works fully without them):
   - **NeroFactions:** an owner can bind an installation to a faction they belong to; faction members then get
-    access by tier (Member → MEMBER, Trusted / Inner Circle → OFFICER, capped per installation, never OWNER).
+    access by tier (Member → MEMBER, Trusted / Inner Circle → OFFICER), capped by the binding's maximum (MEMBER
+    unless the owner chooses OFFICER), never OWNER. Only a stored owner can bind or unbind — not a keycard.
   - **NeroColonies:** bind to a colony you belong to; colony members get access by role (capped, never OWNER).
   - **Nerospace:** bind to a station you own; the station's current owner gets OFFICER.
   - **Open Parties and Claims:** NeroSecurity never lets you do what a claim forbids — a claim can only deny.
@@ -104,6 +124,14 @@ part lands, and the scope cuts are listed at the bottom.
   player-data erasure hook.
 - Unit tests for the resolver, the installation store, erasure conformance, the event bus, the lockdown
   channel and the shipped quest/gate data (run in the NeoForge build).
+- **NeroLink companion app module.** Installations, recent events, device status and the legacy summary are
+  readable from the NeroLink companion app (your own installations only, no coordinates, no player ids);
+  breaches and lockdown changes become grouped phone notifications and stored alerts whose text is only a
+  fixed phrase and the installation name; owners can acknowledge alerts and silence alarms from the app, and
+  remote lockdown is off unless the server enables it (`linkLockdownMode`). New `/nerosecurity alerts` and a
+  counts-only login summary. Config: `linkModuleEnabled`, `pushNotificationsEnabled`, `pushCooldownSeconds`,
+  `pushDeniedThreshold`, `pushDeniedWindowSeconds`, `linkLockdownMode`, `linkLockdownAllowOffline`,
+  `linkActionAckEnabled`, `linkActionSilenceEnabled`, `loginAlertSummaryEnabled`. See PRIVACY.md.
 
 ### Changed
 

@@ -25,6 +25,7 @@ import za.co.neroland.nerosecurity.menu.ProgrammerPayloads.ProgrammerSnapshot;
 import za.co.neroland.nerosecurity.menu.ProgrammerPayloads.ProgrammerWipe;
 import za.co.neroland.nerosecurity.menu.ProgrammerPayloads.ProgrammerWrite;
 import za.co.neroland.nerosecurity.platform.Services;
+import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 
 /**
@@ -58,9 +59,15 @@ public final class ProgrammerPayloadHandlers {
     /** Sends the display snapshot to a player the resolver has just allowed to view the programmer. */
     public static void sendSnapshot(ServerPlayer player, KeycardProgrammerBlockEntity programmer,
             Installation installation, AccessDecision decision, @Nullable Component message) {
+        sendSnapshot(player, programmer, installation, decision, true, message);
+    }
+
+    /** As above, with whether {@code message} reports a success ({@code ok}) or a refusal. */
+    public static void sendSnapshot(ServerPlayer player, KeycardProgrammerBlockEntity programmer,
+            Installation installation, AccessDecision decision, boolean ok, @Nullable Component message) {
         Services.NETWORK.sendToPlayer(player, new ProgrammerSnapshot(programmer.getBlockPos().immutable(),
                 decision.effective(), programmer.hasEncryptionModule(), NeroSecurityConfig.keycardBasicMaxLevel(),
-                installation.cardCount(), NeroSecurityConfig.keycardsPerInstallation(), message));
+                installation.cardCount(), NeroSecurityConfig.keycardsPerInstallation(), ok, message));
     }
 
     public static void handleWrite(ProgrammerWrite payload, ServerPlayer player) {
@@ -74,6 +81,9 @@ public final class ProgrammerPayloadHandlers {
                     bound.programmer.hasEncryptionModule());
             KeycardItem.syncDisplay(bound.programmer.cardStack());
             bound.programmer.container().setChanged();
+            if (result.ok()) {
+                SecuritySounds.CARD_WRITE.play(player.level(), bound.programmer.getBlockPos());
+            }
             finish(player, bound, result);
         });
     }
@@ -89,6 +99,9 @@ public final class ProgrammerPayloadHandlers {
                     bound.programmer.hasEncryptionModule());
             KeycardItem.syncDisplay(bound.programmer.blankStack());
             bound.programmer.container().setChanged();
+            if (result.ok()) {
+                SecuritySounds.CARD_WRITE.play(player.level(), bound.programmer.getBlockPos());
+            }
             finish(player, bound, result);
         });
     }
@@ -103,6 +116,9 @@ public final class ProgrammerPayloadHandlers {
                     bound.programmer.cardStack());
             KeycardItem.syncDisplay(bound.programmer.cardStack());
             bound.programmer.container().setChanged();
+            if (result.ok()) {
+                SecuritySounds.CARD_WIPE.play(player.level(), bound.programmer.getBlockPos());
+            }
             finish(player, bound, result);
         });
     }
@@ -146,7 +162,7 @@ public final class ProgrammerPayloadHandlers {
         }
         AccessDecision decision = resolveView(player, fresh, bound.at);
         if (decision.allowed()) {
-            sendSnapshot(player, bound.programmer, fresh, decision, result.message());
+            sendSnapshot(player, bound.programmer, fresh, decision, result.ok(), result.message());
         } else {
             player.closeContainer();
             player.sendSystemMessage(decision.message());

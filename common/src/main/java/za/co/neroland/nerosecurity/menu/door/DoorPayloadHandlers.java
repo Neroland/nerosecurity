@@ -43,11 +43,18 @@ public final class DoorPayloadHandlers {
     /** Sends the door snapshot to a player the resolver has just allowed to configure the door. */
     public static void sendSnapshot(ServerPlayer player, SecurityDoorBlockEntity door,
             @Nullable Installation installation, AccessDecision decision) {
+        sendSnapshot(player, door, installation, decision, true, null);
+    }
+
+    /** As above, carrying the outcome of the action that produced it for the screen's footer. */
+    public static void sendSnapshot(ServerPlayer player, SecurityDoorBlockEntity door,
+            @Nullable Installation installation, AccessDecision decision, boolean ok, @Nullable Component message) {
         DeviceAccessSettings settings = door.settings();
         Services.NETWORK.sendToPlayer(player, new DoorSnapshot(door.getBlockPos(), settings.minLevel(),
                 settings.keycardOnly(), door.redstoneMode(), door.getEnergy().getAmount(),
                 door.getEnergy().getCapacity(), SecurityDoorBlockEntity.lockdownActive(installation),
-                installation != null, decision.admin() ? AccessLevel.OWNER : decision.effective()));
+                installation != null, decision.admin() ? AccessLevel.OWNER : decision.effective(),
+                installation == null ? "" : installation.name(), NeroSecurityConfig.doorRedstoneAllowed(), ok, message));
     }
 
     public static void handleConfigure(DoorConfigure payload, ServerPlayer player) {
@@ -72,8 +79,9 @@ public final class DoorPayloadHandlers {
             AccessLevel minLevel = payload.minLevel() == null ? AccessLevel.MEMBER : payload.minLevel();
             boolean owner = decision.admin() || decision.effective() == AccessLevel.OWNER;
             if (!DeviceSettingsRules.mayApply(owner, door.settings().minLevel(), minLevel)) {
-                player.sendSystemMessage(Component.translatable("door.nerosecurity.owner_only_setting"));
-                sendSnapshot(player, door, installation, decision);
+                Component refusal = Component.translatable("door.nerosecurity.owner_only_setting");
+                player.sendSystemMessage(refusal);
+                sendSnapshot(player, door, installation, decision, false, refusal);
                 return;
             }
             RedstoneMode mode = payload.mode() == null ? RedstoneMode.IGNORE : payload.mode();
@@ -83,8 +91,9 @@ public final class DoorPayloadHandlers {
             door.applySettings(new DeviceAccessSettings(minLevel, payload.keycardOnly()), mode);
             SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.DEVICE_CONFIGURED, installation.id(), at,
                     player.getUUID(), System.currentTimeMillis()));
-            player.sendOverlayMessage(Component.translatable("door.nerosecurity.configured"));
-            sendSnapshot(player, door, installation, decision);
+            Component done = Component.translatable("door.nerosecurity.configured");
+            player.sendOverlayMessage(done);
+            sendSnapshot(player, door, installation, decision, true, done);
         });
     }
 

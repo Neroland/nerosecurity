@@ -1,6 +1,175 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:block/block",
   "textures": {
-    "layer0": "nerosecurity:item/blast_door"
+    "frame": "nerosecurity:block/blast_door_frame",
+    "panel": "nerosecurity:block/blast_door_panel",
+    "clamp": "nerosecurity:block/blast_door_clamp",
+    "particle": "nerosecurity:block/blast_door_frame"
+  },
+  "elements": [
+    {
+      "name": "frame_v",
+      "from": [0, 0, 0],
+      "to": [2, 16, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "frame_h",
+      "from": [0, 0, 0],
+      "to": [16, 2, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "panel",
+      "from": [2, 2, 5],
+      "to": [16, 16, 11],
+      "faces": {
+        "north": {"texture": "#panel", "uv": [0, 16, 14, 2]},
+        "south": {"texture": "#panel", "uv": [0, 16, 14, 2]},
+        "east": {"texture": "#panel"},
+        "west": {"texture": "#panel"},
+        "up": {"texture": "#panel"},
+        "down": {"texture": "#panel"}
+      }
+    },
+    {
+      "name": "frame_v",
+      "from": [30, 0, 0],
+      "to": [32, 16, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "frame_h",
+      "from": [16, 0, 0],
+      "to": [32, 2, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "panel",
+      "from": [16, 2, 5],
+      "to": [30, 16, 11],
+      "faces": {
+        "north": {"texture": "#panel", "uv": [2, 16, 16, 2]},
+        "south": {"texture": "#panel", "uv": [2, 16, 16, 2]},
+        "east": {"texture": "#panel"},
+        "west": {"texture": "#panel"},
+        "up": {"texture": "#panel"},
+        "down": {"texture": "#panel"}
+      }
+    },
+    {
+      "name": "frame_v",
+      "from": [0, 16, 0],
+      "to": [2, 32, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "frame_h",
+      "from": [0, 30, 0],
+      "to": [16, 32, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "panel",
+      "from": [2, 16, 5],
+      "to": [16, 30, 11],
+      "faces": {
+        "north": {"texture": "#panel", "uv": [0, 2, 14, 16]},
+        "south": {"texture": "#panel", "uv": [0, 2, 14, 16]},
+        "east": {"texture": "#panel"},
+        "west": {"texture": "#panel"},
+        "up": {"texture": "#panel"},
+        "down": {"texture": "#panel"}
+      }
+    },
+    {
+      "name": "frame_v",
+      "from": [30, 16, 0],
+      "to": [32, 32, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "frame_h",
+      "from": [16, 30, 0],
+      "to": [32, 32, 16],
+      "faces": {
+        "north": {"texture": "#frame"},
+        "south": {"texture": "#frame"},
+        "east": {"texture": "#frame"},
+        "west": {"texture": "#frame"},
+        "up": {"texture": "#frame"},
+        "down": {"texture": "#frame"}
+      }
+    },
+    {
+      "name": "panel",
+      "from": [16, 16, 5],
+      "to": [30, 30, 11],
+      "faces": {
+        "north": {"texture": "#panel", "uv": [2, 2, 16, 16]},
+        "south": {"texture": "#panel", "uv": [2, 2, 16, 16]},
+        "east": {"texture": "#panel"},
+        "west": {"texture": "#panel"},
+        "up": {"texture": "#panel"},
+        "down": {"texture": "#panel"}
+      }
+    }
+  ],
+  "display": {
+    "gui": {"rotation": [0, 0, 0], "translation": [-2.56, -2.56, 0], "scale": [0.32, 0.32, 0.32]},
+    "ground": {"rotation": [0, 0, 0], "translation": [-1.536, 0.46399999999999997, 0], "scale": [0.192, 0.192, 0.192]},
+    "fixed": {"rotation": [0, 0, 0], "translation": [-2.56, -2.56, 0], "scale": [0.32, 0.32, 0.32]},
+    "thirdperson_righthand": {"rotation": [75, 45, 0], "translation": [0, 1.5, 0], "scale": [0.24, 0.24, 0.24]},
+    "firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.256, 0.256, 0.256]},
+    "firstperson_lefthand": {"rotation": [0, 225, 0], "translation": [0, 0, 0], "scale": [0.256, 0.256, 0.256]}
   }
 }

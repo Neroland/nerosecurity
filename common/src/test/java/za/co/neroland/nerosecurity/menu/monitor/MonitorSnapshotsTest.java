@@ -18,7 +18,8 @@ import java.util.UUID;
 import io.netty.buffer.Unpooled;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 
 import org.junit.jupiter.api.Test;
@@ -115,7 +116,7 @@ class MonitorSnapshotsTest {
         assertTrue(MonitorSnapshots.assemble(BlockPos.ZERO, "Lab", Lockdown.NONE, true, NOW, true, false,
                 List.of(), all, 10).events().isEmpty(), "audit disabled: no rows at all");
         assertEquals(MonitorSnapshot.MAX_EVENTS, new MonitorSnapshot(BlockPos.ZERO, "Lab", false, null, 0, 0, false,
-                false, List.of(), AnonymousEvent.of(new ArrayList<>(entries), NOW)).events().size(),
+                false, List.of(), AnonymousEvent.of(new ArrayList<>(entries), NOW), true, null).events().size(),
                 "the record itself never holds more than MAX_EVENTS");
     }
 
@@ -193,14 +194,14 @@ class MonitorSnapshotsTest {
         UUID player = UUID.randomUUID();
         MonitorSnapshot snap = snapshot(MonitorSnapshots.rows(List.of(entry(NOW - 120_000L, player, false),
                 entry(NOW - 1_000L, null, false)), NOW, 10));
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         MonitorSnapshot.STREAM_CODEC.encode(buf, snap);
         byte[] wire = new byte[buf.readableBytes()];
         buf.getBytes(buf.readerIndex(), wire);
         assertFalse(new String(wire, java.nio.charset.StandardCharsets.ISO_8859_1).contains(player.toString()));
         assertEquals(snap, MonitorSnapshot.STREAM_CODEC.decode(buf));
 
-        FriendlyByteBuf forged = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf forged = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         forged.writeBlockPos(BlockPos.ZERO);
         forged.writeUtf("x");
         forged.writeBoolean(false);

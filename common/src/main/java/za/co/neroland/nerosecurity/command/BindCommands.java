@@ -50,7 +50,9 @@ import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
  * and checks the binder's own membership on every invocation. Suggestions list only the invoker's own factions and
  * stations (never anyone else's), and feedback goes to the invoker alone and never names another player.
  * {@code colony here} resolves the colony (or an outpost's parent colony) the invoker is standing in. The max level
- * defaults to OFFICER, the most an integration can ever grant. Server thread only.
+ * defaults to MEMBER ({@link BindingService#DEFAULT_MAX_LEVEL}); OFFICER, the most an integration can ever grant
+ * (it shows the organisation's members the hub roster and the audit log), must be typed explicitly. Server thread
+ * only.
  */
 public final class BindCommands {
 
@@ -93,11 +95,11 @@ public final class BindCommands {
         int run(CommandContext<CommandSourceStack> ctx, AccessLevel max);
     }
 
-    /** {@code node} runs with OFFICER, or with an explicit trailing {@code member|officer}. */
+    /** {@code node} runs with MEMBER (the default), or with an explicit trailing {@code member|officer}. */
     private static <T extends ArgumentBuilder<CommandSourceStack, T>> T withMax(T node,
             String name, MaxBody body) {
         return node
-                .executes(ctx -> runSafely(ctx.getSource(), name, () -> body.run(ctx, AccessLevel.OFFICER)))
+                .executes(ctx -> runSafely(ctx.getSource(), name, () -> body.run(ctx, BindingService.DEFAULT_MAX_LEVEL)))
                 .then(Commands.literal("member")
                         .executes(ctx -> runSafely(ctx.getSource(), name, () -> body.run(ctx, AccessLevel.MEMBER))))
                 .then(Commands.literal("officer")
