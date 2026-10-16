@@ -35,9 +35,10 @@ import za.co.neroland.nerosecurity.platform.Services;
  *   <li><b>NeroSecurity errors only:</b> {@code beforeSend} drops any event whose stack trace does
  *       not touch {@code za.co.neroland.nerosecurity}.</li>
  *   <li><b>No personal data:</b> {@code sendDefaultPii=false} (no IP), no server/host name, no user
- *       identity, no player names/UUIDs, and OS-account
- *       names are scrubbed from file paths. Remaining payload: stack trace,
- *       mod/MC/loader/OS/Java versions.</li>
+ *       identity, no player names/UUIDs. The OS account name and home directory are masked as
+ *       {@code [user]} in exception messages, log messages, breadcrumbs and stack-frame file names
+ *       and paths. Remaining payload: stack trace, mod/MC/loader/OS/Java versions and the loaded
+ *       mod list.</li>
  *   <li><b>Bounded volume:</b> per-session de-duplication plus a hard cap of
  *       {@value #MAX_EVENTS_PER_SESSION} events per game session.</li>
  * </ul>
@@ -50,28 +51,28 @@ public final class NeroSecurityTelemetry {
 
     /**
      * ============================ THE UNCONFIGURED-BUILD GUARD ============================
-     * While {@link #DSN} equals this literal, every entry point below is a hard no-op:
+     * If {@link #DSN} is set to this literal, every entry point below is a hard no-op:
      * {@link #init()} returns before touching the Sentry SDK, so <b>nothing is ever sent
      * anywhere</b> and no network connection is opened, regardless of the {@code telemetryEnabled}
      * config value.
      *
-     * <p>No NeroSecurity Sentry project exists yet, so {@link #DSN} is still this placeholder and
-     * telemetry is wired but inert. To go live, create the project and paste its public DSN into
-     * {@link #DSN}. Even then, <b>do not remove the guard</b>: it is what keeps a fork, a stripped
-     * build or a half-configured branch silent instead of crashing on SDK init or reporting into
-     * somebody else's project.
+     * <p>Official builds ship NeroSecurity's real project DSN, so telemetry is active there unless
+     * the player opts out. A fork or rebuild that should not report into the official project sets
+     * {@link #DSN} back to this placeholder. <b>Do not remove the guard</b>: it is what keeps such a
+     * build silent instead of reporting into somebody else's project.
      * ===================================================================================
      */
     private static final String PLACEHOLDER_DSN = "https://REPLACE-ME@sentry.invalid/0";
 
     /**
-     * Sentry DSN — the placeholder until a real project key is pasted in (no secret is involved:
-     * a DSN is a public client key, write-only ingest, safe to ship in the jar). It grants
-     * permission to SEND events and nothing else: it cannot read issues, and it identifies the
-     * NeroSecurity project, never a player. Opt-out via {@code telemetryEnabled=false} in
-     * {@code config/nerosecurity.properties}; see PRIVACY.md for the full disclosure.
+     * Sentry DSN for the NeroSecurity project (EU ingest). No secret is involved: a DSN is a public
+     * client key, write-only ingest, safe to ship in the jar. It grants permission to SEND events
+     * and nothing else: it cannot read issues, and it identifies the NeroSecurity project, never a
+     * player. Opt-out via {@code telemetryEnabled=false} in {@code config/nerosecurity.properties};
+     * see PRIVACY.md for the full disclosure.
      */
-    private static final String DSN = PLACEHOLDER_DSN;
+    private static final String DSN =
+            "https://dc9e69c311fa377cbfd64c8fa14f4d67@o4511183823241216.ingest.de.sentry.io/4512256287440976";
 
     /** Stack traces must contain this package for an event to be sent. */
     private static final String PACKAGE_MARKER = "za.co.neroland.nerosecurity";
@@ -95,8 +96,8 @@ public final class NeroSecurityTelemetry {
     }
 
     /**
-     * True while the shipped DSN is the placeholder (the case until a Sentry project exists), in which
-     * case telemetry stays wired but inert.
+     * True when the DSN is the placeholder (a fork or rebuild opted out of the official project), in
+     * which case telemetry stays wired but sends nothing.
      */
     private static boolean dsnIsPlaceholder() {
         return PLACEHOLDER_DSN.equals(DSN);
@@ -111,10 +112,10 @@ public final class NeroSecurityTelemetry {
      */
     public static void init() {
         if (dsnIsPlaceholder()) {
-            // No Sentry project configured: stay completely inert. Logged once at DEBUG so a
+            // Placeholder DSN (a fork or rebuild): send nothing. Logged once at DEBUG so a
             // developer can see why no events arrive, without nagging players.
             NeroSecurityCommon.LOGGER.debug(
-                    "[NeroSecurity] Telemetry inert - no Sentry DSN configured in this build.");
+                    "[NeroSecurity] Telemetry off - no Sentry DSN configured in this build.");
             return;
         }
         if (!NeroSecurityConfig.isTelemetryEnabled()) {
@@ -144,6 +145,17 @@ public final class NeroSecurityTelemetry {
         if (active) {
             return;
         }
+        try {
+            startSentry();
+        } catch (RuntimeException | LinkageError e) {
+            // Telemetry must never take mod construction down with it.
+            NeroSecurityCommon.LOGGER.warn(
+                    "[NeroSecurity] Telemetry could not start ({}); continuing without error reporting.",
+                    e.getClass().getName());
+        }
+    }
+
+    private static void startSentry() {
         String modVersion = Services.PLATFORM.getModVersion();
         boolean dev = Services.PLATFORM.isDevelopmentEnvironment();
         Sentry.init(options -> {
@@ -222,7 +234,11 @@ public final class NeroSecurityTelemetry {
         crumb.setCategory(category);
         crumb.setLevel(SentryLevel.INFO);
         crumb.setMessage(scrub(message));
-        Sentry.addBreadcrumb(crumb);
+        try {
+            Sentry.addBreadcrumb(crumb);
+        } catch (RuntimeException | LinkageError ignored) {
+            // A lost breadcrumb is harmless.
+        }
     }
 
     /**
@@ -311,7 +327,12 @@ public final class NeroSecurityTelemetry {
         if (!active || t == null) {
             return;
         }
-        Sentry.captureException(t);
+        try {
+            Sentry.captureException(t);
+        } catch (RuntimeException | LinkageError e) {
+            NeroSecurityCommon.LOGGER.debug("[NeroSecurity] Telemetry could not report an exception ({})",
+                    e.getClass().getName());
+        }
     }
 
     /** Capture a handled exception if it is still clearly from NeroSecurity code. */
@@ -321,17 +342,34 @@ public final class NeroSecurityTelemetry {
         }
     }
 
-    /** Capture a handled exception with a non-identifying source label for triage. */
+    /**
+     * Capture a handled exception with non-identifying labels for triage. {@code source} and
+     * {@code operation} must be stable labels (a subsystem name plus a translation key or class
+     * name) — never player-authored text, a rendered title, a name, a UUID or a position.
+     *
+     * <p>Uses Sentry 8.x's {@code captureException(Throwable, ScopeCallback)} overload: tags set
+     * inside {@code Sentry.withScope(...)} never reach the event. The fingerprint is source AND
+     * operation AND exception type, so unrelated handled failures stay separate issues.
+     */
     public static void captureHandledException(Throwable t, String source, String operation) {
         if (!active || t == null || !touchesNeroSecurity(t)) {
             return;
         }
-        Sentry.withScope(scope -> {
-            scope.setTag("handled", "true");
-            scope.setTag("source", source);
-            scope.setExtra("operation", operation);
-            Sentry.captureException(t);
-        });
+        String safeSource = source == null ? "unknown" : scrub(source);
+        String safeOperation = operation == null ? "unknown" : scrub(operation);
+        try {
+            Sentry.captureException(t, scope -> {
+                scope.setLevel(SentryLevel.WARNING);
+                scope.setTag("handled", "true");
+                scope.setTag("source", safeSource);
+                scope.setTag("operation", safeOperation);
+                scope.setFingerprint(List.of(NeroSecurityCommon.MOD_ID, safeSource, safeOperation,
+                        t.getClass().getName()));
+            });
+        } catch (RuntimeException | LinkageError e) {
+            NeroSecurityCommon.LOGGER.debug("[NeroSecurity] Telemetry could not report a handled exception ({})",
+                    e.getClass().getName());
+        }
     }
 
     /** Capture a (scrubbed, truncated) FATAL log line that names NeroSecurity without a throwable. */
@@ -348,7 +386,12 @@ public final class NeroSecurityTelemetry {
         Message msg = new Message();
         msg.setFormatted(scrubbed);
         event.setMessage(msg);
-        Sentry.captureEvent(event);
+        try {
+            Sentry.captureEvent(event);
+        } catch (RuntimeException | LinkageError e) {
+            NeroSecurityCommon.LOGGER.debug("[NeroSecurity] Telemetry could not report a log line ({})",
+                    e.getClass().getName());
+        }
     }
 
     /**
@@ -367,7 +410,7 @@ public final class NeroSecurityTelemetry {
         if (eventsSent.incrementAndGet() > MAX_EVENTS_PER_SESSION) {
             return null;
         }
-        // POPIA/GDPR scrubbing: no user identity, no hostname, no OS-account names in paths.
+        // POPIA/GDPR scrubbing: no user identity, no hostname, no OS-account names or home paths.
         event.setUser(null);
         event.setServerName(null);
         List<SentryException> scrubExceptions = event.getExceptions();
@@ -382,13 +425,22 @@ public final class NeroSecurityTelemetry {
                 if (frames != null) {
                     for (SentryStackFrame frame : frames) {
                         frame.setAbsPath(null);
+                        String filename = frame.getFilename();
+                        if (filename != null) {
+                            frame.setFilename(scrub(filename));
+                        }
                     }
                 }
             }
         }
         Message message = event.getMessage();
-        if (message != null && message.getFormatted() != null) {
-            message.setFormatted(scrub(message.getFormatted()));
+        if (message != null) {
+            if (message.getFormatted() != null) {
+                message.setFormatted(scrub(message.getFormatted()));
+            }
+            if (message.getMessage() != null) {
+                message.setMessage(scrub(message.getMessage()));
+            }
         }
         return event;
     }
@@ -446,8 +498,30 @@ public final class NeroSecurityTelemetry {
         return sb.toString();
     }
 
-    /** Replaces home-directory paths (which contain the OS account name) with a neutral marker. */
+    /**
+     * Masks the OS account: the JVM's {@code user.home} (in both slash forms) and {@code user.name}
+     * become {@code [user]}, and any remaining Windows/macOS/Linux home-directory path is masked the
+     * same way. Null-safe; never throws.
+     */
     static String scrub(String text) {
-        return USER_PATH.matcher(text).replaceAll("/~");
+        if (text == null) {
+            return null;
+        }
+        String scrubbed = text;
+        try {
+            String home = System.getProperty("user.home");
+            if (home != null && !home.isBlank()) {
+                scrubbed = scrubbed.replace(home, "[user]");
+                scrubbed = scrubbed.replace(home.replace('\\', '/'), "[user]");
+                scrubbed = scrubbed.replace(home.replace('/', '\\'), "[user]");
+            }
+            String user = System.getProperty("user.name");
+            if (user != null && !user.isBlank()) {
+                scrubbed = scrubbed.replace(user, "[user]");
+            }
+        } catch (RuntimeException ignored) {
+            // A SecurityManager refusing the property read: fall through to the pattern below.
+        }
+        return USER_PATH.matcher(scrubbed).replaceAll("/[user]");
     }
 }

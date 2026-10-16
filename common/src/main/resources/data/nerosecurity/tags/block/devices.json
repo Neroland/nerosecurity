@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "nerosecurity:keycard_programmer",
+    "nerosecurity:security_door",
+    "nerosecurity:blast_door",
+    "nerosecurity:secure_chest",
+    "nerosecurity:laser_grid_node",
+    "nerosecurity:security_camera",
+    "nerosecurity:alarm",
+    "nerosecurity:security_monitor",
+    "nerosecurity:force_field_emitter"
+  ]
+}

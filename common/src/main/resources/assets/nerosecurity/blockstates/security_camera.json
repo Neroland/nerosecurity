@@ -1,0 +1,50 @@
+{
+  "variants": {
+    "armed=false,facing=north": {
+      "model": "nerosecurity:block/security_camera"
+    },
+    "armed=true,facing=north": {
+      "model": "nerosecurity:block/security_camera_on"
+    },
+    "armed=false,facing=east": {
+      "model": "nerosecurity:block/security_camera",
+      "y": 90
+    },
+    "armed=true,facing=east": {
+      "model": "nerosecurity:block/security_camera_on",
+      "y": 90
+    },
+    "armed=false,facing=south": {
+      "model": "nerosecurity:block/security_camera",
+      "y": 180
+    },
+    "armed=true,facing=south": {
+      "model": "nerosecurity:block/security_camera_on",
+      "y": 180
+    },
+    "armed=false,facing=west": {
+      "model": "nerosecurity:block/security_camera",
+      "y": 270
+    },
+    "armed=true,facing=west": {
+      "model": "nerosecurity:block/security_camera_on",
+      "y": 270
+    },
+    "armed=false,facing=up": {
+      "model": "nerosecurity:block/security_camera",
+      "x": 270
+    },
+    "armed=true,facing=up": {
+      "model": "nerosecurity:block/security_camera_on",
+      "x": 270
+    },
+    "armed=false,facing=down": {
+      "model": "nerosecurity:block/security_camera",
+      "x": 90
+    },
+    "armed=true,facing=down": {
+      "model": "nerosecurity:block/security_camera_on",
+      "x": 90
+    }
+  }
+}

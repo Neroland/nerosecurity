@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    " R",
+    " I",
+    "S "
+  ],
+  "result": {
+    "id": "nerosecurity:linking_tool",
+    "count": 1
+  }
+}

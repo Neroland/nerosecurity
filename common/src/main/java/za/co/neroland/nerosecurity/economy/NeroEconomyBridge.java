@@ -27,18 +27,6 @@ final class NeroEconomyBridge {
     private NeroEconomyBridge() {
     }
 
-    /**
-     * NeroEconomy's cross-mod API version, read reflectively so a newer NeroEconomy is not compared against a
-     * constant inlined at compile time. 0 when the field is missing (a NeroEconomy older than 0.3.0).
-     */
-    static int apiVersion() {
-        try {
-            return SiblingEconomy.class.getField("API_VERSION").getInt(null);
-        } catch (ReflectiveOperationException missing) {
-            return 0;
-        }
-    }
-
     /** Claims NeroSecurity's handle with its closed set of reason codes. Common init only. */
     static void claim() {
         caller = SiblingEconomy.claim(NeroSecurityCommon.MOD_ID, Set.of(SecurityEconomy.REASON_TIER));

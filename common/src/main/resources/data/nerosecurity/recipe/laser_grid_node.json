@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "T": "minecraft:redstone_torch"
+  },
+  "pattern": [
+    "III",
+    "IGI",
+    "ITI"
+  ],
+  "result": {
+    "id": "nerosecurity:laser_grid_node",
+    "count": 1
+  }
+}

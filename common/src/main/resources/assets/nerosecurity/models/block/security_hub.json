@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "nerosecurity:block/security_hub_top",
+    "side": "nerosecurity:block/security_hub_side",
+    "front": "nerosecurity:block/security_hub_front",
+    "particle": "nerosecurity:block/security_hub_side"
+  }
+}

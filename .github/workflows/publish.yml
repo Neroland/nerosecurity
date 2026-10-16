@@ -112,7 +112,7 @@ jobs:
       # See USING-CORE.md.
       # --- end Neroland Core dependency ---
 
-      # Build all six cells (loader x MC version). Each produces a distinctly named jar under
+      # Build all nine cells (loader x MC version). Each produces a distinctly named jar under
       # <loader>/versions/<mc>/build/libs. Forge's distributable is the jarJar output
       # ("*-all.jar", with embedded Sentry); the plain Forge jar is not shipped.
       - name: Build all cells
@@ -185,7 +185,7 @@ jobs:
           fi
           cat RELEASE_NOTES.md
 
-      # Gather exactly the six distributable jars (Forge = the -all jarJar build) + the release
+      # Gather exactly the nine distributable jars (Forge = the -all jarJar build) + the release
       # notes into dist/. `bash -e` aborts loudly if any expected jar is missing (e.g. a name
       # mismatch), and upload-artifact fails on an empty dist/ - so a path drift can't publish nothing.
       - name: Collect distributables
@@ -400,7 +400,7 @@ jobs:
           release: nerosecurity@${{ needs.detect.outputs.version }}
           environment: ${{ needs.build.outputs.environment }}
 
-      # One GitHub Release carrying all six jars. This also creates the v<version> tag that
+      # One GitHub Release carrying all nine jars. This also creates the v<version> tag that
       # `detect` reads as the release ledger - intentionally the LAST step, so a failed CF/MR
       # upload above leaves no tag and a re-run retries cleanly instead of being skipped.
       - name: Publish GitHub Release
@@ -412,7 +412,7 @@ jobs:
           version: ${{ needs.detect.outputs.version }}
           version-type: ${{ needs.build.outputs.version_type }}
           changelog-file: dist/RELEASE_NOTES.md
-          # dist/ holds exactly the six distributables (Forge = -all), so this glob is precise.
+          # dist/ holds exactly the nine distributables (Forge = -all), so this glob is precise.
           files: dist/*.jar
           java: 25
 

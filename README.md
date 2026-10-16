@@ -2,7 +2,7 @@
 
 > Part of the Neroland sci-fi Minecraft mod ecosystem, built on **Neroland Core**.
 
-**Status:** barebones multiloader skeleton — version `0.4.0-alpha.1`. No gameplay content yet; optional NeroEconomy seams and the NeroQuests quest pack are in place.
+**Status:** `0.5.0-beta.1` in progress. No gameplay content yet; the foundation is in place (own network channel, data-erasure hook, menu safety wrapper, unit tests, anonymous crash reporting), along with the optional NeroEconomy seam and the NeroQuests quest pack.
 
 ## Build targets
 
@@ -41,9 +41,10 @@ is the ready-to-use seam for paid security tiers:
 
 - NeroEconomy is **optional**. It is compiled `compileOnly` (never bundled) and declared optional in
   every loader manifest. One bridge class, `economy/NeroEconomyBridge`, is the only code that imports
-  `za.co.neroland.neroeconomy`, and it is loaded only after `isModLoaded("neroeconomy")` and an API
-  version check (`SiblingEconomy.API_VERSION >= 1`, read reflectively). The handle is claimed once from
-  common init.
+  `za.co.neroland.neroeconomy`, and it is loaded only after `isModLoaded("neroeconomy")`. There is no
+  runtime version probe and no reflection: every loader manifest floors the optional dependency at the
+  compiled NeroEconomy version (`0.4.0-beta.1`), so the loader refuses an older one, and the bridge call
+  is wrapped in `catch (RuntimeException | LinkageError)`. The handle is claimed once from common init.
 - Every call returns an `EconomyOutcome`: `APPLIED` (grant), `REFUSED` (nothing moved; show
   `outcome.message()`), or `ABSENT` (NeroEconomy is not installed; use the fallback).
 - Request keys name the thing being paid for, never a player. A key holding a UUID or 32 hex digits is
@@ -79,8 +80,9 @@ completable once the security features exist: future code calls
 `progression/SecurityMilestones.record(player, milestone)` when a player encodes their first keycard,
 brings an installation online or clears a lockdown drill, which opens the matching player-scope Neroland
 Core gate (`nerosecurity:first_keycard`, `installation_online`, `lockdown_drill`). Those gates are
-records for quests only and are never read to grant access. There are no threshold channels for security
-events, by design, and no quest reward ever changes access state. See the wiki page
+records for quests only and are never read to grant access. Once lockdowns exist, entering and leaving one fires the Neroland Core
+threshold channel `nerosecurity:lockdown` (scope is an opaque installation id, never a player, name or
+position); no other security event is broadcast, and no quest reward ever changes access state. See the wiki page
 [NeroQuests integration](wiki/NeroQuests-Integration.md).
 
 ## Privacy & telemetry

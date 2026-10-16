@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "nerosecurity:block/alarm_top",
+    "bottom": "nerosecurity:block/alarm_bottom",
+    "side": "nerosecurity:block/alarm_side",
+    "particle": "nerosecurity:block/alarm_side"
+  }
+}

@@ -21,9 +21,9 @@ import za.co.neroland.nerosecurity.NeroSecurityCommon;
  * <ul>
  * <li><b>Never read a milestone gate to decide access.</b> Access comes from keycards, owners, factions and
  * claims. A milestone is a record of what a player has done, not a permission.</li>
- * <li><b>No threshold channels for security events.</b> A crossing about an alarm, intrusion or lockdown
- * would announce that a base is under attack right now, even with a neutral scope. The security event bus
- * stays internal to NeroSecurity.</li>
+ * <li><b>One threshold channel only.</b> Lockdown enter/exit fires Core ThresholdEvents channel
+ * {@code nerosecurity:lockdown} (scope is an opaque installation id, never a player, name or position); no
+ * other security event is broadcast. Milestones themselves never fire a crossing.</li>
  * <li><b>Privacy (POPIA/GDPR).</b> The player's UUID goes only into {@code ProgressionGates.open}, which
  * stores it in Core's progression store (covered by Core's privacy disclosure). Nothing here logs a name,
  * a UUID or a position, and access logs or camera data never reach a gate.</li>

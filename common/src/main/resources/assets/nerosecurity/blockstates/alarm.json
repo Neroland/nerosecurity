@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "active=false,powered=false": { "model": "nerosecurity:block/alarm" },
+    "active=false,powered=true": { "model": "nerosecurity:block/alarm" },
+    "active=true,powered=false": { "model": "nerosecurity:block/alarm_active" },
+    "active=true,powered=true": { "model": "nerosecurity:block/alarm_active" }
+  }
+}

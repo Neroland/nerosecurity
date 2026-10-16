@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "C": "minecraft:comparator",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    "ICI",
+    "IRI",
+    "III"
+  ],
+  "result": {
+    "id": "nerosecurity:keycard_programmer",
+    "count": 1
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "D": "minecraft:diamond",
+    "O": "minecraft:obsidian",
+    "N": "minecraft:iron_nugget"
+  },
+  "pattern": [
+    "NON",
+    "ODO",
+    "NON"
+  ],
+  "result": {
+    "id": "nerosecurity:strength_module",
+    "count": 1
+  }
+}

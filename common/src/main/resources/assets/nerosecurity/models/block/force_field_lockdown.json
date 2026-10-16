@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "nerosecurity:block/force_field_lockdown",
+    "particle": "nerosecurity:block/force_field_lockdown"
+  },
+  "render_type": "minecraft:translucent"
+}

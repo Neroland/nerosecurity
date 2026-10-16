@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "lockdown=false": {
+      "model": "nerosecurity:block/force_field"
+    },
+    "lockdown=true": {
+      "model": "nerosecurity:block/force_field_lockdown"
+    }
+  }
+}

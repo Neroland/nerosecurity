@@ -36,17 +36,17 @@ public final class SecurityEconomy {
 
     /**
      * Hooks NeroEconomy when it is installed. Call once from common init (claims close when the first server
-     * starts). With NeroEconomy absent, or older than API version 1, this does nothing and every call below
-     * returns {@link EconomyOutcome.Status#ABSENT}.
+     * starts). With NeroEconomy absent this does nothing and every call below returns
+     * {@link EconomyOutcome.Status#ABSENT}.
+     *
+     * <p>There is no runtime API-version probe: NeroEconomy's version constant is inlined at compile time, so
+     * reading it would only ever report the version NeroSecurity was built against. Instead every loader manifest
+     * floors the optional NeroEconomy dependency at the compiled version ({@code 0.4.0-beta.1}), so the loader
+     * itself refuses an older one. Anything that still fails to link lands in the {@link LinkageError} catch.
      */
     public static void init() {
         if (active || !Services.PLATFORM.isModLoaded("neroeconomy")) return;
         try {
-            int api = NeroEconomyBridge.apiVersion();
-            if (api < 1) {
-                NeroSecurityCommon.LOGGER.info("[NeroSecurity] NeroEconomy is too old (API version {}); paid security tiers stay off.", api);
-                return;
-            }
             NeroEconomyBridge.claim();
             active = true;
             NeroSecurityCommon.LOGGER.info("[NeroSecurity] NeroEconomy found; paid security tiers are available.");

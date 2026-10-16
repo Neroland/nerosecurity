@@ -3,9 +3,8 @@
 Player- and contributor-facing documentation for **NeroSecurity**, part of the
 Neroland ecosystem. Built on **Neroland Core**.
 
-> **Status:** barebones — this mod is scaffolded (version `0.4.0-alpha.1`) but has no gameplay
-> content yet. Pages will grow as features land. Keep this wiki updated alongside code changes
-> (see [`../AGENTS.md`](../AGENTS.md) / [`../CLAUDE.md`](../CLAUDE.md)).
+> **Status:** foundation in progress (version `0.5.0-beta.1`) — no gameplay content yet. Pages will
+> grow as features land. Keep this wiki updated alongside code changes.
 
 ## Contents
 
@@ -17,4 +16,4 @@ the index.
 
 ## See also
 
-- [Build & contributor context](../AGENTS.md)
+- [Source code, build instructions and privacy notice](https://github.com/Neroland/nerosecurity)

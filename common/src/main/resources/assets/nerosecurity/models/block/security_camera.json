@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "nerosecurity:block/security_camera_side",
+    "side": "nerosecurity:block/security_camera_side",
+    "front": "nerosecurity:block/security_camera_lens",
+    "particle": "nerosecurity:block/security_camera_side"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "nerosecurity:encryption_module",
+    "nerosecurity:hardness_module",
+    "nerosecurity:open_speed_module",
+    "nerosecurity:range_module",
+    "nerosecurity:strength_module"
+  ]
+}

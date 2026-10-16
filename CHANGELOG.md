@@ -7,6 +7,155 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-beta.1] - unreleased (in progress)
+
+The first build with gameplay. Requires Neroland Core 1.15.0. Work in progress: this section grows as each
+part lands, and the scope cuts are listed at the bottom.
+
+### Added
+
+- **Access levels and resolution.** A fixed four-rung ladder, PUBLIC < MEMBER < OFFICER < OWNER, plus a
+  server-operator ADMIN override that no in-game action can revoke. Every access decision goes through one
+  server-side resolver: it asks every access source, any deny wins, and otherwise the highest grant applies.
+  Nothing is cached on the client.
+- **Installations.** The unit of administration: owners, members with levels, linked device positions,
+  lockdown state and a per-installation secret (kept server-side, never sent to clients or logs).
+- **Security Hub** block. Placing one creates an installation you own; it is the only place membership is
+  edited. Only an owner (sneaking) or an operator can break it; breaking it dissolves the installation, and
+  any other removal (explosion, commands) leaves the installation orphaned for an operator to clean up.
+- **Linking Tool** item. Sneak-use on a hub to select it, then use it on a security device to link it.
+  The hub itself is never a linkable device.
+- **Keycards.** Every encoded card is signed with its installation's server-side secret, so a card cannot be
+  edited to raise its level or moved to another installation; a card from a different installation is a
+  dead card. Each installation keeps a ledger of the cards it issued: an owner can revoke one card or all of
+  them (`/nerosecurity keycards <installation> list|revoke <serial>|revokeall`). Cards can be bound to the
+  person who wrote them. A card only ever grants access — it never overrides a denial, a lockdown or an
+  operator. No player id is stored on the card itself.
+- **Keycard Programmer.** Writes, copies and wipes cards. You can only write cards below your own level
+  (owners can write owner cards); cards above OFFICER must be encrypted by default
+  (`keycardBasicMaxLevel`). Encrypted cards can only be copied by an owner at a programmer fitted with an
+  Encryption Module, and their tooltip hides level and serial. Writing your first card records the
+  *first keycard* milestone.
+- **Security Door** (1×2) and **Blast Door** (2×2). Set the minimum level, keycard-only mode and redstone
+  behaviour per door. Sealed during lockdown except to owners and operators. They use Neroland Core power
+  when it is available, but by default they work without it (`doorsRequirePower=false`); when power is
+  required, an unpowered door still opens for its owner. Hardness and Open Speed modules; blast resistance is
+  capped (`doorMaxBlastResistance`). Doors stay breakable, and breaking one you could not open is logged as a
+  forced entry.
+- **Secure Chest.** Checks access when opened. Automation (hoppers, pipes) only reaches it when the
+  installation allows it (`/nerosecurity automation <installation> off|member|officer`, owner only) and never
+  during lockdown or in keycard-only mode. Opening and changing a chest is recorded without its contents;
+  it has no comparator output so its fill level stays private. Contents always drop when broken.
+- **Modules:** Encryption, Hardness, Open Speed, Range, Strength.
+- **Force Field Emitter.** Projects a plane or box of field blocks that permitted players walk through and
+  everyone else (and every mob, projectile or vehicle) bumps into. During a lockdown only owners pass. Power
+  draw grows with area and strength; Strength and Range modules raise them up to `maxFieldStrength` and
+  `fieldMaxRange`. Fields can be overloaded by sustained attacks or explosions (`forceFieldBreachable`, on by
+  default) and come back after a cooldown, and the emitter itself can always be broken, so a field slows a raid
+  down rather than making a base unraidable. Fields only fill air, never trap an entity, and never project into
+  land another player's claim protects. The field blocks are immune to withers and the dragon.
+- **Optional integrations** (each only when that mod is installed; NeroSecurity works fully without them):
+  - **NeroFactions:** an owner can bind an installation to a faction they belong to; faction members then get
+    access by tier (Member → MEMBER, Trusted / Inner Circle → OFFICER, capped per installation, never OWNER).
+  - **NeroColonies:** bind to a colony you belong to; colony members get access by role (capped, never OWNER).
+  - **Nerospace:** bind to a station you own; the station's current owner gets OFFICER.
+  - **Open Parties and Claims:** NeroSecurity never lets you do what a claim forbids — a claim can only deny.
+  - Commands: `/nerosecurity bind <installation>` shows bindings; `bind faction|colony|station …` and
+    `unbind …` are owner-only. A binding to a mod that is later removed stays inactive until you unbind it.
+- **Laser Grid Node.** Place two nodes facing each other, both linked to the same installation; a
+  non-permitted entity crossing the beam trips it. A node from another installation never extends your beam.
+  Optional damage on trip (`laserTripDamage`, default 0) never hurts the installation's own owners or members
+  (or their pets), even during a lockdown. Needs power; an unpowered pair goes dark.
+- **Security Camera.** A powered presence sensor with a field of view and a slow pan. It never captures
+  imagery: it only records that something it was not told to ignore came into view. Members are not logged
+  unless the server owner turns on `privacyCameraLogsMembers`.
+- **Alarm.** Reacts to the event types you choose with a redstone pulse, a sound, a light, and a chat line to
+  online owners (and officers, if an owner turns it on with `/nerosecurity notify-officers <installation>
+  on|off`). Alarm storms are coalesced into one message with a "+N more"
+  count. Chat names the installation and what happened, never who. Officers can silence an alarm.
+- **Alarm-triggered lockdown** (off by default; only an owner can enable it per alarm, and the server can
+  disable it with `alarmLockdownEnabled`). It only fires on critical events, releases itself after 5 minutes
+  unless an owner confirms it, and cannot fire again for 10 minutes. An owner is never locked out. Each alarm
+  only reacts to the events it is subscribed to, and while its lockdown response is on only an owner can change
+  its settings (officers can still silence it).
+- **Security Monitor.** Shows linked cameras and laser grids with their status, and recent events as
+  sentences ("Laser grid tripped — 3 minutes ago"). It never shows who caused an event.
+- **Audit log.** Each installation keeps a capped log of security events: when, what kind, which device, and
+  who (where the event has a player). Officers and owners can read it with `/nerosecurity log`; every read is
+  itself logged.
+- **Recording notice.** Armed cameras and laser grids show a lit lens, and you get a one-line message the first
+  time each session you enter an area where an installation is recording. The area covers everything its
+  sensors can reach, and if a sensor is about to log you before you have seen the notice, you get the notice
+  first.
+- **Lockdown.** OFFICER or above can enter lockdown at the hub or with `/nerosecurity lockdown`; only an
+  owner or operator can clear it. During lockdown effective access drops to OWNER, and an owner can always
+  reach their own hub.
+- **Lockdown threshold channel.** Entering and leaving lockdown fires Neroland Core's threshold channel
+  `nerosecurity:lockdown` so quest packs can react. The scope is an opaque random installation id, never a
+  player, name or position. Residual risk: a listener learns that *some* base entered lockdown. Turn it off
+  with `lockdownChannelEnabled=false`. This reverses 0.4.0's "no threshold channels" rule for lockdown only;
+  no other security event is broadcast.
+- **Commands.** `/nerosecurity installations` lists your own installations; `/nerosecurity lockdown
+  <installation> on|off`; `/nerosecurity admin unlock|list|dissolve` for operators. Suggestions show short
+  installation ids only, scoped to your own installations.
+- **Config keys** (all server-authoritative): `lockdownEnabled`, `lockdownChannelEnabled`,
+  `maxInstallationsPerPlayer`, `maxMembersPerInstallation`, `maxDeviceDistance`, `maxDevicesPerInstallation`.
+- Own network channel `nerosecurity:main`, a menu-open guard, and early registration with Neroland Core's
+  player-data erasure hook.
+- Unit tests for the resolver, the installation store, erasure conformance, the event bus, the lockdown
+  channel and the shipped quest/gate data (run in the NeoForge build).
+
+### Changed
+
+- Crash reporting is now active in official builds (still opt-out with `telemetryEnabled=false`, which takes
+  effect on restart). Reports now mask your OS account name and home folder, and are grouped by source.
+- The optional NeroEconomy floor is now 0.4.0-beta.1 (the version NeroSecurity is compiled against); the
+  runtime version probe is gone.
+- Dependabot now targets `main`; the wiki sync refuses to publish pages that reference private planning
+  material.
+
+### Privacy
+
+- **Retention defaults (server-authoritative):** audit entries are kept 7 days (`privacyAuditRetentionDays`),
+  camera presence entries 60 minutes (`privacyCameraEventRetentionMinutes`), at most 500 entries per
+  installation (`privacyAuditMaxEntriesPerInstallation`). Server owners can lengthen retention only up to a
+  hard cap of 90 days (`privacyRetentionHardCapDays`). Old entries are purged at start-up, hourly and on read.
+- An erasure request also removes the player from every audit entry.
+- A tamed animal is logged as its owner. Server operators are never logged by sensors.
+- Cameras only share a coarse look direction with nearby clients (rounded, at most every two seconds), and
+  sensor settings are no longer sent to clients at all.
+
+- NeroSecurity now stores player data: installation owners and members (as player UUIDs with levels),
+  installation names, linked device positions and lockdown state. See PRIVACY.md. A Neroland Core erasure
+  request removes a player's member rows; installations they solely own are handed to a tombstone owner and
+  flagged orphaned so another player's base is not deleted.
+
+### Known gaps in this build
+
+- **Placeholder textures.** The Security Hub (top, side, front), Linking Tool and Keycard textures are simple
+  generated 16x16 placeholders, to be replaced by real art.
+- **More placeholder textures:** Keycard Programmer (front, side, top), encrypted keycard, Security Door
+  and Blast Door (all parts and items) and Secure Chest (front, side, top) are generated 16x16 placeholders.
+  The three module items temporarily reuse vanilla item textures.
+- Doors have no opening animation yet; open doors are drawn as a thin panel.
+- On Forge, door power can only be fed into the door's controller (bottom) block; NeoForge and Fabric
+  accept power through any part. On Fabric, the Hardness module slows breaking but does not raise
+  explosion resistance.
+- Each installation can issue up to `keycardsPerInstallation` cards (default 512); when full, writing
+  refuses until cards are revoked — nothing is silently un-revoked.
+- **More placeholder textures:** Laser Grid Node (side, lens, armed lens), Security Camera (side, lens,
+  recording lens), Alarm (side, top, bottom, active variants) and Security Monitor (front, side, top) are
+  generated 16x16 placeholders; the Range Module reuses a vanilla texture.
+- The laser beam, camera pan and alarm beacon are not drawn yet; armed devices show a lit lens only.
+- During a lockdown everyone below OWNER counts as an intruder to sensors, so members can trip lasers and
+  cameras while the base is locked down.
+- **More placeholder textures:** Force Field Emitter (side, front, active front) and the force field itself
+  (normal and lockdown) are generated 16x16 placeholders and are not animated yet; the Strength Module reuses
+  a vanilla texture.
+- FTB Chunks and Flan claims are not supported yet (no stable build for every Minecraft version this mod
+  targets); only Open Parties and Claims is.
+- The NeroLink module and the full hub screen are not in this build yet.
+
 ## [0.4.0-alpha.1] - 2026-10-11
 
 Quest-pack data and milestone seams. Requires Neroland Core 1.15.0. Still no blocks, items or recipes.

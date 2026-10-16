@@ -1,15 +1,17 @@
 # Project context for AI coding agents — nerosecurity
 
-> This and `CLAUDE.md` are kept identical; update both together.
+> `AGENTS.md` and `CLAUDE.md` are kept byte-identical; update both together.
 
 ## The mod
 
 - **NeroSecurity** — part of the Neroland sci-fi Minecraft mod ecosystem, built on **Neroland Core**.
-  This repository is currently a **barebones multiloader skeleton** (no gameplay content yet); add
-  shared content under `common/` and wire it through each loader entry point.
+  **0.5.0-beta.1 is in progress.** No gameplay content yet. The foundation now has the network seam
+  (own `nerosecurity:main` channel), the data-erasure registration, `MenuOpener`, JUnit tests and real
+  (opt-out, anonymous) Sentry telemetry. Add shared content under `common/` and wire it through each
+  loader entry point.
 - Mod id: **`nerosecurity`** (matches the registry namespace + every loader manifest). Package root:
   `za.co.neroland.nerosecurity`. Author: **Neroland**.
-- Version: **0.4.0-alpha.1**.
+- Version: **0.5.0-beta.1** (in progress).
 - Targets **MC 26.1.2, 26.2 AND 26.3** on **NeoForge, MinecraftForge/Forge, and Fabric** → the **"9 cells"**.
   **Java 25.** Mappings = official Mojang names (26.x ships de-obfuscated; no Parchment).
 
@@ -18,8 +20,11 @@
 - **Keep responses concise and direct** — minimal verbosity, minimal formatting.
 - **POPIA & GDPR**: keep all logging/telemetry/scripts compliant — only public version strings, never
   personal data; minimise data, set retention limits, support export/erasure and opt-out.
-- **NEVER commit or push automatically.** Leave changes **staged**; the developer reviews and commits
-  with native git (the source of truth).
+- **Never commit or tag; leave changes for the developer**, who reviews and commits with native git (the
+  source of truth).
+- **Publish trigger — be careful with `gradle.properties`.** `publish.yml` runs on any push to `main` that
+  touches `gradle.properties`, and publishes to CurseForge, Modrinth and GitHub Releases whenever no
+  `v<mod_version>` tag exists yet. Bumping `mod_version` and pushing it to `main` IS a release.
 - **Use relative paths only** — never hard-code machine-specific absolute paths in committed files.
 - **Never run commands against production databases.** Treat any DB command as illustrative.
 
@@ -40,7 +45,7 @@
 - Personal milestones are player-scope Neroland Core gates under `common/src/main/resources/data/nerosecurity/neroland_gates/`,
   opened only through `progression/SecurityMilestones.record(...)`. They are records for the NeroQuests pack
   (`data/nerosecurity/neroquests/`, inert data, **no dependency on NeroQuests** of any kind) and are **never**
-  read to decide access. No threshold channels for security events (alarms, intrusions, lockdowns). Never log,
+  read to decide access. Lockdown enter/exit fires Core ThresholdEvents channel `nerosecurity:lockdown` (scope is an opaque installation id, never a player, name or position); no other security event is broadcast. Never log,
   broadcast or send a player name, UUID or position; access logs and camera data stay out of anything quest-related.
 
 ## Build & verify
@@ -48,6 +53,9 @@
 - Build the cells with the Gradle wrapper, e.g. `./gradlew :fabric:26.2:build` or all nine:
   `:neoforge:26.1.2:build :neoforge:26.2:build :neoforge:26.3:build :forge:26.1.2:build :forge:26.2:build :forge:26.3:build
   :fabric:26.1.2:build :fabric:26.2:build :fabric:26.3:build`.
+- Unit tests (JUnit 5, plain JVM) live in `common/src/test/java` and are wired into the three `neoforge`
+  nodes only; each `:neoforge:<mc>:build` runs them (`:neoforge:<mc>:test` alone). Every player-keyed store
+  needs a probe in `data/SecurityErasureConformanceTest`.
 - Static analysis: `./gradlew :fabric:26.2:ecjCheck` (the VS Code Problems panel, via `tools/ecj.prefs`).
   The task only FAILS on errors.
 - A Cowork agent sandbox cannot decompile Minecraft — run builds natively (or via the local gradle MCP)
@@ -62,7 +70,23 @@
   impl per loader plus a `META-INF/services` entry. Keep `common/` free of `net.neoforged.*` /
   `net.fabricmc.*` / `net.minecraftforge.*` imports.
 - Loader entry points: `NeroSecurityFabric` (+ `NeroSecurityFabricClient`), `NeroSecurityForge`,
-  `NeroSecurityNeoForge` — each calls `NeroSecurityCommon.init()` during construction.
+  `NeroSecurityNeoForge` — each calls `NeroSecurityCommon.init()` during construction, THEN registers the
+  network payloads (`{Fabric,NeoForge,Forge}SecurityNetwork`). Forge seals its channel at `build()`.
+- `NeroSecurityCommon.init()` order is load-bearing: 0 Services → 1 Config → 2 Telemetry → 3 registries →
+  4 `SecurityData.init()` (erasure, early) → 5 compat detection (`SecurityEconomy`) → 6 `SecurityNetwork.init()`
+  → 7 link module (`link/SecurityLinkModule`) LAST.
+- **Networking:** NeroSecurity owns `nerosecurity:main`. Declare payloads once in `network/SecurityNetwork`;
+  send through `Services.NETWORK`. Never register on Neroland Core's `CoreNetwork` (Core drains its lists
+  during its own bootstrap, so downstream registrations are silently dropped).
+- **Menus:** every GUI opens through `menu/MenuOpener.open(player, provider)`, never `player.openMenu`.
+- **Player data:** every player-keyed store joins `data/SecurityData` via `addStore(...)`, erases its rows
+  and then calls `SavedDataRecovery.backupNow`; every `SavedData` is read through `SavedDataRecovery.get`.
+- **Telemetry:** report handled failures with `NeroSecurityTelemetry.captureHandledException(t, source,
+  operation)` using stable labels (subsystem + translation key or class name) — never player text, names,
+  UUIDs or positions. Keep the placeholder-DSN guard.
+- **Soft dependencies:** `compileOnly` + an `isModLoaded` guard + one bridge class. No reflection. Floor each
+  optional dependency's manifest range at the compiled version.
+- Neroland Core APIs in use are listed in `USING-CORE.md`.
 - NeoForge/Forge debug tasks use `-PnerosecurityDebug`; Fabric Loom honours Gradle `--debug-jvm`.
 
 ## IDE (VS Code) run & debug
@@ -86,6 +110,6 @@
 
 ## DO NOT
 
-- Commit or push automatically — leave changes staged for the developer.
+- Commit, tag or push — leave changes for the developer.
 - Hard-code absolute machine paths in committed files.
 - Add loader-specific code to `common/` — use the platform seams.

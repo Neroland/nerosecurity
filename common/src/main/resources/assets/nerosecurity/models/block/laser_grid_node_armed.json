@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "nerosecurity:block/laser_grid_node_side",
+    "side": "nerosecurity:block/laser_grid_node_side",
+    "front": "nerosecurity:block/laser_grid_node_lens_armed",
+    "particle": "nerosecurity:block/laser_grid_node_side"
+  }
+}

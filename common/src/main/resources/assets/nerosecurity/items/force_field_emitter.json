@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "nerosecurity:block/force_field_emitter"
+  }
+}

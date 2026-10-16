@@ -22,6 +22,31 @@ if (!forgeVersion) {
 // This node's projectDir is <loader>/versions/<v>; the authoritative loader source +
 // templates live in the BRANCH root (forge/). Resolve branch-root paths via the parent.
 def branchDir = project.parent.projectDir
+
+// --- Optional siblings (compat facades) ---------------------------------------------------------------------
+// NeroFactions, NeroColonies, Nerospace and Open Parties and Claims are compileOnly behind compat/<x>/<X>Compat:
+// one bridge class per sibling imports it, found through a META-INF/services seam after isModLoaded. A
+// `<x>_compat=false` property (gradle.properties or -P) drops the dependency, excludes that bridge class and its
+// services line from the build, and leaves the optional manifest entry out, so the mod builds with no sibling
+// artifact at all. Manifest floors are the compiled versions (ecosystem floor rule).
+def compatOn = { String flag -> (rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
+def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
+def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
+def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
+def siblingRun = [nerofactions: 'withNeroFactions', nerocolonies: 'withNeroColonies', nerospace: 'withNerospace']
+def siblingOn = siblingIds.collectEntries { id -> [(id): compatOn("${id}_compat")] }
+def opacVersion = rootProject.findProperty("opac_version_${mc}")
+def opacOn = compatOn('opac_compat') && opacVersion != null
+siblingIds.each { id ->
+    if (!siblingOn[id]) {
+        sourceSets.main.java.exclude "za/co/neroland/nerosecurity/compat/${siblingPkg[id]}/Nero${siblingCls[id]}Bridge.java"
+        sourceSets.main.resources.exclude "META-INF/services/za.co.neroland.nerosecurity.compat.${siblingPkg[id]}.${siblingCls[id]}Bridge"
+    }
+}
+if (!opacOn) {
+    sourceSets.main.java.exclude 'za/co/neroland/nerosecurity/compat/claims/OpacClaimProvider.java'
+    sourceSets.main.resources.exclude 'META-INF/services/za.co.neroland.nerosecurity.compat.claims.ClaimProvider'
+}
 def forgeBuild = forgeVersion.toString().split('-', 2)[1]
 def forgeMajor = forgeBuild.split('\\.')[0]
 
@@ -111,6 +136,18 @@ dependencies {
     // class imports it, and only after isModLoaded("neroeconomy"), so NeroSecurity runs without it.
     compileOnly "za.co.neroland.neroeconomy:neroeconomy-forge-${mc}:${rootProject.neroeconomy_version}"
 
+    // Optional siblings — compileOnly, never bundled, never required (see the compat block above).
+    siblingIds.each { id ->
+        if (siblingOn[id]) {
+            def coord = "za.co.neroland.${id}:${id}-forge-${mc}:${rootProject.property("${id}_version")}"
+            compileOnly coord
+        }
+    }
+    // Open Parties and Claims — compileOnly against the loader-neutral API jar (claims only ever deny).
+    if (opacOn) {
+        compileOnly("xaero.pac:open-parties-and-claims-common-${mc}:${opacVersion}") { transitive = false }
+    }
+
     implementation 'io.sentry:sentry:8.60.0'
     jarJar(group: 'io.sentry', name: 'sentry', version: '8.45.0')
 
@@ -127,6 +164,10 @@ dependencies {
     }
 }
 
+// The optional sibling entries of the generated manifest: a dependency block per enabled sibling, "" otherwise.
+def tomlDep = { String modId, String floor, String reqKey, String reqVal ->
+    "\n[[dependencies.${rootProject.mod_id}]]\nmodId = \"${modId}\"\n${reqKey} = ${reqVal}\nversionRange = \"[${floor},)\"\nordering = \"AFTER\"\nside = \"BOTH\"\n"
+}
 // Expand mods.toml from src/main/templates into generated resources.
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
     def props = [
@@ -139,6 +180,10 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
         minecraft_version_range   : "[${mc},)",
         // Floor at the compiled Core version — see the NeoForge build script for the reasoning.
         nerolandcore_version_range: "[${nerolandcoreVersion},2.0)",
+        nerofactions_dep          : siblingOn.nerofactions ? tomlDep('nerofactions', rootProject.nerofactions_version, 'mandatory', 'false') : '',
+        nerocolonies_dep          : siblingOn.nerocolonies ? tomlDep('nerocolonies', rootProject.nerocolonies_version, 'mandatory', 'false') : '',
+        nerospace_dep             : siblingOn.nerospace ? tomlDep('nerospace', rootProject.nerospace_version, 'mandatory', 'false') : '',
+        opac_dep                  : opacOn ? tomlDep('openpartiesandclaims', opacVersion.toString(), 'mandatory', 'false') : '',
     ]
     inputs.properties(props)
     expand(props)
@@ -175,7 +220,12 @@ tasks.register('ecjCheck', JavaExec) {
         def analysisCp = (sourceSets.main.compileClasspath.files + sourceSets.main.output.files)
                 .findAll { it.exists() }
                 .join(File.pathSeparator)
-        def srcDirs = sourceSets.main.java.srcDirs.findAll { it.exists() }.collect { it.absolutePath }
+        // The source FILES, not the source dirs, so the `<x>_compat=false` excludes apply here exactly as in
+        // compileJava. Passed through an @argfile (forward slashes) to keep the Windows command line short.
+        def ecjSources = project.layout.buildDirectory.file('tmp/ecjCheck/sources.txt').get().asFile
+        ecjSources.parentFile.mkdirs()
+        ecjSources.text = sourceSets.main.java.files.collect { it.absolutePath.replace('\\', '/') }.join('\n') + '\n'
+        def srcDirs = ['@' + ecjSources.absolutePath.replace('\\', '/')]
         args = [
                 '--release', '25',
                 '-proc:none',

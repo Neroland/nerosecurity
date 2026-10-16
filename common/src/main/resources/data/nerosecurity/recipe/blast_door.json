@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "B": "minecraft:iron_block",
+    "O": "minecraft:obsidian",
+    "S": "nerosecurity:security_door"
+  },
+  "pattern": [
+    "BOB",
+    "SOS",
+    "BOB"
+  ],
+  "result": {
+    "id": "nerosecurity:blast_door",
+    "count": 1
+  }
+}

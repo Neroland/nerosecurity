@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "minecraft:spyglass",
+    "R": "minecraft:redstone",
+    "N": "minecraft:iron_nugget"
+  },
+  "pattern": [
+    "NRN",
+    "RCR",
+    "NRN"
+  ],
+  "result": {
+    "id": "nerosecurity:range_module",
+    "count": 1
+  }
+}

@@ -67,6 +67,26 @@ subprojects {
                 }
                 content { includeGroup 'za.co.neroland.neroeconomy' }
             }
+            // Optional siblings behind the compat facades (compileOnly; see gradle.properties). Same credential
+            // guard: a token-less build resolves them from mavenLocal() or sets <id>_compat=false.
+            ['nerofactions', 'nerocolonies', 'nerospace'].each { sib ->
+                maven {
+                    name = "${sib}GitHubPackages"
+                    url = "https://maven.pkg.github.com/Neroland/${sib}"
+                    credentials {
+                        username = gprUser
+                        password = gprKey
+                    }
+                    content { includeGroup "za.co.neroland.${sib}" }
+                }
+            }
+        }
+        // Open Parties and Claims (optional claim compat, compileOnly). Restricted to its group so this maven
+        // can never serve anything else.
+        maven {
+            name = 'ChocolateMinecraft'
+            url = 'https://chocolateminecraft.com/maven'
+            content { includeGroup 'xaero.pac' }
         }
         mavenCentral()
         maven { url 'https://maven.fabricmc.net/' }

@@ -21,6 +21,31 @@ def nerolandcoreVersion = project.findProperty('nerolandcore_version')
 // templates live in the BRANCH root (neoforge/). Resolve branch-root paths via the parent.
 def branchDir = project.parent.projectDir
 
+// --- Optional siblings (compat facades) ---------------------------------------------------------------------
+// NeroFactions, NeroColonies, Nerospace and Open Parties and Claims are compileOnly behind compat/<x>/<X>Compat:
+// one bridge class per sibling imports it, found through a META-INF/services seam after isModLoaded. A
+// `<x>_compat=false` property (gradle.properties or -P) drops the dependency, excludes that bridge class and its
+// services line from the build, and leaves the optional manifest entry out, so the mod builds with no sibling
+// artifact at all. Manifest floors are the compiled versions (ecosystem floor rule).
+def compatOn = { String flag -> (rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
+def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
+def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
+def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
+def siblingRun = [nerofactions: 'withNeroFactions', nerocolonies: 'withNeroColonies', nerospace: 'withNerospace']
+def siblingOn = siblingIds.collectEntries { id -> [(id): compatOn("${id}_compat")] }
+def opacVersion = rootProject.findProperty("opac_version_${mc}")
+def opacOn = compatOn('opac_compat') && opacVersion != null
+siblingIds.each { id ->
+    if (!siblingOn[id]) {
+        sourceSets.main.java.exclude "za/co/neroland/nerosecurity/compat/${siblingPkg[id]}/Nero${siblingCls[id]}Bridge.java"
+        sourceSets.main.resources.exclude "META-INF/services/za.co.neroland.nerosecurity.compat.${siblingPkg[id]}.${siblingCls[id]}Bridge"
+    }
+}
+if (!opacOn) {
+    sourceSets.main.java.exclude 'za/co/neroland/nerosecurity/compat/claims/OpacClaimProvider.java'
+    sourceSets.main.resources.exclude 'META-INF/services/za.co.neroland.nerosecurity.compat.claims.ClaimProvider'
+}
+
 // Distinct, descriptive jar name per cell (the node project is named after the MC version, so the
 // default jar would be "<mc>-<version>.jar" and COLLIDE with the fabric cell of the same version).
 base { archivesName = "nerosecurity-neoforge-${mc}" }
@@ -63,6 +88,24 @@ repositories {
 sourceSets.main.java.srcDir rootProject.ext.commonJava
 sourceSets.main.resources.srcDir rootProject.ext.commonResources
 
+// Plain-JVM unit tests (JUnit 5, no game bootstrap). The shared tests live in
+// common/src/test/java but — since `common` is not a Gradle project (see settings.gradle) —
+// they are WIRED here, in the neoforge nodes only: ModDevGradle cleanly exposes the modding
+// classpath to extra source sets via addModdingDependenciesTo (below), which Loom/ForgeGradle
+// have no equivalent for. Run with `gradlew :neoforge:<mc>:test`; `build`/`check` runs them
+// automatically. (Same pattern as ../neroland-core.)
+sourceSets.test.java.srcDir "${rootProject.projectDir}/common/src/test/java"
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
 dependencies {
     // Neroland Core — REQUIRED shared foundation (config schema). Core ships as its own mod and
     // loads BEFORE NeroSecurity (see neoforge.mods.toml, ordering = AFTER); it is never bundled.
@@ -74,6 +117,26 @@ dependencies {
     // Dev clients load NeroEconomy only with -PwithNeroEconomy; the default run proves it stays optional.
     if (project.hasProperty('withNeroEconomy')) {
         runtimeOnly "za.co.neroland.neroeconomy:neroeconomy-neoforge-${mc}:${rootProject.neroeconomy_version}"
+    }
+
+    // Optional siblings — compileOnly, never bundled, never required (see the compat block above).
+    siblingIds.each { id ->
+        if (siblingOn[id]) {
+            def coord = "za.co.neroland.${id}:${id}-neoforge-${mc}:${rootProject.property("${id}_version")}"
+            compileOnly coord
+            // Dev clients load a sibling only with -PwithNeroFactions / -PwithNeroColonies / -PwithNerospace.
+            if (project.hasProperty(siblingRun[id])) {
+                runtimeOnly coord
+            }
+        }
+    }
+    // Open Parties and Claims — compileOnly against the loader-neutral API jar (claims only ever deny).
+    if (opacOn) {
+        compileOnly("xaero.pac:open-parties-and-claims-common-${mc}:${opacVersion}") { transitive = false }
+        // NeoForge dev runs only (-PwithOpac); Fabric would also need Forge Config API Port, which is not wired.
+        if (project.hasProperty('withOpac')) {
+            runtimeOnly "xaero.pac:open-parties-and-claims-neoforge-${mc}:${opacVersion}"
+        }
     }
 
     // Sentry SDK embedded via NeoForge JarJar so players need no extra download (JarJar dedupes if
@@ -105,6 +168,10 @@ dependencies {
 // so the IDE never copies a RAW (token-laden) mods.toml into bin/main;
 // neoForge.ideSyncTask runs this on IDE sync so bin/main gets the EXPANDED manifest
 // and Run & Debug works — values stay dynamic (from gradle.properties).
+// The optional sibling entries of the generated manifest: a dependency block per enabled sibling, "" otherwise.
+def tomlDep = { String modId, String floor, String reqKey, String reqVal ->
+    "\n[[dependencies.${rootProject.mod_id}]]\nmodId = \"${modId}\"\n${reqKey} = ${reqVal}\nversionRange = \"[${floor},)\"\nordering = \"AFTER\"\nside = \"BOTH\"\n"
+}
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
     def props = [
         mod_id                 : rootProject.mod_id,
@@ -117,6 +184,10 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
         // links against, which surfaces as a NoSuchMethodError deep in gameplay instead of a clean
         // "update Neroland Core" loader message.
         nerolandcore_version_range: "[${nerolandcoreVersion},2.0)",
+        nerofactions_dep : siblingOn.nerofactions ? tomlDep('nerofactions', rootProject.nerofactions_version, 'type', '"optional"') : '',
+        nerocolonies_dep : siblingOn.nerocolonies ? tomlDep('nerocolonies', rootProject.nerocolonies_version, 'type', '"optional"') : '',
+        nerospace_dep    : siblingOn.nerospace ? tomlDep('nerospace', rootProject.nerospace_version, 'type', '"optional"') : '',
+        opac_dep         : opacOn ? tomlDep('openpartiesandclaims', opacVersion.toString(), 'type', '"optional"') : '',
     ]
     inputs.properties(props)
     expand(props)
@@ -128,6 +199,10 @@ sourceSets.main.resources.srcDir generateModMetadata
 neoForge {
     version = neoVersion
     ideSyncTask generateModMetadata
+
+    // Give the unit-test source set the same (de-obfuscated) Minecraft + NeoForge classpath as
+    // main, so tests can construct game-typed objects without a running server.
+    addModdingDependenciesTo sourceSets.test
 
     def at = rootProject.file('common/src/main/resources/META-INF/accesstransformer.cfg')
     if (at.exists()) {
@@ -192,7 +267,12 @@ tasks.register('ecjCheck', JavaExec) {
         def analysisCp = (sourceSets.main.compileClasspath.files + sourceSets.main.output.files)
                 .findAll { it.exists() }
                 .join(File.pathSeparator)
-        def srcDirs = sourceSets.main.java.srcDirs.findAll { it.exists() }.collect { it.absolutePath }
+        // The source FILES, not the source dirs, so the `<x>_compat=false` excludes apply here exactly as in
+        // compileJava. Passed through an @argfile (forward slashes) to keep the Windows command line short.
+        def ecjSources = project.layout.buildDirectory.file('tmp/ecjCheck/sources.txt').get().asFile
+        ecjSources.parentFile.mkdirs()
+        ecjSources.text = sourceSets.main.java.files.collect { it.absolutePath.replace('\\', '/') }.join('\n') + '\n'
+        def srcDirs = ['@' + ecjSources.absolutePath.replace('\\', '/')]
         args = [
                 '--release', '25',
                 '-proc:none',

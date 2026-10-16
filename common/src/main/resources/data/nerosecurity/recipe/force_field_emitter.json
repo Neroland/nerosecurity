@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "minecraft:glass",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone_block",
+    "O": "minecraft:observer"
+  },
+  "pattern": [
+    "GGG",
+    "IRI",
+    "IOI"
+  ],
+  "result": {
+    "id": "nerosecurity:force_field_emitter",
+    "count": 1
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "variants": {
+    "active=false,facing=north": {
+      "model": "nerosecurity:block/force_field_emitter"
+    },
+    "active=false,facing=east": {
+      "model": "nerosecurity:block/force_field_emitter",
+      "y": 90
+    },
+    "active=false,facing=south": {
+      "model": "nerosecurity:block/force_field_emitter",
+      "y": 180
+    },
+    "active=false,facing=west": {
+      "model": "nerosecurity:block/force_field_emitter",
+      "y": 270
+    },
+    "active=false,facing=up": {
+      "model": "nerosecurity:block/force_field_emitter",
+      "x": 270
+    },
+    "active=false,facing=down": {
+      "model": "nerosecurity:block/force_field_emitter",
+      "x": 90
+    },
+    "active=true,facing=north": {
+      "model": "nerosecurity:block/force_field_emitter_active"
+    },
+    "active=true,facing=east": {
+      "model": "nerosecurity:block/force_field_emitter_active",
+      "y": 90
+    },
+    "active=true,facing=south": {
+      "model": "nerosecurity:block/force_field_emitter_active",
+      "y": 180
+    },
+    "active=true,facing=west": {
+      "model": "nerosecurity:block/force_field_emitter_active",
+      "y": 270
+    },
+    "active=true,facing=up": {
+      "model": "nerosecurity:block/force_field_emitter_active",
+      "x": 270
+    },
+    "active=true,facing=down": {
+      "model": "nerosecurity:block/force_field_emitter_active",
+      "x": 90
+    }
+  }
+}
