@@ -33,7 +33,7 @@ jobs:
       ORDER: "rocket_t4 rockets greenxertz_vista cindara_basin glacira_frost orbital_station terraform_after terraform_before machines solar pipes quarry_operating creatures star_guide launch_controller suits meteor_site blocks"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
