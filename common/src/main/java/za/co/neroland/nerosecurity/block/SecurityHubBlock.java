@@ -53,8 +53,9 @@ import za.co.neroland.nerosecurity.registry.NeroSecurityBlockEntities;
  * <ul>
  *   <li><b>Placing</b> registers the installation. A placer over the per-player limit gets the hub back.</li>
  *   <li><b>Using</b> opens the hub screen for OFFICER and above (the screen edits members).</li>
- *   <li><b>Breaking</b> works only for an OWNER or operator who is sneaking; anyone else makes no
- *       progress. A player break dissolves the installation.</li>
+ *   <li><b>Breaking</b> works only for a sneaking OWNER, or for an operator (sneaking or not: the
+ *       override is the deliberate act); anyone else makes no progress ({@link HubBreakRule}). A player
+ *       break dissolves the installation.</li>
  *   <li><b>Any other removal</b> (explosion, command, another mod) orphans the installation instead,
  *       so it can be found and cleaned up by an operator.</li>
  * </ul>
@@ -217,9 +218,10 @@ public class SecurityHubBlock extends BaseEntityBlock {
     }
 
     /**
-     * Whether {@code player} may break the hub at {@code pos}: sneaking, and the resolver allows DISSOLVE
-     * (OWNER, or an operator). The loader break hooks call this before any player break, creative included,
-     * so creative mode is not a bypass; {@link #getDestroyProgress} also uses it as defence in depth.
+     * Whether {@code player} may break the hub at {@code pos}: the resolver allows DISSOLVE (OWNER, or an
+     * operator) and the breaker is sneaking or is that operator ({@link HubBreakRule}). The loader break
+     * hooks call this before any player break, creative included, so creative mode is not a bypass;
+     * {@link #getDestroyProgress} also uses it as defence in depth.
      */
     public static boolean mayBreak(ServerLevel level, BlockPos pos, ServerPlayer player) {
         return mayDissolve(level, pos, player);
@@ -231,9 +233,6 @@ public class SecurityHubBlock extends BaseEntityBlock {
     }
 
     private static boolean mayDissolve(ServerLevel level, BlockPos pos, ServerPlayer player) {
-        if (!player.isShiftKeyDown()) {
-            return false;
-        }
         if (!(level.getBlockEntity(pos) instanceof SecurityHubBlockEntity hub)) {
             return true; // no record to protect
         }
@@ -241,8 +240,9 @@ public class SecurityHubBlock extends BaseEntityBlock {
         if (installation == null) {
             return true; // an inert hub is just a block
         }
-        return AccessResolver.DEFAULT.resolve(player, installation, AccessAction.DISSOLVE,
-                DevicePos.of(level, pos)).allowed();
+        AccessDecision decision = AccessResolver.DEFAULT.resolve(player, installation, AccessAction.DISSOLVE,
+                DevicePos.of(level, pos));
+        return HubBreakRule.mayBreak(player.isShiftKeyDown(), decision);
     }
 
     @Override

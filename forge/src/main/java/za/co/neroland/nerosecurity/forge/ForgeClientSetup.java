@@ -8,10 +8,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import za.co.neroland.nerosecurity.client.BerCommand;
+import za.co.neroland.nerosecurity.client.GalleryCaptureHarness;
 import za.co.neroland.nerosecurity.client.feedback.ClientDeviceFeedback;
 import za.co.neroland.nerosecurity.client.render.ClientBlockEntityRenderers;
 import za.co.neroland.nerosecurity.client.render.DoorChestHubRenderers;
@@ -61,6 +63,12 @@ public final class ForgeClientSetup {
         // Client-only /nsber (BER budget readout).
         RegisterClientCommandsEvent.BUS.addListener(event ->
                 BerCommand.register(event.getDispatcher()));
+        // Client-only /nsecgallery capture (the gallery screenshot harness) and the tick that drives it.
+        RegisterClientCommandsEvent.BUS.addListener(event ->
+                GalleryCaptureHarness.registerClientCommands(event.getDispatcher()));
+        TickEvent.ClientTickEvent.Post.BUS.addListener(event -> {
+            GalleryCaptureHarness.tick();
+        });
         // Forge 26.x has no global event bus; each event class owns a static BUS. A statement-bodied
         // lambda keeps the Consumer/Predicate overloads unambiguous.
         ClientPlayerNetworkEvent.LoggingOut.BUS.addListener(event -> {

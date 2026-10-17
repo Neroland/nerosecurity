@@ -50,6 +50,7 @@ import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
  * /nerosecurity admin list                        (LEVEL_GAMEMASTERS) ids, names and counts; no identities
  * /nerosecurity admin dissolve &lt;installation&gt;    (LEVEL_GAMEMASTERS) orphaned installations only
  * /nerosecurity privacy [status|optout|optin|export]  (players; no permission) the invoker's own data only
+ * /nerosecurity gallery [clear]                  (LEVEL_GAMEMASTERS, creative) the showcase exhibit; see GalleryCommands
  * </pre>
  *
  * <p>Feedback goes to the invoker only ({@code sendSuccess(..., false)}). Suggestions are id prefixes,
@@ -118,6 +119,7 @@ public final class SecurityCommands {
                                         .executes(ctx -> runSafely(ctx.getSource(), "admin dissolve", () -> adminDissolve(ctx)))))));
         BindCommands.register(dispatcher);
         PrivacyCommands.register(dispatcher);
+        GalleryCommands.register(dispatcher);
         za.co.neroland.nerosecurity.link.AlertCommands.register(dispatcher);
     }
 

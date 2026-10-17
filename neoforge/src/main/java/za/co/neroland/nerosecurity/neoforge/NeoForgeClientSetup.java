@@ -6,12 +6,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 import za.co.neroland.nerosecurity.client.BerCommand;
+import za.co.neroland.nerosecurity.client.GalleryCaptureHarness;
 import za.co.neroland.nerosecurity.client.feedback.ClientDeviceFeedback;
 import za.co.neroland.nerosecurity.client.render.ClientBlockEntityRenderers;
 import za.co.neroland.nerosecurity.client.render.DoorChestHubRenderers;
@@ -52,6 +54,10 @@ public final class NeoForgeClientSetup {
         // Client-only /nsber (BER budget readout).
         NeoForge.EVENT_BUS.addListener((RegisterClientCommandsEvent event) ->
                 BerCommand.register(event.getDispatcher()));
+        // Client-only /nsecgallery capture (the gallery screenshot harness) and the tick that drives it.
+        NeoForge.EVENT_BUS.addListener((RegisterClientCommandsEvent event) ->
+                GalleryCaptureHarness.registerClientCommands(event.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> GalleryCaptureHarness.tick());
         // Drop the synced hub mirror on leaving a world/server. This is on the GAME bus.
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) ->
                 SecurityNetwork.clearClientCaches());

@@ -2,6 +2,7 @@ package za.co.neroland.nerosecurity.fabric;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -12,6 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.client.BerCommand;
+import za.co.neroland.nerosecurity.client.GalleryCaptureHarness;
 import za.co.neroland.nerosecurity.client.feedback.ClientDeviceFeedback;
 import za.co.neroland.nerosecurity.client.render.ClientBlockEntityRenderers;
 import za.co.neroland.nerosecurity.client.render.DoorChestHubRenderers;
@@ -66,6 +68,10 @@ public final class NeroSecurityFabricClient implements ClientModInitializer {
         // Client-only /nsber (BER budget readout).
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
                 BerCommand.register(dispatcher));
+        // Client-only /nsecgallery capture (the gallery screenshot harness) and the tick that drives it.
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
+                GalleryCaptureHarness.registerClientCommands(dispatcher));
+        ClientTickEvents.END_CLIENT_TICK.register(mc -> GalleryCaptureHarness.tick());
 
         // Drop any synced mirror caches on leaving a world/server, so one session's security state
         // can never be shown in the next (or on a server that does not run NeroSecurity).

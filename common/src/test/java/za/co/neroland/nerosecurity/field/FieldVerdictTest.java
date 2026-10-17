@@ -89,6 +89,28 @@ class FieldVerdictTest {
                 "the owner pass-through drops the filter only; a deny still wins");
     }
 
+    @Test
+    void aClaimOverTheEmitterNeverSealsTheOwnerInside() {
+        // A claim-like source: denies only when the query carries a block position, as the real claim source does.
+        AccessSource claimAtPosition = new AccessSource() {
+            @Override
+            public Identifier id() {
+                return Identifier.fromNamespaceAndPath("nerosecurity", "claim");
+            }
+
+            @Override
+            public AccessVote vote(AccessQuery query) {
+                return query.at() == null ? AccessVote.Abstain.INSTANCE
+                        : new AccessVote.Deny(DenyReason.SOURCE_DENY, "access.nerosecurity.deny.claim");
+            }
+        };
+        AccessResolver r = resolver(List.of(MembershipSource.INSTANCE, claimAtPosition), false);
+        assertTrue(pass(r, installation, owner, at(AccessLevel.MEMBER, true), true),
+                "the stored owner passes their own field even under a hostile claim");
+        assertFalse(pass(r, installation, officer, at(AccessLevel.MEMBER, false), true),
+                "everyone else still meets the claim's deny");
+    }
+
     private boolean pass(AccessResolver r, Installation i, UUID who, FieldSettings s, boolean enabled) {
         return FieldVerdict.decide(r, null, i, EMITTER, who, s, enabled);
     }

@@ -41,8 +41,13 @@ public final class FieldVerdict {
             return false;
         }
         try {
-            Set<Identifier> filter = installation.isOwner(actor) ? null : settings.access().grantingSources();
-            return resolver.resolve(new AccessQuery(server, actor, installation, AccessAction.PASS_FIELD, emitter),
+            // A stored owner always passes their own field: the keycard-only filter is dropped, and no position is
+            // passed so a land claim over the emitter's chunk cannot seal the owner inside their own shell (claims
+            // vote on block interactions only). Any other deny still wins.
+            boolean owner = installation.isOwner(actor);
+            Set<Identifier> filter = owner ? null : settings.access().grantingSources();
+            DevicePos at = owner ? null : emitter;
+            return resolver.resolve(new AccessQuery(server, actor, installation, AccessAction.PASS_FIELD, at),
                     settings.access().minLevel(), filter).allowed();
         } catch (RuntimeException e) {
             return false;

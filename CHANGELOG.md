@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0-beta.1] - unreleased
+## [0.5.0-beta.1] - 2026-10-17
 
 The first build with gameplay. Requires Neroland Core 1.15.0. Scope cuts and known gaps are listed at the bottom.
 
 ### Added
 
+- **Gallery command.** `/nerosecurity gallery` (operator, creative) builds a lit showcase of every block as a
+  linked, powered installation named "Gallery", `gallery clear` takes it down cleanly, and the client-side
+  `/nsecgallery capture` shoots a fixed screenshot list of it.
+  An "Access denied" bay at the far end holds a second installation nobody is a member of, with a penned
+  visitor mob tripping its beams and camera, so the refusal side (deny feedback, alarm, lamp, monitor, foreign
+  keycards) is on show too; `gallery clear` dissolves every hub inside the footprint.
+- **Hub break.** An operator may now break a Security Hub without sneaking (the override is the deliberate
+  act); a stored owner still sneaks, and nobody else makes progress.
 - **Access levels and resolution.** A fixed four-rung ladder, PUBLIC < MEMBER < OFFICER < OWNER, plus a
   server-operator ADMIN override that no in-game action can revoke. Every access decision goes through one
   server-side resolver: it asks every access source, any deny wins, and otherwise the highest grant applies.

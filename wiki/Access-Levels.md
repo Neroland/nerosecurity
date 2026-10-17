@@ -53,6 +53,7 @@ make someone an OWNER at the hub, and nobody can change their own level.
 | Clear a lockdown | OWNER |
 | Revoke keycards, set the chest automation policy | OWNER |
 | Turn an alarm's lockdown response on or off | OWNER |
+| Switch a force field to keycard-only (or back) | OWNER |
 | Let officers receive alarm messages | OWNER |
 | Bind a faction, colony or station | OWNER |
 
