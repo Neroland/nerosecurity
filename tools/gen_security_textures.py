@@ -9,7 +9,7 @@ rivets, recess, led, haz_band, additive-only save with --force). Differences:
 * One script also writes the .png.mcmeta files for the animated strips (screens 8 frames, fields 16).
 * Deterministic: every painter seeds its RNG from the texture name, so re-runs are byte-identical.
 * ADDITIVE-ONLY: save() skips any PNG that already exists; pass --force to replace the set (the one-shot
-  Stage 5 run). Afterwards additive-only protects hand edits.
+  initial run). Afterwards additive-only protects hand edits.
 
 All textures produced here are procedurally generated; none are hand-painted. They are readable and
 consistent but not final art.
@@ -1068,12 +1068,10 @@ def check():
             for fn in sorted(os.listdir(d)):
                 if fn.endswith(".png") and "%s/%s" % (folder, fn) not in owned:
                     unowned.append("%s/%s" % (folder, fn))
+    # A PNG the generator does not own would ship unchecked (wrong size, too few colours), so it fails the check.
+    problems.extend("%s: not owned by the generator (delete it or add it to MANIFEST)" % u for u in unowned)
     for p in problems:
         print("FAIL", p)
-    if unowned:
-        print("note: %d PNG(s) not owned by the generator (dead files, delete them):" % len(unowned))
-        for u in unowned:
-            print("  ", u)
     print("gen_security_textures --check: %d texture(s), %d problem(s)" % (len(MANIFEST), len(problems)))
     return 1 if problems else 0
 

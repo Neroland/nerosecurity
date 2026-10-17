@@ -92,11 +92,15 @@ public final class AuditRecorder {
         };
     }
 
-    /** The entry an event becomes after the opt-out policy. */
+    /**
+     * The entry an event becomes after the opt-out policy. {@code LOG_READ} is exempt: it records who read
+     * other people's names, an accountability record that must stay attributable to the reader, so it always
+     * names them whatever their own opt-out says.
+     */
     static AuditEntry entryFor(SecurityEvent event, @Nullable MinecraftServer server, @Nullable ActorPolicy actorPolicy) {
         UUID actor = event.actor();
         boolean withheld = false;
-        if (actor != null) {
+        if (actor != null && !alwaysAttributed(event.type())) {
             ActorPolicy p = actorPolicy == null ? ActorPolicy.NONE : actorPolicy;
             try {
                 withheld = p.withholdActor(server, actor);
@@ -107,5 +111,10 @@ public final class AuditRecorder {
         }
         return new AuditEntry(event.at(), event.type(), withheld ? null : actor, withheld, event.devicePos(),
                 event.severity());
+    }
+
+    /** Event types whose actor is never withheld by the opt-out (accountability records). */
+    public static boolean alwaysAttributed(@Nullable SecurityEventType type) {
+        return type == SecurityEventType.LOG_READ;
     }
 }

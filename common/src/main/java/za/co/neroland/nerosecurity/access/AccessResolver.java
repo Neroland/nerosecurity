@@ -30,7 +30,10 @@ import za.co.neroland.nerosecurity.installation.Installation;
  *   <li>No installation: the effective level is PUBLIC and no source is asked.</li>
  *   <li>Every source votes. A throwing source counts as a deny (fail closed). When the caller passes
  *       a granting-source filter (a keycard-only device), grants from sources outside it are treated
- *       as abstentions; every source is still asked, so a deny from any of them still counts.</li>
+ *       as abstentions; every source is still asked, so a deny from any of them still counts. A grant
+ *       from the keycard source counts only for actions that declare
+ *       {@link AccessAction#keycardMayGrant} (physical passage); for every other action a card is an
+ *       abstention, so a card never administers the installation.</li>
  *   <li>Any deny refuses the action; the highest grant is still reported for the UI.</li>
  *   <li>The effective level is the highest grant (PUBLIC when nobody granted).</li>
  *   <li>While lockdown is enabled and active on the installation the requirement becomes OWNER, so
@@ -101,7 +104,9 @@ public final class AccessResolver {
                 vote = new AccessVote.Deny(DenyReason.SOURCE_DENY, "access.nerosecurity.deny.source");
             }
             if (vote instanceof AccessVote.Grant grant && grant.level() != null) {
-                if (grantingSources == null || grantingSources.contains(id)) {
+                boolean filtered = grantingSources != null && !grantingSources.contains(id);
+                boolean cardNotAllowed = !query.action().keycardMayGrant && KeycardSource.ID.equals(id);
+                if (!filtered && !cardNotAllowed) {
                     best = AccessLevel.max(best, grant.level());
                 }
             } else if (vote instanceof AccessVote.Deny) {

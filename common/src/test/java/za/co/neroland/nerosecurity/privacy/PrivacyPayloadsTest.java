@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.RecordComponent;
 import java.util.List;
@@ -13,7 +14,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.contents.TranslatableContents;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ import za.co.neroland.nerosecurity.privacy.PrivacyPayloads.HubPrivacyRequest;
 import za.co.neroland.nerosecurity.privacy.PrivacyPayloads.PrivacyAction;
 import za.co.neroland.nerosecurity.privacy.PrivacyPayloads.PrivacySnapshot;
 
-/** The Privacy tab's payloads carry counts and settings only, and the placeholder seam is honest. */
+/** The Privacy tab's payloads carry counts and settings only, and the real privacy actions are installed. */
 class PrivacyPayloadsTest {
 
     @Test
@@ -52,17 +52,11 @@ class PrivacyPayloadsTest {
     }
 
     @Test
-    void notYetRefusesEverythingHonestly() {
-        PrivacyActions actions = PrivacyActions.NOT_YET;
-        assertFalse(actions.available());
-        for (PrivacyActions.Outcome outcome : List.of(actions.export(null), actions.setOptOut(null, true),
-                actions.setOptOut(null, false))) {
-            assertFalse(outcome.ok());
-            assertEquals(PrivacyActions.UNAVAILABLE_KEY,
-                    ((TranslatableContents) outcome.message().getContents()).getKey());
-        }
-        assertFalse(actions.status(null).optedOut());
-        assertSame(PrivacyActions.NOT_YET, PrivacyActions.current(), "nothing else is installed in this release");
+    void theRealActionsAreInstalledAndAvailable() {
+        assertSame(SecurityPrivacyActions.INSTANCE, PrivacyActions.current(), "the privacy update is the default");
+        assertTrue(PrivacyActions.current().available(), "PrivacySnapshot.actionsAvailable is true");
+        PrivacyActions.install(null);
+        assertSame(SecurityPrivacyActions.INSTANCE, PrivacyActions.current(), "null restores the real actions");
     }
 
     @Test

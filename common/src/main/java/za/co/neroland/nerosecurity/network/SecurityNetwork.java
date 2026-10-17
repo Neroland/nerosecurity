@@ -120,19 +120,19 @@ public final class SecurityNetwork {
                 HubPayloadHandlers::handleLockdown);
         serverbound(HubPayloads.HubRename.TYPE, HubPayloads.HubRename.STREAM_CODEC,
                 HubPayloadHandlers::handleRename);
-        // Stage 2 devices. Each declarer adds its own snapshot + intents. Declaration order is not
+        // Access devices. Each declarer adds its own snapshot + intents. Declaration order is not
         // load-bearing: every loader registers payloads by their unique Type id (NeoForge registrar,
         // Forge payloadChannel, Fabric PayloadTypeRegistry), never by list index.
         ProgrammerPayloads.declare();
         DoorPayloads.declare();
         ChestPayloads.declare();
-        // Stage 3 devices: the shared sensor settings screen (laser and camera), the alarm and the monitor.
+        // Sensors and alerts: the shared sensor settings screen (laser and camera), the alarm and the monitor.
         SensorPayloads.declare();
         AlarmPayloads.declare();
         MonitorPayloads.declare();
-        // Stage 4: the force field settings screen, plus the local player's own field passability.
+        // Force fields: the force field settings screen, plus the local player's own field passability.
         FieldPayloads.declare();
-        // Stage 5: the hub's Privacy tab (bound to the open hub menu) and per-player device feedback.
+        // Privacy and feedback: the hub's Privacy tab (bound to the open hub menu) and per-player device feedback.
         PrivacyPayloads.declare();
         FeedbackPayloads.declare();
     }

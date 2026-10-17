@@ -157,7 +157,12 @@ public class FieldSettingsScreen extends SecurityScreen<FieldMenu> {
         ladder.enableAll();
         ladder.restrictOwner(snap.viewerLevel(), snap.admin(), Component.translatable(FieldText.OWNER_ONLY_KEY));
         enabled.enable();
-        keycardOnly.enable();
+        // Keycard-only is an OWNER setting on fields (the server refuses it from anyone else).
+        if (ownerOrAdmin) {
+            keycardOnly.enable();
+        } else {
+            keycardOnly.disable(Component.translatable(FieldText.OWNER_ONLY_KEY));
+        }
         steppers.values().forEach(Stepper::enable);
         // The other shape is offered only if it would fit; otherwise its segment says which rule it breaks.
         shape.enableAll();
@@ -166,10 +171,17 @@ public class FieldSettingsScreen extends SecurityScreen<FieldMenu> {
         broken.ifPresent(key -> shape.disable(other.ordinal(), invalidText(key, snap)));
     }
 
+    /**
+     * The server's answer is authoritative: a refused change (owner only, too large for the range or the area cap,
+     * fields disabled) arrives with {@code ok = false} and the reason. The amber validation line under the status
+     * row stays as the early hint while the player is still stepping.
+     */
     @Override
     protected void onSnapshot(boolean answeredIntent) {
-        // FieldSnapshot carries no (ok, message) tail yet; an answered intent reads "Saved.".
-        feedbackFromSnapshot(true, null, answeredIntent);
+        FieldSnapshot snap = snapshot();
+        if (snap != null) {
+            feedbackFromSnapshot(snap.ok(), snap.message(), answeredIntent);
+        }
     }
 
     /** The snapshot is display-only and is dropped as soon as the screen closes. */

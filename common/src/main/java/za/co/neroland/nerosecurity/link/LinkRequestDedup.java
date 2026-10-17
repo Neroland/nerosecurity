@@ -1,9 +1,7 @@
 package za.co.neroland.nerosecurity.link;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
@@ -26,7 +24,8 @@ final class LinkRequestDedup {
     private record Remembered(LinkActionResult result, long at) {
     }
 
-    private final Map<UUID, LinkedHashMap<String, Remembered>> byPlayer = new HashMap<>();
+    /** Access-ordered, so the least recently used player is evicted first when full. */
+    private final LinkedHashMap<UUID, LinkedHashMap<String, Remembered>> byPlayer = new LinkedHashMap<>(16, 0.75f, true);
 
     /** The cached result for this request, or null (no id, unknown, or expired). */
     synchronized @Nullable LinkActionResult lookup(UUID player, String action, @Nullable String requestId, long now) {
@@ -51,8 +50,10 @@ final class LinkRequestDedup {
         }
         LinkedHashMap<String, Remembered> mine = byPlayer.get(player);
         if (mine == null) {
-            if (byPlayer.size() >= MAX_PLAYERS) {
-                byPlayer.clear();
+            while (byPlayer.size() >= MAX_PLAYERS) {
+                Iterator<UUID> oldest = byPlayer.keySet().iterator();
+                oldest.next();
+                oldest.remove();
             }
             mine = new LinkedHashMap<>();
             byPlayer.put(player, mine);

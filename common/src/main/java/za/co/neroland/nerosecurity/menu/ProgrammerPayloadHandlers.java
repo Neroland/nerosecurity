@@ -51,9 +51,10 @@ public final class ProgrammerPayloadHandlers {
     private ProgrammerPayloadHandlers() {
     }
 
-    /** Who may look at a programmer: anyone the resolver lets open a MEMBER device at it. */
+    /** Who may look at a programmer: VIEW_INSTALLATION at MEMBER, so membership (never a card). */
     public static AccessDecision resolveView(ServerPlayer player, Installation installation, DevicePos at) {
-        return AccessResolver.DEFAULT.resolve(player, installation, AccessAction.OPEN, AccessLevel.MEMBER, at, null);
+        return AccessResolver.DEFAULT.resolve(player, installation, AccessAction.VIEW_INSTALLATION, AccessLevel.MEMBER,
+                at, null);
     }
 
     /** Sends the display snapshot to a player the resolver has just allowed to view the programmer. */

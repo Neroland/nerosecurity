@@ -1,6 +1,8 @@
 package za.co.neroland.nerosecurity.link;
 
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -51,6 +53,7 @@ public final class SecurityLinkEvents {
     /** Drain cadence in server ticks. */
     static final int DRAIN_INTERVAL_TICKS = 20;
     static final String TOPIC = "events";
+    static final int MAX_RAISED_FOR = 4096;
 
     private static final AtomicBoolean INITIALISED = new AtomicBoolean();
 
@@ -105,7 +108,7 @@ public final class SecurityLinkEvents {
 
             @Override
             public void backupNow(MinecraftServer server) {
-                // Nothing persisted: alerts are Core's (erased and backed up by Core), audit rows Stage 3's.
+                // Nothing persisted: alerts are Core's (erased and backed up by Core), audit rows the audit store's.
             }
         };
     }
@@ -116,6 +119,8 @@ public final class SecurityLinkEvents {
         private final LinkContext ctx;
         private final LinkEventMapper mapper;
         private final PushCoalescer coalescer;
+        /** Players alerted this session (for the retention sweep); memory only, bounded, erased per player. */
+        private final Set<UUID> raisedFor = new LinkedHashSet<>();
 
         Pipeline(LinkContext ctx) {
             this.ctx = ctx;
@@ -146,7 +151,8 @@ public final class SecurityLinkEvents {
                 return;
             }
             PushKind push = mapped.get().push();
-            String actorKind = event.actor() == null ? "none" : ctx.withheld(event.actor()) ? "withheld" : "player";
+            // Identity-free row: an opted-out actor reads as any other player (never "withheld" here).
+            String actorKind = event.actor() == null ? "none" : "player";
             for (UUID recipient : SecurityLinkAccess.recipients(installation, event.actor())) {
                 PushCoalescer.Offer offer = push == null ? null
                         : coalescer.offer(recipient, installation.id(), push, push.severity(), now);
@@ -218,6 +224,15 @@ public final class SecurityLinkEvents {
 
         private void raise(UUID recipient, Installation installation, PushKind kind, LinkAlert.Severity severity,
                 int extra) {
+            synchronized (raisedFor) {
+                raisedFor.remove(recipient);
+                raisedFor.add(recipient);
+                while (raisedFor.size() > MAX_RAISED_FOR) {
+                    Iterator<UUID> oldest = raisedFor.iterator();
+                    oldest.next();
+                    oldest.remove();
+                }
+            }
             ctx.raiseAlert(recipient, LinkAlert.raise(PushCopy.alertId(installation.id(), kind),
                     SecurityLinkModule.MODULE_ID, severity, PushCopy.alertText(installation.name(), kind, extra)));
         }
@@ -234,40 +249,90 @@ public final class SecurityLinkEvents {
             return out;
         }
 
-        /**
-         * Dismisses this module's alerts older than the audit retention for every stored owner and officer
-         * (alerts live in Core's store; the retention is ours).
-         */
+        /** The sweep on the configured cadence (server hook). */
         void sweepAlerts(MinecraftServer server) {
             try {
-                SecurityInstallations store = ctx.installations();
-                if (store == null) {
-                    return;
-                }
-                long cutoff = ctx.now() - NeroSecurityConfig.privacyAuditRetentionDays() * 86_400_000L;
-                Set<UUID> players = new HashSet<>();
-                for (Installation installation : store.all()) {
-                    players.addAll(SecurityLinkAccess.recipients(installation, null));
-                    installation.members().keySet().forEach(players::add);
-                }
-                for (UUID player : players) {
-                    for (LinkAlert alert : ctx.alerts(player)) {
-                        if (SecurityLinkModule.MODULE_ID.equals(alert.moduleId()) && alert.createdAt() < cutoff) {
-                            ctx.dismissAlert(player, alert.id());
-                        }
-                    }
-                }
+                sweepAlerts(ctx.now(), NeroSecurityConfig.privacyAuditRetentionDays());
             } catch (RuntimeException | LinkageError e) {
                 NeroSecurityCommon.LOGGER.warn("[NeroSecurity] link alert retention sweep failed ({}).",
                         e.getClass().getName());
             }
         }
 
+        /**
+         * Dismisses this module's alerts older than the audit retention of the installation they describe:
+         * {@code min(globalDays, the installation's override)}, or {@code globalDays} when the installation is
+         * gone or the id cannot be parsed. Visits every stored owner and member, plus every player this
+         * pipeline raised an alert for during this server session (so a member removed since keeps nothing
+         * past retention).
+         *
+         * <p>Backstop: a former recipient from an <em>earlier</em> session who has no stored relationship any
+         * more cannot be enumerated (Core's alert store offers no listing of players); their alerts are still
+         * bounded by Core's per-module alert cap, removed by their own
+         * acknowledgement, and by any data-erasure request.
+         *
+         * @return how many alerts were dismissed
+         */
+        int sweepAlerts(long now, int globalDays) {
+            SecurityInstallations store = ctx.installations();
+            if (store == null) {
+                return 0;
+            }
+            Set<UUID> players = new HashSet<>(raisedForSnapshot());
+            for (Installation installation : store.all()) {
+                players.addAll(SecurityLinkAccess.recipients(installation, null));
+                players.addAll(installation.members().keySet());
+            }
+            int dismissed = 0;
+            for (UUID player : players) {
+                for (LinkAlert alert : ctx.alerts(player)) {
+                    if (!SecurityLinkModule.MODULE_ID.equals(alert.moduleId()) || alert.id() == null) {
+                        continue;
+                    }
+                    long cutoff = now - retentionDays(store, alert.id(), globalDays) * 86_400_000L;
+                    if (alert.createdAt() < cutoff) {
+                        ctx.dismissAlert(player, alert.id());
+                        dismissed++;
+                    }
+                }
+            }
+            return dismissed;
+        }
+
+        /** {@code min(global, override)} for the installation named in {@code nerosecurity.<uuid>.<kind>}. */
+        static int retentionDays(SecurityInstallations store, String alertId, int globalDays) {
+            int global = Math.max(1, globalDays);
+            String prefix = SecurityLinkModule.MODULE_ID + ".";
+            if (!alertId.startsWith(prefix)) {
+                return global;
+            }
+            String rest = alertId.substring(prefix.length());
+            int dot = rest.indexOf('.');
+            UUID id = SecurityLinkAccess.exactUuid(dot < 0 ? rest : rest.substring(0, dot));
+            Installation installation = id == null ? null : store.byId(id).orElse(null);
+            Integer override = installation == null ? null : installation.auditRetentionDaysOverride();
+            return override == null ? global : Math.max(1, Math.min(global, override));
+        }
+
+        private List<UUID> raisedForSnapshot() {
+            synchronized (raisedFor) {
+                return List.copyOf(raisedFor);
+            }
+        }
+
         void forget(UUID player) {
             coalescer.forget(player);
+            synchronized (raisedFor) {
+                raisedFor.remove(player);
+            }
         }
 
         boolean holdsAnyFor(UUID player) {
+            synchronized (raisedFor) {
+                if (raisedFor.contains(player)) {
+                    return true;
+                }
+            }
             return coalescer.holdsAnyFor(player);
         }
 

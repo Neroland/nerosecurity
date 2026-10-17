@@ -21,7 +21,7 @@ import za.co.neroland.nerosecurity.installation.DevicePos;
 import za.co.neroland.nerosecurity.installation.Installation;
 
 /**
- * The Stage 7 gate test: a named actor at a known position trips a laser, and nothing about the actor,
+ * The push privacy test: a named actor at a known position trips a laser, and nothing about the actor,
  * the owner, the position or the dimension reaches the notification, the alert text or the deep link.
  */
 class PushCopyTest {

@@ -39,7 +39,7 @@ import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
  * The integration binding commands, merged into the {@code /nerosecurity} tree.
  *
  * <pre>
- * /nerosecurity bind &lt;installation&gt;                                       show the bindings (MEMBER, like the hub's read view)
+ * /nerosecurity bind &lt;installation&gt;                                       show the bindings (MEMBER, membership only)
  * /nerosecurity bind &lt;installation&gt; faction &lt;factionId&gt; [member|officer]  (OWNER) you must be a member of the faction
  * /nerosecurity bind &lt;installation&gt; colony here|&lt;colonyId&gt; [member|officer] (OWNER) you must be a member of the colony
  * /nerosecurity bind &lt;installation&gt; station &lt;id&gt;                          (OWNER) you must own the station
@@ -231,8 +231,8 @@ public final class BindCommands {
         if (installation == null) {
             return 0;
         }
-        AccessDecision decision = AccessResolver.DEFAULT.resolve(player, installation, AccessAction.OPEN,
-                installation.hubPos());
+        AccessDecision decision = AccessResolver.DEFAULT.resolve(player, installation,
+                AccessAction.VIEW_INSTALLATION, null);
         if (!decision.allowed()) {
             source.sendFailure(decision.message());
             return 0;

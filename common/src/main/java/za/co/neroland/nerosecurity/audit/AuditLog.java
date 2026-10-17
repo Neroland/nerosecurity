@@ -60,6 +60,20 @@ public final class AuditLog {
         return before - entries.size();
     }
 
+    /** Export: every entry naming {@code actor}, oldest first. */
+    public List<AuditEntry> byActor(UUID actor) {
+        List<AuditEntry> out = new ArrayList<>();
+        if (actor == null) {
+            return out;
+        }
+        for (AuditEntry entry : entries) {
+            if (actor.equals(entry.actor())) {
+                out.add(entry);
+            }
+        }
+        return out;
+    }
+
     /** Whether any entry names {@code actor} (conformance probe). */
     public boolean hasActor(UUID actor) {
         if (actor == null) {

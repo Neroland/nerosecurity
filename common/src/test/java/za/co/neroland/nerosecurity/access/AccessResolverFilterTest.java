@@ -100,6 +100,25 @@ class AccessResolverFilterTest {
                 .admin(), "the operator override is untouched by the filter");
     }
 
+    /**
+     * Doors and chests have no owner lockout: their settings screen (sneak-use) resolves CONFIGURE_DEVICE with no
+     * keycard filter, so the owner can always turn keycard-only off, lockdown included.
+     */
+    @Test
+    void anOwnerWithoutACardAlwaysReachesAKeycardOnlyDevicesSettings() {
+        AccessResolver resolver = new AccessResolver(() -> List.of(MembershipSource.INSTANCE, cards()),
+                AdminCheck.NONE, () -> true);
+        hands = List.of();
+        for (boolean locked : List.of(false, true)) {
+            store.setLockdown(installation.id(), locked ? new Lockdown(true, 1L, true) : Lockdown.NONE);
+            Installation now = store.byId(installation.id()).orElseThrow();
+            assertFalse(resolver.resolve(query(owner, now, AccessAction.OPEN), AccessLevel.MEMBER, KEYCARD_ONLY)
+                    .allowed(), "the keycard-only door itself refuses the cardless owner");
+            assertTrue(resolver.resolve(query(owner, now, AccessAction.CONFIGURE_DEVICE), AccessLevel.OFFICER, null)
+                    .allowed(), "but its settings never do (lockdown " + locked + ")");
+        }
+    }
+
     @Test
     void nullFilterIsUnchanged() {
         AccessSource deny = fixed("deny", new AccessVote.Deny(DenyReason.SOURCE_DENY, "x"));

@@ -17,6 +17,7 @@ import za.co.neroland.nerolandcore.link.LinkAlert;
 import za.co.neroland.nerolandcore.link.LinkAlerts;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
+import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 
 /**
  * {@code /nerosecurity alerts} — the invoker's own unread NeroSecurity alerts, privately:
@@ -37,7 +38,17 @@ public final class AlertCommands {
     private AlertCommands() {
     }
 
+    /** Registers the subtree; guarded so a missing Core link API can never break command registration. */
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        try {
+            registerTree(dispatcher);
+        } catch (RuntimeException | LinkageError e) {
+            NeroSecurityCommon.LOGGER.warn("[NeroSecurity] /nerosecurity alerts not registered ({}).",
+                    e.getClass().getName());
+        }
+    }
+
+    private static void registerTree(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("nerosecurity")
                 .then(Commands.literal("alerts")
                         .executes(ctx -> run(ctx.getSource(), "alerts", () -> list(ctx.getSource())))
@@ -55,6 +66,10 @@ public final class AlertCommands {
         if (player == null) {
             source.sendFailure(Component.translatable("command.nerosecurity.players_only"));
             return 0;
+        }
+        if (!NeroSecurityConfig.isLinkModuleEnabled()) {
+            source.sendSuccess(() -> Component.translatable("command.nerosecurity.alerts.none"), false);
+            return 1;
         }
         MinecraftServer server = source.getServer();
         long now = System.currentTimeMillis();
@@ -75,6 +90,10 @@ public final class AlertCommands {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
             source.sendFailure(Component.translatable("command.nerosecurity.players_only"));
+            return 0;
+        }
+        if (!NeroSecurityConfig.isLinkModuleEnabled()) {
+            source.sendSuccess(() -> Component.translatable("command.nerosecurity.alerts.acked", 0), false);
             return 0;
         }
         MinecraftServer server = source.getServer();

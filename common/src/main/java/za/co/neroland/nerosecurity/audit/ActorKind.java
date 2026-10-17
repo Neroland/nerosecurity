@@ -18,4 +18,13 @@ public enum ActorKind {
         }
         return entry.actor() == null ? NONE : PLAYER;
     }
+
+    /**
+     * The kind an identity-free surface (monitor, hub event rows, link rows without names, push copy) may show:
+     * {@code WITHHELD} reads as {@code PLAYER}, because telling "a player" from "an anonymous player" there
+     * would reveal who has opted out. Only the named views (the audited log read) keep {@code WITHHELD}.
+     */
+    public ActorKind identityFree() {
+        return this == WITHHELD ? PLAYER : this;
+    }
 }

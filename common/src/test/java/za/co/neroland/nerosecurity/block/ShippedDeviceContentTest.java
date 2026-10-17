@@ -23,7 +23,7 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 /**
- * The shipped data for the Stage 2 devices: every device is in the {@code nerosecurity:devices} tag (the
+ * The shipped data for the devices: every device is in the {@code nerosecurity:devices} tag (the
  * linking tool refuses anything outside it), mineable with a pickaxe, iron-tier where the spec says so,
  * has a loot table, a name and a tooltip; and every literal translation key the code uses exists in
  * {@code en_us.json}, so no screen or chat line shows a raw key.
@@ -37,7 +37,7 @@ class ShippedDeviceContentTest {
             "laser_grid_node", "security_camera", "alarm", "security_monitor", "force_field_emitter");
 
     @Test
-    void everyStageTwoDeviceIsTaggedMineableAndDropsItself() throws IOException {
+    void everyDeviceIsTaggedMineableAndDropsItself() throws IOException {
         Path data = resources().resolve(Path.of("data"));
         Set<String> devices = tagValues(data.resolve("nerosecurity/tags/block/devices.json"));
         Set<String> pickaxe = tagValues(data.resolve("minecraft/tags/block/mineable/pickaxe.json"));
@@ -60,13 +60,17 @@ class ShippedDeviceContentTest {
     }
 
     @Test
-    void forceFieldIsBossImmuneButItsEmitterIsNot() throws IOException {
+    void theHubTheFieldAndEveryDeviceAreBossImmune() throws IOException {
         Path data = resources().resolve(Path.of("data"));
         for (String tag : List.of("wither_immune", "dragon_immune")) {
             Set<String> immune = tagValues(data.resolve("minecraft/tags/block/" + tag + ".json"));
             assertTrue(immune.contains("nerosecurity:force_field"), "the field must be in minecraft:" + tag);
-            // The emitter stays breakable, so a field can always be raided through it.
-            assertTrue(!immune.contains("nerosecurity:force_field_emitter"), "the emitter must not be in minecraft:" + tag);
+            // A wither or the dragon must not delete the hub (orphaning the installation) or walk through devices;
+            // raiding stays mining and overloading, which these tags do not touch.
+            assertTrue(immune.contains("nerosecurity:security_hub"), "the hub must be in minecraft:" + tag);
+            for (String device : DEVICES) {
+                assertTrue(immune.contains("nerosecurity:" + device), device + " must be in minecraft:" + tag);
+            }
         }
         Set<String> upgrades = tagValues(data.resolve("neroland/tags/item/highlight/upgrades.json"));
         assertTrue(upgrades.contains("nerosecurity:strength_module"), "the strength module is highlighted as an upgrade");

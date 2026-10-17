@@ -31,7 +31,7 @@ public final class ChestPayloads {
     private ChestPayloads() {
     }
 
-    /** Declares the chest payloads. The orchestrated network init calls this once; repeats are ignored. */
+    /** Declares the chest payloads. The network init calls this once; repeats are ignored. */
     public static void declare() {
         if (declared) {
             return;

@@ -55,6 +55,7 @@ import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.field.FieldMenu;
+import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
@@ -643,6 +644,8 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
     }
 
     private void publish(SecurityEventType type, Installation linked, ServerLevel level, @Nullable UUID actor) {
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(level.getServer(), actor, linked);
         SecurityEventBus.publish(SecurityEvent.of(type, linked.id(), devicePos(level), actor, System.currentTimeMillis()));
     }
 

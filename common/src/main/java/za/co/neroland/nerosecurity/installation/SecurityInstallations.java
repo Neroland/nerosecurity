@@ -576,8 +576,9 @@ public final class SecurityInstallations extends SavedData {
     /**
      * Removes {@code player} from every installation: member rows go; owner entries go; card rows
      * bound to the player go (the bound card is dead for everyone from then on); an installation left
-     * without a real owner gets the tombstone owner, is marked orphaned and loses the "entered by
-     * owner" lockdown flag. Serials and the automation policy are not personal data and stay.
+     * without a real owner gets the tombstone owner, is marked orphaned, loses the "entered by
+     * owner" lockdown flag and is renamed to {@link InstallationNames#orphanedFor(UUID)} (the old label may
+     * name the erased player; co-owned installations keep theirs). Serials and the automation policy are not personal data and stay.
      *
      * @return the ids of installations this call orphaned
      */
@@ -599,6 +600,8 @@ public final class SecurityInstallations extends SavedData {
                 if (installation.hasNoOwners()) {
                     installation.addOwnerInternal(Installation.TOMBSTONE_OWNER);
                     installation.setOrphaned(true);
+                    // The owner-chosen label may name the erased player: replace it with a neutral one.
+                    installation.setName(InstallationNames.orphanedFor(installation.id()));
                     installation.setLockdown(installation.lockdown().withEnteredByOwner(false));
                     orphaned.add(installation.id());
                 }

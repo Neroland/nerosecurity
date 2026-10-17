@@ -53,6 +53,7 @@ import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
+import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.registry.ChestRegistrations;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
 
@@ -75,7 +76,9 @@ import za.co.neroland.nerosecurity.sound.SecuritySounds;
  *
  * <p>Rendering: the lid follows the vanilla chest's block event ({@value #EVENT_OPENERS}, the number of open
  * sessions, never who), read through {@link #isOpenForRender()}; the update tag carries only
- * {@value #KEY_MIN_LEVEL} and {@value #KEY_RECORDING} (never the items or the settings).
+ * {@value #KEY_MIN_LEVEL}, {@value #KEY_RECORDING}, {@value #KEY_LINKED} and {@value #KEY_LOCKDOWN} (never the items,
+ * the settings or the installation). A link or lockdown flip is sent at once; any other visual change at most every
+ * {@value #VISUAL_SYNC_MIN_TICKS} ticks (the door's spacing).
  *
  * <p>The block entity holds no installation pointer; every check looks the installation up from the
  * store by position. Audit events carry the event type, the installation, this device's position and
@@ -96,6 +99,10 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     /** Update-tag keys (renderer only). */
     public static final String KEY_MIN_LEVEL = "MinLevel";
     public static final String KEY_RECORDING = "Recording";
+    public static final String KEY_LINKED = "Linked";
+    public static final String KEY_LOCKDOWN = "Lockdown";
+    /** The minimum spacing of visual-only update-tag resends (a link or lockdown flip is never held back). */
+    private static final int VISUAL_SYNC_MIN_TICKS = 10;
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SIZE, ItemStack.EMPTY);
     private DeviceAccessSettings settings = DeviceAccessSettings.DEFAULT;
@@ -113,6 +120,11 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     /** Renderer-only fields: the client's synced copy; on the server, the values last sent. */
     private AccessLevel visualMinLevel = AccessLevel.MEMBER;
     private boolean visualRecording;
+    private boolean visualLinked;
+    private boolean visualLockdown;
+    /** Server: whether the renderer fields have been sent since load, and when they last were. */
+    private boolean visualSent;
+    private long visualSentAt = Long.MIN_VALUE;
 
     public SecureChestBlockEntity(BlockPos pos, BlockState state) {
         super(ChestRegistrations.SECURE_CHEST_BLOCK_ENTITY.get(), pos, state);
@@ -150,27 +162,58 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         return visualRecording;
     }
 
-    /** Server tick: re-derive the renderer fields on the staggered cadence. */
+    /** Linked to an installation: the plate shows the level colour (an unlinked chest's plate is {@code OFF}). */
+    public boolean renderLinked() {
+        return visualLinked;
+    }
+
+    /** The installation is in lockdown (and lockdown is enabled on the server): the LED strobes {@code LOCK}. */
+    public boolean renderLockdown() {
+        return visualLockdown;
+    }
+
+    /** Server tick: re-derive the renderer fields on the staggered cadence (and on the first tick after load). */
     public void visualTick(Level tickLevel, BlockPos pos) {
         if (tickLevel instanceof ServerLevel serverLevel
-                && VisualState.refreshDue(tickLevel.getGameTime(), pos.asLong())) {
+                && (!visualSent || VisualState.refreshDue(tickLevel.getGameTime(), pos.asLong()))) {
             refreshVisual(serverLevel);
         }
     }
 
-    /** Server: re-sends the update tag when the plate level or the recording notice changed. */
+    /**
+     * Server: re-sends the update tag when the plate level, the recording notice, the link or the lockdown look
+     * changed. A link or lockdown flip goes at once; anything else waits {@value #VISUAL_SYNC_MIN_TICKS} ticks since
+     * the last send and is picked up by a later refresh. Called by the visual tick, after a settings change, on
+     * link and unlink, and by the lockdown hook.
+     */
     public void refreshVisual(ServerLevel serverLevel) {
         if (isRemoved()) {
             return;
         }
+        Installation installation = installation();
         AccessLevel minLevel = settings.minLevel();
-        boolean recording = VisualState.recording(installation());
-        if (minLevel != visualMinLevel || recording != visualRecording) {
-            visualMinLevel = minLevel;
-            visualRecording = recording;
-            BlockState state = getBlockState();
-            serverLevel.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
+        boolean recording = VisualState.recording(installation);
+        boolean linked = installation != null;
+        boolean lockdown = VisualState.lockdownShown(installation);
+        boolean changed = !visualSent || minLevel != visualMinLevel || recording != visualRecording
+                || linked != visualLinked || lockdown != visualLockdown;
+        if (!changed) {
+            return;
         }
+        long time = serverLevel.getGameTime();
+        boolean urgent = !visualSent || linked != visualLinked || lockdown != visualLockdown;
+        if (!urgent && visualSentAt != Long.MIN_VALUE && time - visualSentAt < VISUAL_SYNC_MIN_TICKS
+                && time >= visualSentAt) {
+            return; // picked up by a later refresh
+        }
+        visualSent = true;
+        visualSentAt = time;
+        visualMinLevel = minLevel;
+        visualRecording = recording;
+        visualLinked = linked;
+        visualLockdown = lockdown;
+        BlockState state = getBlockState();
+        serverLevel.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
     }
 
     /** The open-session block event (vanilla chest pattern): both sides record the count. */
@@ -517,6 +560,8 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         // Renderer-only fields: present in the client's update tag, never written to disk.
         visualMinLevel = AccessLevel.byName(input.getStringOr(KEY_MIN_LEVEL, "")).orElse(settings.minLevel());
         visualRecording = input.getBooleanOr(KEY_RECORDING, false);
+        visualLinked = input.getBooleanOr(KEY_LINKED, false);
+        visualLockdown = input.getBooleanOr(KEY_LOCKDOWN, false);
     }
 
     @Override
@@ -530,6 +575,8 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         CompoundTag tag = new CompoundTag();
         tag.putString(KEY_MIN_LEVEL, visualMinLevel.jsonName());
         tag.putBoolean(KEY_RECORDING, visualRecording);
+        tag.putBoolean(KEY_LINKED, visualLinked);
+        tag.putBoolean(KEY_LOCKDOWN, visualLockdown);
         return tag;
     }
 
@@ -539,6 +586,8 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(serverLevel.getServer(), actor, installation);
         SecurityEventBus.publish(SecurityEvent.of(type, installation.id(), DevicePos.of(serverLevel, worldPosition),
                 actor, System.currentTimeMillis()));
     }

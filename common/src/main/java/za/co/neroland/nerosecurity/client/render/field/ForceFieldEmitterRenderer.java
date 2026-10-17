@@ -26,6 +26,7 @@ import za.co.neroland.nerosecurity.client.SecurityColours;
 import za.co.neroland.nerosecurity.client.SecurityGeometry;
 import za.co.neroland.nerosecurity.client.anim.Blink;
 import za.co.neroland.nerosecurity.client.anim.ClientAnim;
+import za.co.neroland.nerosecurity.client.feedback.ClientDeviceFeedback;
 import za.co.neroland.nerosecurity.client.render.SensorFieldRenderers;
 import za.co.neroland.nerosecurity.field.FieldState;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
@@ -34,8 +35,12 @@ import za.co.neroland.nerosecurity.sound.SecuritySounds;
  * The force field emitter's core: a cube spinning about the facing axis at a speed chosen by the synced
  * {@code DrawBucket}, and a 45°/45° gyro copy at 80 % turning back at half speed. Tinted {@code FIELD}, {@code LOCK}
  * in lockdown, blinking {@code WARN} in brownout, dark when idle or overloaded (overloaded also blinks a {@code LOCK}
- * ring LED). Also plays the quiet client-side field hum, at most once per {@value #HUM_INTERVAL_TICKS} ticks per
+ * ring LED). A deny (the player was refused at this emitter) flashes the core {@code LOCK} at 8 Hz for the 10 ticks of
+ * {@link ClientDeviceFeedback}, over every state; steady {@code LOCK} with animations off. Also plays the quiet client-side field hum, at most once per {@value #HUM_INTERVAL_TICKS} ticks per
  * emitter, only while projecting and within {@value #HUM_RANGE} blocks of the camera.
+ *
+ * <p>Extract reads only the emitter's own synced fields, its block state, the game time and the client-side deny
+ * flash map; never the world, a store or a menu.
  *
  * <p>Culling: the block, view distance {@value #VIEW_DISTANCE}. No off-screen rendering.
  */
@@ -100,11 +105,15 @@ public class ForceFieldEmitterRenderer
         s.facing = state.getValue(ForceFieldEmitterBlock.FACING);
         s.angle = EmitterCoreMath.angle(EmitterCoreMath.degreesPerSecond(field, be.renderDrawBucket()), now,
                 partialTick, animate);
-        s.tint = EmitterCoreMath.tint(field, be.renderLockdown(), now, animate);
-        s.lit = EmitterCoreMath.lit(field, s.tint);
+        int stateTint = EmitterCoreMath.tint(field, be.renderLockdown(), now, animate);
+        BlockPos pos = be.getBlockPos();
+        boolean flashing = ClientDeviceFeedback.flashing(pos, now);
+        boolean flashOn = flashing && ClientDeviceFeedback.flashOn(pos, now, partialTick);
+        s.tint = EmitterCoreMath.denyTint(stateTint, flashing, flashOn, animate);
+        s.lit = flashing ? s.tint == SecurityColours.LOCK : EmitterCoreMath.lit(field, s.tint);
         s.overloadLed = field == FieldState.OVERLOADED && (!animate || Blink.warning(now));
         if (field == FieldState.PROJECTING) {
-            hum(be.getBlockPos(), now, cameraPos);
+            hum(pos, now, cameraPos);
         }
         BerStats.stop(t0);
     }

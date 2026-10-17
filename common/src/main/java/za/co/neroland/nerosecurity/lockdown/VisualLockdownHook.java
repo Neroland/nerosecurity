@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 import org.jetbrains.annotations.Nullable;
 
+import za.co.neroland.nerosecurity.block.chest.SecureChestBlockEntity;
 import za.co.neroland.nerosecurity.block.door.SecurityDoorBlockEntity;
 import za.co.neroland.nerosecurity.block.entity.SecurityHubBlockEntity;
 import za.co.neroland.nerosecurity.block.monitor.SecurityMonitorBlockEntity;
@@ -20,7 +21,7 @@ import za.co.neroland.nerosecurity.sound.SecuritySounds;
 
 /**
  * Paints a lockdown transition the moment it happens: the hub's and monitors' {@code LOCKDOWN} look, the
- * doors' {@code SEALED} clamps, and the lockdown tone at the hub. Only loaded blocks are touched (an unloaded
+ * doors' {@code SEALED} clamps, the secure chests' {@code LOCK} strobe, and the lockdown tone at the hub. Only loaded blocks are touched (an unloaded
  * chunk is never loaded for this); each device re-derives the same state from the store on its own refresh,
  * so this hook is an accelerator, not the source of truth. Purely visual: sealing doors to everyone below
  * OWNER is the resolver's lockdown rule. Registered with {@link LockdownHooks}, which isolates it.
@@ -55,6 +56,8 @@ public final class VisualLockdownHook implements LockdownHooks.LockdownHook {
                 monitor.refreshVisual(level);
             } else if (be instanceof SecurityDoorBlockEntity door) {
                 door.refreshVisual(level);
+            } else if (be instanceof SecureChestBlockEntity chest) {
+                chest.refreshVisual(level);
             }
         }
     }

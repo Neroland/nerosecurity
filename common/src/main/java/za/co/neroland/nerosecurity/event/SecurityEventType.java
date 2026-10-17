@@ -53,7 +53,7 @@ public enum SecurityEventType {
     AUDIT_PURGED(SecuritySeverity.INFO),
     /** An owner changed whether officers receive alarm chat messages. */
     NOTIFY_OFFICERS_CHANGED(SecuritySeverity.INFO),
-    // Stage 4. Append only: anonymous events and alarm subscriptions encode these by ordinal.
+    // Force-field events. Append only: anonymous events and alarm subscriptions encode these by ordinal.
     /** A force field took more load than it could hold and collapsed for its cooldown. */
     FIELD_OVERLOADED(SecuritySeverity.CRITICAL),
     /** A force field lost power and collapsed. */

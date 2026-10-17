@@ -28,7 +28,6 @@ import za.co.neroland.nerosecurity.audit.ActorKind;
 import za.co.neroland.nerosecurity.audit.AnonymousEvent;
 import za.co.neroland.nerosecurity.audit.AuditEntry;
 import za.co.neroland.nerosecurity.block.DeviceIds;
-import za.co.neroland.nerosecurity.client.screen.monitor.MonitorText;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
 import za.co.neroland.nerosecurity.installation.DevicePos;
 import za.co.neroland.nerosecurity.installation.Lockdown;
@@ -55,7 +54,10 @@ class MonitorSnapshotsTest {
                 List.of(new DeviceRow(new BlockPos(3, 4, 5), DeviceKind.LASER, DeviceState.ARMED)), events, 50);
     }
 
-    /** Monitor rows carry no identity: no UUID string, withheld maps to WITHHELD, null to NONE. */
+    /**
+     * Monitor rows carry no identity: no UUID string, null maps to NONE, and a withheld (opted-out) actor maps to
+     * PLAYER like any other player, so the monitor cannot reveal who has opted out.
+     */
     @Test
     void monitorRowsNeverExposeIdentity() {
         UUID player = UUID.randomUUID();
@@ -65,7 +67,7 @@ class MonitorSnapshotsTest {
                 entry(NOW - 2_000L, optedOut, true),
                 entry(NOW - 3_000L, null, false));
         List<AnonymousEvent> rows = MonitorSnapshots.rows(entries, NOW, 10);
-        assertEquals(List.of(ActorKind.PLAYER, ActorKind.WITHHELD, ActorKind.NONE),
+        assertEquals(List.of(ActorKind.PLAYER, ActorKind.PLAYER, ActorKind.NONE),
                 rows.stream().map(AnonymousEvent::actorKind).toList());
         String text = String.valueOf(rows) + snapshot(rows);
         assertFalse(text.contains(player.toString()), "no actor UUID in rows");
@@ -212,16 +214,5 @@ class MonitorSnapshotsTest {
         forged.writeBoolean(false);
         forged.writeVarInt(MonitorSnapshot.MAX_DEVICES + 1);
         assertThrows(RuntimeException.class, () -> MonitorSnapshot.STREAM_CODEC.decode(forged));
-    }
-
-    @Test
-    void agesReadAsWholeUnits() {
-        assertEquals(new MonitorText.Age("under_minute", 0), MonitorText.age(59));
-        assertEquals(new MonitorText.Age("minute", 1), MonitorText.age(60));
-        assertEquals(new MonitorText.Age("minutes", 5), MonitorText.age(5 * 60 + 59));
-        assertEquals(new MonitorText.Age("hour", 1), MonitorText.age(3600));
-        assertEquals(new MonitorText.Age("hours", 23), MonitorText.age(86_399));
-        assertEquals(new MonitorText.Age("days", 3), MonitorText.age(3 * 86_400));
-        assertEquals(new MonitorText.Age("under_minute", 0), MonitorText.age(-5));
     }
 }

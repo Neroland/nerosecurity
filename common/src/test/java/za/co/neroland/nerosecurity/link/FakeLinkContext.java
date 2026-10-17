@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -34,7 +33,7 @@ class FakeLinkContext implements LinkContext {
 
     static final Identifier OVERWORLD = Identifier.fromNamespaceAndPath("minecraft", "overworld");
 
-    final SecurityInstallations store = new SecurityInstallations();
+    SecurityInstallations store = new SecurityInstallations();
     LinkSettings settings = LinkSettings.defaults();
     long now = 1_792_000_000_000L;
     final Map<UUID, List<AuditEntry>> audit = new HashMap<>();
@@ -46,7 +45,7 @@ class FakeLinkContext implements LinkContext {
     List<AccessSource> sources = new ArrayList<>(List.of(MembershipSource.INSTANCE));
     AdminCheck admin = AdminCheck.NONE;
     boolean alertsThrow;
-    Function<UUID, Boolean> withheld = id -> false;
+    final java.util.Set<UUID> online = new java.util.HashSet<>();
 
     // --- builders ---------------------------------------------------------------------------------
 
@@ -154,13 +153,8 @@ class FakeLinkContext implements LinkContext {
     }
 
     @Override
-    public boolean withheld(UUID actor) {
-        return withheld.apply(actor);
-    }
-
-    @Override
     public boolean isOnline(UUID player) {
-        return false;
+        return online.contains(player);
     }
 
     @Override

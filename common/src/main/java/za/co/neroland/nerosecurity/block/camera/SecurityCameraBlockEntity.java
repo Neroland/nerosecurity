@@ -351,7 +351,8 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
             if (type == null) {
                 continue;
             }
-            candidates.add(new Candidate(entity, eye, sensed.subject(), type, hit.distanceSq()));
+            // A pet is judged by its owner but logged as nobody (the owner was not sensed and had no notice).
+            candidates.add(new Candidate(entity, eye, SensorPermission.loggedActor(sensed), type, hit.distanceSq()));
         }
         List<Candidate> nearest = CameraGeometry.nearest(candidates, Candidate::distanceSq,
                 NeroSecurityConfig.cameraMaxRaycastsPerScan());
@@ -532,7 +533,10 @@ public class SecurityCameraBlockEntity extends AbstractMachineBlockEntity implem
         lookDirty = false;
     }
 
-    private static void publish(SecurityEventType type, Installation installation, DevicePos at, @Nullable UUID actor) {
+    private void publish(SecurityEventType type, Installation installation, DevicePos at, @Nullable UUID actor) {
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(level instanceof ServerLevel serverLevel ? serverLevel.getServer() : null,
+                actor, installation);
         SecurityEventBus.publish(SecurityEvent.of(type, installation.id(), at, actor, System.currentTimeMillis()));
     }
 

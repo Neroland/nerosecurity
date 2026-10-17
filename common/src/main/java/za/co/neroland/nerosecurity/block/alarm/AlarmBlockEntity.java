@@ -33,6 +33,7 @@ import za.co.neroland.nerosecurity.installation.DevicePos;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
+import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.registry.AlarmRegistrations;
 import za.co.neroland.nerosecurity.sound.AlarmTones;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
@@ -288,6 +289,8 @@ public class AlarmBlockEntity extends BlockEntity {
 
     private void publish(ServerLevel serverLevel, SecurityEventType type, Installation installation,
             @Nullable UUID actor) {
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(serverLevel.getServer(), actor, installation);
         SecurityEventBus.publish(SecurityEvent.of(type, installation.id(), DevicePos.of(serverLevel, worldPosition),
                 actor, System.currentTimeMillis()));
     }

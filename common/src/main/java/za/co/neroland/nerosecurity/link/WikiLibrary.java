@@ -35,7 +35,9 @@ public final class WikiLibrary {
     }
 
     /** Resilience fallback only; keep in rough sync with the {@code wiki/} folder. */
-    private static final List<String> FALLBACK_SLUGS = List.of("Home", "NeroEconomy-Integration", "NeroQuests-Integration");
+    private static final List<String> FALLBACK_SLUGS = List.of("Home", "Getting-Started", "Access-Levels", "Keycards",
+            "Doors-and-Chests", "Sensors-and-Alarms", "Lockdown", "Force-Fields", "Companion-App", "Blocks-and-Screens",
+            "Commands", "Config", "Privacy", "NeroEconomy-Integration", "NeroQuests-Integration");
 
     private static volatile List<Page> cachedIndex;
 

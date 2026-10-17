@@ -5,13 +5,14 @@
 ## The mod
 
 - **NeroSecurity** — part of the Neroland sci-fi Minecraft mod ecosystem, built on **Neroland Core**.
-  **0.5.0-beta.1 is in progress.** No gameplay content yet. The foundation now has the network seam
-  (own `nerosecurity:main` channel), the data-erasure registration, `MenuOpener`, JUnit tests and real
-  (opt-out, anonymous) Sentry telemetry. Add shared content under `common/` and wire it through each
-  loader entry point.
+  **Status: 0.5.0-beta.1, Stages 0–8 implemented (access resolver, installations and hub, keycards and
+  programmer, doors and secure chest, sensors, alarms, audit log and lockdown, force fields and optional
+  integrations, models/BERs/screens, privacy controls, NeroLink link module, docs). The latest changes
+  are uncommitted; nothing is tagged or released.** The owner still runs the in-game verification.
+  Add shared content under `common/` and wire it through each loader entry point.
 - Mod id: **`nerosecurity`** (matches the registry namespace + every loader manifest). Package root:
   `za.co.neroland.nerosecurity`. Author: **Neroland**.
-- Version: **0.5.0-beta.1** (in progress).
+- Version: **0.5.0-beta.1** (Stages 0–8 implemented; uncommitted, untagged).
 - Targets **MC 26.1.2, 26.2 AND 26.3** on **NeoForge, MinecraftForge/Forge, and Fabric** → the **"9 cells"**.
   **Java 25.** Mappings = official Mojang names (26.x ships de-obfuscated; no Parchment).
 
@@ -86,7 +87,7 @@
   UUIDs or positions. Keep the placeholder-DSN guard.
 - **Soft dependencies:** `compileOnly` + an `isModLoaded` guard + one bridge class. No reflection. Floor each
   optional dependency's manifest range at the compiled version.
-- Neroland Core APIs in use are listed in `USING-CORE.md`.
+- Neroland Core APIs in use are listed in `USING-CORE.md`; the companion-app link contract is in `USING-NEROLINK.md`.
 - NeoForge/Forge debug tasks use `-PnerosecurityDebug`; Fabric Loom honours Gradle `--debug-jvm`.
 
 ## IDE (VS Code) run & debug

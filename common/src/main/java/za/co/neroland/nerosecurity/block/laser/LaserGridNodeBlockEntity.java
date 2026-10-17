@@ -195,7 +195,7 @@ public class LaserGridNodeBlockEntity extends AbstractMachineBlockEntity impleme
         return beamPartner() != null;
     }
 
-    // --- reads for the renderer (Stage 5) -------------------------------------------------------
+    // --- reads for the renderer ----------------------------------------------------------------
 
     /** The partner node's position: server truth on the server, the synced copy on the client. */
     public @Nullable BlockPos beamPartner() {
@@ -338,7 +338,8 @@ public class LaserGridNodeBlockEntity extends AbstractMachineBlockEntity impleme
                 // Notice before logging: a player about to be logged hears about it first, this tick.
                 RecordingNotice.noticeBeforeLogging(player, installation);
             }
-            publish(SecurityEventType.LASER_TRIPPED, installation, serverLevel, sensed.subject());
+            // A pet is judged by its owner but logged as nobody (the owner was not sensed and had no notice).
+            publish(SecurityEventType.LASER_TRIPPED, installation, serverLevel, SensorPermission.loggedActor(sensed));
             // Members and owners are detected and logged during a lockdown, but never hurt.
             if (damage > 0.0D && LaserDamageRule.mayHarm(installation, sensed.subject())) {
                 // Built from the registry directly: DamageSources#source(key) is not public on every loader.
@@ -425,6 +426,8 @@ public class LaserGridNodeBlockEntity extends AbstractMachineBlockEntity impleme
     }
 
     private void publish(SecurityEventType type, Installation installation, ServerLevel serverLevel, @Nullable UUID actor) {
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(serverLevel.getServer(), actor, installation);
         SecurityEventBus.publish(SecurityEvent.of(type, installation.id(), DevicePos.of(serverLevel, worldPosition),
                 actor, System.currentTimeMillis()));
     }

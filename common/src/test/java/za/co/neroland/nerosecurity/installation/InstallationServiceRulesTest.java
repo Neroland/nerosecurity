@@ -100,6 +100,23 @@ class InstallationServiceRulesTest {
     }
 
     @Test
+    void onlyBlockInteractionsCarryTheHubPositionForClaims() {
+        SecurityInstallations store = new SecurityInstallations();
+        Installation installation = store.create(UUID.randomUUID(), "Test",
+                new DevicePos(Identifier.fromNamespaceAndPath("minecraft", "overworld"), BlockPos.ZERO), 0L, 8)
+                .installation();
+        assertEquals(installation.hubPos(), InstallationService.claimPosition(AccessAction.DISSOLVE, installation),
+                "breaking the hub is a block interaction");
+        assertEquals(installation.hubPos(), InstallationService.claimPosition(AccessAction.LINK_DEVICE, installation),
+                "selecting the hub with the linking tool is a block interaction");
+        for (AccessAction action : List.of(AccessAction.LOCKDOWN_TOGGLE, AccessAction.EDIT_MEMBERS,
+                AccessAction.RENAME, AccessAction.SET_NOTIFY_OFFICERS)) {
+            assertEquals(null, InstallationService.claimPosition(action, installation),
+                    action + " is hub-level: no position, so a claim over the hub never blocks it");
+        }
+    }
+
+    @Test
     void storeRefusesOwnerRowsAndSelfEditIsAServiceRule() {
         UUID owner = UUID.randomUUID();
         SecurityInstallations store = new SecurityInstallations();

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import za.co.neroland.nerosecurity.access.AccessSources;
+import za.co.neroland.nerosecurity.access.KeycardSource;
 import za.co.neroland.nerosecurity.alarm.AlarmDispatcher;
 import za.co.neroland.nerosecurity.audit.AuditRecorder;
 import za.co.neroland.nerosecurity.audit.RetentionSweeper;
@@ -26,6 +27,7 @@ import za.co.neroland.nerosecurity.lockdown.VisualLockdownHook;
 import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.network.SecurityNetwork;
 import za.co.neroland.nerosecurity.platform.Services;
+import za.co.neroland.nerosecurity.privacy.SecurityPrivacy;
 import za.co.neroland.nerosecurity.registry.AlarmRegistrations;
 import za.co.neroland.nerosecurity.registry.CameraRegistrations;
 import za.co.neroland.nerosecurity.registry.ChestRegistrations;
@@ -89,18 +91,18 @@ public final class NeroSecurityCommon {
         NeroSecurityDataComponents.init();
         NeroSecurityItems.init();
         NeroSecurityMenus.init();
-        // 3a. Stage 2 devices, after the base registries whose providers they register through:
+        // 3a. Access devices, after the base registries whose providers they register through:
         //     the keycard programmer, the security and blast doors, and the secure chest.
         ProgrammerRegistrations.init();
         DoorRegistrations.init();
         ChestRegistrations.init();
-        // 3b. Stage 3 devices: the laser grid node (and the sensor settings menu it shares with the
+        // 3b. Sensors and alerts: the laser grid node (and the sensor settings menu it shares with the
         //     camera), the security camera, the alarm and the security monitor.
         LaserRegistrations.init();
         CameraRegistrations.init();
         AlarmRegistrations.init();
         MonitorRegistrations.init();
-        // 3c. Stage 4: the force field emitter, the field block it projects and the field settings menu.
+        // 3c. Force fields: the force field emitter, the field block it projects and the field settings menu.
         FieldRegistrations.init();
         NeroSecurityItems.addToCreativeTab();
         ProgrammerRegistrations.addToCreativeTab();
@@ -120,6 +122,8 @@ public final class NeroSecurityCommon {
         SecurityInstallations.registerEraser();
         // 4b. Access sources: the built-in membership source is always first.
         AccessSources.init();
+        //     The keycard source's transient rejection cooldown joins the composite eraser.
+        KeycardSource.registerEraser();
         // 4c. Lockdown transitions are announced on Core's threshold channel.
         LockdownChannel.init();
         // 4d. The audit store joins the composite eraser before any server starts.
@@ -143,9 +147,12 @@ public final class NeroSecurityCommon {
         // 4k. Force fields react to lockdown at once (strength boost, repaint, resync); isolated by
         //     LockdownHooks, and only an accelerator: emitters also read lockdown on their own tick.
         LockdownHooks.register(new FieldLockdownHook());
-        // 4l. Stage 5 visuals react to lockdown at once (hub and monitor look, door clamps, the lockdown tone);
+        // 4l. Device visuals react to lockdown at once (hub and monitor look, door clamps, the lockdown tone);
         //     isolated, and only an accelerator: each device re-derives the same state on its own refresh.
         LockdownHooks.register(new VisualLockdownHook());
+        // 4m. Privacy (POPIA/GDPR): the opt-out store and export files join the composite eraser, the opt-out
+        //     becomes the audit recorder's actor policy, and the hub's Privacy tab actions go live.
+        SecurityPrivacy.init();
 
         // 5a. Integration bridges, each found through ServiceLoader only when its mod is loaded and this
         //     build includes it. The factions façade also listens for reputation tier crossings, which

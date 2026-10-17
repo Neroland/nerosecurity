@@ -204,8 +204,9 @@ public final class NeroSecurityConfig {
 
     private static final ConfigValue<Integer> PRIVACY_RETENTION_HARD_CAP_DAYS = SCHEMA.intRange(
             "privacyRetentionHardCapDays", MAX_RETENTION_DAYS, 1, MAX_RETENTION_DAYS, true,
-            "LOUD: the ceiling for every retention setting, per-installation overrides included. Nothing "
-                    + "NeroSecurity logs is ever kept longer than 90 days.");
+            "!!! LOUD - HARD CAP !!! The ceiling for every retention setting, per-installation overrides "
+                    + "included. Admins may lengthen privacyAuditRetentionDays up to this value and no further; "
+                    + "it can itself only be lowered (1..90). Nothing NeroSecurity logs is ever kept longer than 90 days.");
 
     private static final ConfigValue<Integer> PRIVACY_PURGE_INTERVAL_MINUTES = SCHEMA.intRange(
             "privacyPurgeIntervalMinutes", 60, 5, 1440, true,
@@ -215,6 +216,11 @@ public final class NeroSecurityConfig {
             "privacyCameraLogsMembers", false, true,
             "When true, cameras also log permitted players (member seen by camera). Off by default: members "
                     + "are not logged.");
+
+    private static final ConfigValue<Integer> PRIVACY_EXPORT_COOLDOWN_SECONDS = SCHEMA.intRange(
+            "privacyExportCooldownSeconds", 60, 10, 86400, true,
+            "A player may run /nerosecurity privacy export (or the hub's Export my data) at most once per this "
+                    + "many seconds. Export files are deleted after 7 days and by an erasure request.");
 
     private static final ConfigValue<Integer> LASER_BASE_RANGE = SCHEMA.intRange(
             "laserBaseRange", 8, 2, 32, true,
@@ -628,6 +634,11 @@ public final class NeroSecurityConfig {
         return PRIVACY_CAMERA_LOGS_MEMBERS.get();
     }
 
+    /** Minimum seconds between two privacy exports by one player (default 60). */
+    public static int privacyExportCooldownSeconds() {
+        return PRIVACY_EXPORT_COOLDOWN_SECONDS.get();
+    }
+
     public static int laserBaseRange() {
         return LASER_BASE_RANGE.get();
     }
@@ -735,7 +746,7 @@ public final class NeroSecurityConfig {
         return MONITOR_EVENT_COUNT.get();
     }
 
-    // --- earlier stages -----------------------------------------------------------
+    // --- core settings ------------------------------------------------------------
 
     public static int keycardsPerInstallation() {
         return KEYCARDS_PER_INSTALLATION.get();

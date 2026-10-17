@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.menu.field;
 
-import java.util.Optional;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -14,13 +12,12 @@ import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessResolver;
-import za.co.neroland.nerosecurity.block.DeviceSettingsRules;
+import za.co.neroland.nerosecurity.block.SecurityDevice;
 import za.co.neroland.nerosecurity.block.field.ForceFieldEmitterBlockEntity;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
-import za.co.neroland.nerosecurity.field.FieldGeometry;
 import za.co.neroland.nerosecurity.field.FieldSettings;
 import za.co.neroland.nerosecurity.installation.DevicePos;
 import za.co.neroland.nerosecurity.installation.Installation;
@@ -37,8 +34,10 @@ import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
  * emitter (else the payload is dropped), the installation is re-read from the store, the change is re-authorised
  * through the resolver ({@code CONFIGURE_DEVICE} at OFFICER, never keycard-filtered), and the geometry is re-validated
  * against the emitter's own range and the server's area cap. An unlinked emitter has no settings. Setting the field to
- * OWNER, or changing anything on a field that is already OWNER, needs an effective OWNER
- * ({@link DeviceSettingsRules#mayApply}). Failures fail closed and change nothing.
+ * OWNER, or changing anything on a field that is already OWNER, needs an effective OWNER; while force fields are
+ * disabled on the server nothing changes ({@link FieldConfigureRules}). A refused open sends the deny feedback (sound
+ * and flash) beside the action-bar reason; a refused change keeps the screen open and answers with a snapshot
+ * carrying {@code ok = false} and the reason, which also goes to chat. Failures fail closed and change nothing.
  */
 public final class FieldPayloadHandlers {
 
@@ -59,6 +58,7 @@ public final class FieldPayloadHandlers {
         AccessDecision decision = resolveConfigure(player, installation, at);
         if (!decision.allowed()) {
             player.sendOverlayMessage(decision.message());
+            SecurityDevice.denyFeedback(player, emitter.getBlockPos());
             return;
         }
         sendSnapshot(player, level, emitter, decision);
@@ -73,7 +73,13 @@ public final class FieldPayloadHandlers {
 
     public static void sendSnapshot(ServerPlayer player, ServerLevel level, ForceFieldEmitterBlockEntity emitter,
             AccessDecision decision) {
-        Services.NETWORK.sendToPlayer(player, FieldSnapshots.build(level, emitter, decision));
+        sendSnapshot(player, level, emitter, decision, true, null);
+    }
+
+    /** As above, carrying the outcome of the action that produced it for the screen's footer. */
+    public static void sendSnapshot(ServerPlayer player, ServerLevel level, ForceFieldEmitterBlockEntity emitter,
+            AccessDecision decision, boolean ok, @Nullable Component message) {
+        Services.NETWORK.sendToPlayer(player, FieldSnapshots.build(level, emitter, decision, ok, message));
     }
 
     public static void handleConfigure(FieldConfigure payload, ServerPlayer player) {
@@ -93,6 +99,7 @@ public final class FieldPayloadHandlers {
             if (!decision.allowed()) {
                 player.closeContainer();
                 player.sendSystemMessage(decision.message());
+                SecurityDevice.denyFeedback(player, emitter.getBlockPos());
                 return;
             }
             FieldSettings current = emitter.settings();
@@ -102,34 +109,21 @@ public final class FieldPayloadHandlers {
                 return;
             }
             boolean owner = decision.admin() || decision.effective() == AccessLevel.OWNER;
-            if (!DeviceSettingsRules.mayApply(owner, current.access().minLevel(), wanted.access().minLevel())) {
-                player.sendSystemMessage(Component.translatable("door.nerosecurity.owner_only_setting"));
-                sendSnapshot(player, level, emitter, decision);
-                return;
-            }
-            Optional<String> invalid = FieldGeometry.validate(wanted, emitter.range(), NeroSecurityConfig.maxFieldArea());
-            if (invalid.isPresent()) {
-                player.sendSystemMessage(invalidMessage(invalid.get(), emitter.range()));
-                sendSnapshot(player, level, emitter, decision);
+            Component refusal = FieldConfigureRules.refusal(NeroSecurityConfig.isForceFieldsEnabled(), owner, current,
+                    wanted, emitter.range(), NeroSecurityConfig.maxFieldArea());
+            if (refusal != null) {
+                player.sendSystemMessage(refusal);
+                sendSnapshot(player, level, emitter, decision, false, refusal);
                 return;
             }
             emitter.setSettings(wanted);
             SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.DEVICE_CONFIGURED, installation.id(), at,
                     player.getUUID(), System.currentTimeMillis()));
             emitter.reconcileNow(level);
-            player.sendOverlayMessage(Component.translatable("field.nerosecurity.configured"));
-            sendSnapshot(player, level, emitter, decision);
+            Component done = Component.translatable("field.nerosecurity.configured");
+            player.sendOverlayMessage(done);
+            sendSnapshot(player, level, emitter, decision, true, done);
         });
-    }
-
-    private static Component invalidMessage(String key, int range) {
-        if (FieldGeometry.INVALID_RANGE.equals(key)) {
-            return Component.translatable(key, range);
-        }
-        if (FieldGeometry.INVALID_AREA.equals(key)) {
-            return Component.translatable(key, NeroSecurityConfig.maxFieldArea());
-        }
-        return Component.translatable(key);
     }
 
     /** The emitter the sender's open menu is bound to, if it is at {@code claimed}; null for a stale or forged payload. */

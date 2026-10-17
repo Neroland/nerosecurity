@@ -24,7 +24,7 @@ public record Lockdown(boolean active, long since, boolean enteredByOwner, Lockd
         }
     }
 
-    /** A manual lockdown (the Stage 1 shape). */
+    /** A manual lockdown (the original shape, before alarm lockdowns). */
     public Lockdown(boolean active, long since, boolean enteredByOwner) {
         this(active, since, enteredByOwner, LockdownSource.MANUAL, 0L);
     }

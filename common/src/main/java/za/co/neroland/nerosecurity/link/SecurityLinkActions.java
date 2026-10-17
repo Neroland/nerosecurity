@@ -113,6 +113,11 @@ final class SecurityLinkActions implements LinkActionHandler {
         if (replay != null) {
             return replay;
         }
+        // Malformed requests are refused before they spend a rate-limit slot.
+        LinkActionResult invalid = validate(actionId, params, settings);
+        if (invalid != null) {
+            return invalid;
+        }
         long wait = limiter.tryAcquire(player, actionId, now);
         if (wait > 0L) {
             long seconds = Math.max(1L, (wait + 999L) / 1000L);
@@ -142,6 +147,44 @@ final class SecurityLinkActions implements LinkActionHandler {
         };
     }
 
+    /**
+     * Shape checks that need no store or access lookup. A missing or malformed installation id answers
+     * {@code NOT_OWNER}, the same as an unknown or foreign one, so the shape check reveals nothing.
+     */
+    private static @Nullable LinkActionResult validate(String actionId, @Nullable JsonObject params,
+            LinkSettings settings) {
+        switch (actionId) {
+            case SecurityLinkModule.ACTION_LOCKDOWN -> {
+                if (SecurityLinkAccess.exactUuid(SecurityLinkAccess.string(params, "installationId")) == null) {
+                    return notOwner();
+                }
+                if (SecurityLinkAccess.bool(params, "enabled") == null) {
+                    return LinkActionResult.error(LinkActionResult.Error.VALIDATION,
+                            "Say whether lockdown should be on or off.");
+                }
+                return null;
+            }
+            case SecurityLinkModule.ACTION_ACK -> {
+                String eventId = SecurityLinkAccess.string(params, "eventId");
+                return eventId == null || !eventId.startsWith(SecurityLinkModule.MODULE_ID + ".") || eventId.length() > 128
+                        ? LinkActionResult.error(LinkActionResult.Error.VALIDATION, "Unknown alert.") : null;
+            }
+            case SecurityLinkModule.ACTION_SILENCE -> {
+                if (SecurityLinkAccess.exactUuid(SecurityLinkAccess.string(params, "installationId")) == null) {
+                    return notOwner();
+                }
+                Integer minutes = SecurityLinkAccess.integer(params, "minutes");
+                int max = Math.max(1, settings.silenceMaxMinutes());
+                return minutes == null || minutes < 1 || minutes > max
+                        ? LinkActionResult.error(LinkActionResult.Error.VALIDATION, "Choose between 1 and " + max + " minutes.")
+                        : null;
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
     // --- lockdown ---------------------------------------------------------------------------------
 
     private LinkActionResult lockdown(SecurityInstallations store, UUID player, @Nullable JsonObject params,
@@ -153,6 +196,11 @@ final class SecurityLinkActions implements LinkActionHandler {
         }
         if (enabled == null) {
             return LinkActionResult.error(LinkActionResult.Error.VALIDATION, "Say whether lockdown should be on or off.");
+        }
+        // The bridge enforces allowOffline too; the mod re-checks so the rule holds whatever the transport.
+        if (!settings.lockdownOffline() && !ctx.isOnline(player)) {
+            return LinkActionResult.error(LinkActionResult.Error.PLAYER_OFFLINE_REQUIRED,
+                    "Log in to the game to change lockdown from the app on this server.");
         }
         Lockdown current = installation.lockdown();
         if (enabled) {

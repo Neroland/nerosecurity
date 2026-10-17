@@ -35,7 +35,6 @@ import za.co.neroland.nerolandcore.registry.BlockCodecs;
 
 import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
-import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessQuery;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.block.entity.SecurityHubBlockEntity;
@@ -183,10 +182,10 @@ public class SecurityHubBlock extends BaseEntityBlock {
             serverPlayer.sendOverlayMessage(Component.translatable("hub.nerosecurity.inert"));
             return InteractionResult.SUCCESS;
         }
-        // The screen edits members, so even reading it is OFFICER and above.
+        // The screen edits members, so even reading it is OFFICER and above; membership only, never a card.
         AccessDecision decision = AccessResolver.DEFAULT.resolve(new AccessQuery(serverLevel.getServer(),
-                serverPlayer.getUUID(), installation, AccessAction.OPEN, DevicePos.of(serverLevel, pos)),
-                AccessLevel.OFFICER);
+                serverPlayer.getUUID(), installation, AccessAction.OPEN_HUB, DevicePos.of(serverLevel, pos)),
+                AccessAction.OPEN_HUB.defaultMinimum);
         if (!decision.allowed()) {
             serverPlayer.sendOverlayMessage(decision.message());
             SecurityDevice.denyFeedback(serverPlayer, pos);

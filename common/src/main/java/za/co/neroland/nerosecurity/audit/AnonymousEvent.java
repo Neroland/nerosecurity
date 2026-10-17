@@ -46,13 +46,15 @@ public record AnonymousEvent(SecurityEventType type, SecuritySeverity severity, 
 
     public AnonymousEvent {
         agoSeconds = Math.max(0, agoSeconds);
+        // Identity-free by construction: never tells a withheld (opted-out) actor from any other player.
+        actorKind = actorKind == null ? ActorKind.NONE : actorKind.identityFree();
     }
 
     /** The identity-free form of {@code entry}, relative to {@code now} (epoch ms). */
     public static AnonymousEvent of(AuditEntry entry, long now) {
         long ago = Math.max(0L, now - entry.at()) / 1000L;
         return new AnonymousEvent(entry.type(), entry.severity(), (int) Math.min(Integer.MAX_VALUE, ago),
-                entry.devicePos() == null ? null : entry.devicePos().pos(), ActorKind.of(entry));
+                entry.devicePos() == null ? null : entry.devicePos().pos(), ActorKind.of(entry).identityFree());
     }
 
     /** Every entry mapped through {@link #of(AuditEntry, long)}, order kept. */

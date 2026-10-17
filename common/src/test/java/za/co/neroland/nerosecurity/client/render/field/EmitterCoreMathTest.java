@@ -50,4 +50,16 @@ class EmitterCoreMathTest {
         assertTrue(EmitterCoreMath.lit(FieldState.PROJECTING, SecurityColours.FIELD));
         assertFalse(EmitterCoreMath.lit(FieldState.OVERLOADED, SecurityColours.DORMANT));
     }
+
+    @Test
+    void denyFlashOverridesEveryStateTint() {
+        assertEquals(SecurityColours.FIELD, EmitterCoreMath.denyTint(SecurityColours.FIELD, false, false, true),
+                "no flash: the state tint");
+        for (int stateTint : new int[] {SecurityColours.FIELD, SecurityColours.WARN, SecurityColours.DORMANT}) {
+            assertEquals(SecurityColours.LOCK, EmitterCoreMath.denyTint(stateTint, true, true, true), "lit phase");
+            assertEquals(SecurityColours.DORMANT, EmitterCoreMath.denyTint(stateTint, true, false, true), "dark phase");
+            assertEquals(SecurityColours.LOCK, EmitterCoreMath.denyTint(stateTint, true, false, false),
+                    "animations off: steady LOCK for the whole flash");
+        }
+    }
 }

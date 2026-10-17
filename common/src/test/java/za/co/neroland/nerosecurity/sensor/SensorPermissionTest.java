@@ -95,6 +95,22 @@ class SensorPermissionTest {
         }
     }
 
+    /**
+     * C6-2: a pet is judged by its owner, but the owner is never the logged actor (no notice, maybe offline, not
+     * the one sensed): the row is published with no actor, like a mob's. A player is logged as themselves.
+     */
+    @Test
+    void anOwnedAnimalIsNeverLoggedAsItsOwner() {
+        assertEquals(stranger, SensorPermission.loggedActor(Sensed.player(stranger)), "a player is logged as themselves");
+        assertEquals(null, SensorPermission.loggedActor(Sensed.ownedBy(stranger)), "the pet's owner is not logged");
+        assertEquals(Classification.INTRUDER, classify(Sensed.ownedBy(stranger), SensorSettings.DEFAULT),
+                "the stranger's pet still trips the sensor (the event fires)");
+        assertEquals(null, SensorPermission.loggedActor(Sensed.HOSTILE));
+        assertEquals(null, SensorPermission.loggedActor(Sensed.PASSIVE));
+        assertEquals(null, SensorPermission.loggedActor(Sensed.IGNORED));
+        assertEquals(null, SensorPermission.loggedActor(null));
+    }
+
     @Test
     void sensedNormalisesSubjects() {
         assertEquals(null, new Sensed(SensorPermission.Kind.HOSTILE, stranger).subject(), "mobs carry no subject");

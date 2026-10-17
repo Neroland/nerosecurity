@@ -12,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
-import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessQuery;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.installation.Installation;
@@ -148,7 +147,7 @@ public final class HubPayloadHandlers {
             return;
         }
         AccessDecision decision = AccessResolver.DEFAULT.resolve(new AccessQuery(player.level().getServer(),
-                player.getUUID(), fresh, AccessAction.OPEN, fresh.hubPos()), AccessLevel.OFFICER);
+                player.getUUID(), fresh, AccessAction.OPEN_HUB, fresh.hubPos()), AccessAction.OPEN_HUB.defaultMinimum);
         if (decision.allowed()) {
             sendSnapshot(player, fresh, decision, result.ok(), result.message());
         } else {

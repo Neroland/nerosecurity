@@ -47,9 +47,10 @@ Computed worst case for case (b): about 50 × 208 (doors) + 100 × 64 (laser nod
 ## How to measure
 
 `BerStats` counts BERs submitted and culled, vertices, and BER time (extract plus submit) per frame. It
-averages the counts over the last 200 frames. With the debug screen open, it shows the line
-`[NeroSecurity] BER n/m v verts t ms`. The client command `/nerosecurity ber` prints the full record to paste
-below.
+averages the counts over the last 200 frames. The client command `/nsber` prints the short line
+`[NeroSecurity] BER n/m v verts t ms` and the full record to paste below; `/nsber reset` starts a new window.
+The command root is `nsber`, not `nerosecurity`, because a client command with the same root as a server
+command would hide the server's own subcommands. Read the frame time from the vanilla debug screen (F3).
 
 ### Reference scene
 
@@ -91,6 +92,32 @@ grep -rn "shouldRenderOffScreen" common/src/main/java
 
 The first should list only the inflate-contains lines. The second should print nothing.
 
+Recorded 2026-10-17 (the `-A2` shows each method body; `BerStats.java` only mentions the word in a comment):
+
 ```text
-(pending)
+$ grep -rn -A2 "shouldRender" common/src/main/java
+common/src/main/java/za/co/neroland/nerosecurity/client/render/alarm/AlarmBeaconRenderer.java:56:    public boolean shouldRender(AlarmBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/alarm/AlarmBeaconRenderer.java-57-        if (getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos)) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/alarm/AlarmBeaconRenderer.java-58-            return true;
+common/src/main/java/za/co/neroland/nerosecurity/client/render/camera/SecurityCameraRenderer.java:65:    public boolean shouldRender(SecurityCameraBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/camera/SecurityCameraRenderer.java-66-        if (getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos)) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/camera/SecurityCameraRenderer.java-67-            return true;
+common/src/main/java/za/co/neroland/nerosecurity/client/render/chest/SecureChestRenderer.java:70:    public boolean shouldRender(SecureChestBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/chest/SecureChestRenderer.java-71-        boolean visible = getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos);
+common/src/main/java/za/co/neroland/nerosecurity/client/render/chest/SecureChestRenderer.java-72-        if (!visible) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/door/SecurityDoorRenderer.java:84:    public boolean shouldRender(SecurityDoorBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/door/SecurityDoorRenderer.java-85-        boolean visible = getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos);
+common/src/main/java/za/co/neroland/nerosecurity/client/render/door/SecurityDoorRenderer.java-86-        if (!visible) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/field/ForceFieldEmitterRenderer.java:81:    public boolean shouldRender(ForceFieldEmitterBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/field/ForceFieldEmitterRenderer.java-82-        if (getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos)) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/field/ForceFieldEmitterRenderer.java-83-            return true;
+common/src/main/java/za/co/neroland/nerosecurity/client/render/hub/SecurityHubRenderer.java:57:    public boolean shouldRender(SecurityHubBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/hub/SecurityHubRenderer.java-58-        boolean visible = getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos);
+common/src/main/java/za/co/neroland/nerosecurity/client/render/hub/SecurityHubRenderer.java-59-        if (!visible) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/laser/LaserBeamRenderer.java:69:    public boolean shouldRender(LaserGridNodeBlockEntity be, Vec3 cameraPos) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/laser/LaserBeamRenderer.java-70-        if (getRenderBoundingBox(be).inflate(getViewDistance()).contains(cameraPos)) {
+common/src/main/java/za/co/neroland/nerosecurity/client/render/laser/LaserBeamRenderer.java-71-            return true;
+
+$ grep -rn "shouldRenderOffScreen" common/src/main/java
+(no output)
 ```

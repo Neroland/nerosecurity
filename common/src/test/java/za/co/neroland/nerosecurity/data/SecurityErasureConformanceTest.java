@@ -43,7 +43,10 @@ import za.co.neroland.nerosecurity.audit.AuditEntry;
 import za.co.neroland.nerosecurity.audit.SecurityAuditLog;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
 import za.co.neroland.nerosecurity.installation.Installation;
+import za.co.neroland.nerosecurity.installation.InstallationNames;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
+import za.co.neroland.nerosecurity.link.LinkErasureFixture;
+import za.co.neroland.nerosecurity.notice.NoticeErasureFixture;
 
 /**
  * POPIA/GDPR <b>erasure conformance</b> for NeroSecurity, run through Core's reusable
@@ -88,7 +91,7 @@ class SecurityErasureConformanceTest {
         added.add(store);
     }
 
-    /** A player-keyed stand-in store, shaped like the real stores later stages add. */
+    /** A player-keyed stand-in store, shaped like the real player-keyed stores. */
     private static final class InMemoryStore implements SecurityData.StoreEraser {
 
         final Map<UUID, Set<String>> rows = new ConcurrentHashMap<>();
@@ -238,6 +241,9 @@ class SecurityErasureConformanceTest {
         assertEquals(Set.of(Installation.TOMBSTONE_OWNER), soleOwned.owners());
         assertTrue(soleOwned.isOrphaned());
         assertEquals(AccessLevel.MEMBER, soleOwned.memberLevel(other), "erasure is per-subject");
+        assertEquals(InstallationNames.orphanedFor(a), soleOwned.name(),
+                "the erased owner's chosen label does not survive on the orphan");
+        assertTrue(soleOwned.name().startsWith("Orphaned installation ") && soleOwned.name().length() <= Installation.NAME_MAX);
 
         Installation bystanders = store.byId(b).orElseThrow();
         assertFalse(bystanders.members().containsKey(subject));
@@ -246,6 +252,7 @@ class SecurityErasureConformanceTest {
         Installation coOwned = store.byId(c).orElseThrow();
         assertEquals(Set.of(bystander), coOwned.owners());
         assertFalse(coOwned.isOrphaned());
+        assertEquals("T", coOwned.name(), "a co-owned installation keeps its name (it is the co-owners' too)");
         assertEquals(2, store.countOwnedBy(bystander), "bystander owns (b) and (c)");
         assertEquals(0, store.countOwnedBy(subject));
     }
@@ -316,6 +323,74 @@ class SecurityErasureConformanceTest {
         assertTrue(audit.hasActorRows(bystander), "erasure is per-subject");
         assertEquals(1, audit.size(a));
         assertEquals(1, audit.size(b), "the actor-less laser row stays");
+    }
+
+    /**
+     * The two transient stores, {@code "notices"} (who has had which recording notice) and {@code "link"}
+     * (coalescer windows, request dedup, rate-limit buckets, the pending login summary), probed here through the
+     * composite like every persisted store, so this shared test holds a probe for every store in it.
+     */
+    @Test
+    void transientNoticeAndLinkStoresAreErasedThroughTheComposite() {
+        UUID subject = UUID.randomUUID();
+        UUID bystander = UUID.randomUUID();
+        UUID installation = UUID.randomUUID();
+        try {
+            NoticeErasureFixture.seed(subject, installation);
+            NoticeErasureFixture.seed(bystander, installation);
+            LinkErasureFixture.Seeded link = LinkErasureFixture.seed(subject, bystander);
+            assertTrue(NoticeErasureFixture.holds(subject) && link.holds().test(subject), "seeded");
+
+            addStore(NoticeErasureFixture.eraser());
+            addStore(link.eraser());
+            registerSecurityEraser();
+
+            ErasureConformance.Report report = ErasureConformance.create()
+                    .probe("nerosecurity:notices", NoticeErasureFixture::holds)
+                    .probe("nerosecurity:link.transient", link.holds()::test)
+                    .run(null, subject);
+            assertTrue(report.passed(), report.describe());
+            assertFalse(report.describe().contains(subject.toString()), "the report must never carry the UUID");
+            assertTrue(NoticeErasureFixture.holds(bystander), "erasure is per-subject");
+            assertTrue(link.holds().test(bystander), "erasure is per-subject");
+        } finally {
+            NoticeErasureFixture.reset();
+        }
+    }
+
+    /** The keycard source's transient rejection cooldown ({@code "keycard_cooldowns"}) is erased per subject. */
+    @Test
+    void keycardRejectionCooldownIsErasedThroughTheComposite() {
+        UUID subject = UUID.randomUUID();
+        UUID bystander = UUID.randomUUID();
+        SecurityInstallations store = new SecurityInstallations();
+        Installation installation = za.co.neroland.nerosecurity.keycard.KeycardTestSupport.create(store,
+                UUID.randomUUID(), "K", 0);
+        za.co.neroland.nerosecurity.keycard.KeycardData real = za.co.neroland.nerosecurity.keycard.KeycardTestSupport
+                .issue(store, installation, AccessLevel.MEMBER, false, null);
+        za.co.neroland.nerosecurity.keycard.KeycardPayload p = real.payload();
+        za.co.neroland.nerosecurity.keycard.KeycardData tampered = za.co.neroland.nerosecurity.keycard.KeycardTestSupport
+                .withPayload(real, new za.co.neroland.nerosecurity.keycard.KeycardPayload(p.installationId(),
+                        AccessLevel.OWNER, p.serial(), p.encrypted(), p.bound(), p.issuedAt()));
+        za.co.neroland.nerosecurity.access.KeycardSource cards = new za.co.neroland.nerosecurity.access.KeycardSource(
+                (server, who) -> List.of(tampered), () -> 10_000L);
+        try {
+            cards.vote(new AccessQuery(null, subject, installation, AccessAction.OPEN, null));
+            cards.vote(new AccessQuery(null, bystander, installation, AccessAction.OPEN, null));
+            assertTrue(cards.holdsAnyFor(subject) && cards.holdsAnyFor(bystander), "seeded");
+
+            addStore(cards.eraser());
+            registerSecurityEraser();
+
+            ErasureConformance.Report report = ErasureConformance.create()
+                    .probe("nerosecurity:keycard_cooldowns", cards::holdsAnyFor)
+                    .run(null, subject);
+            assertTrue(report.passed(), report.describe());
+            assertFalse(report.describe().contains(subject.toString()), "the report must never carry the UUID");
+            assertTrue(cards.holdsAnyFor(bystander), "erasure is per-subject");
+        } finally {
+            NoticeErasureFixture.reset();
+        }
     }
 
     private static String row(UUID id, String owners, String members, int x) {

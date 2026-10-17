@@ -112,6 +112,17 @@ public final class SensorPermission {
         return entity instanceof Enemy ? Sensed.HOSTILE : Sensed.PASSIVE;
     }
 
+    /**
+     * The actor a sensor may publish (and so log) for {@code sensed}: the player's own UUID for a player, and
+     * {@code null} for everything else. A tamed animal is judged by its owner for permission (a member's dog must
+     * not trip the owner's laser), but the owner is never logged for it: the owner may be elsewhere or offline,
+     * has had no notice, and is not the one who was sensed. The event, alarm and damage are unchanged; the row
+     * reads like a mob's.
+     */
+    public static @Nullable UUID loggedActor(@Nullable Sensed sensed) {
+        return sensed != null && sensed.kind() == Kind.PLAYER ? sensed.subject() : null;
+    }
+
     /** The owner's UUID from the stored reference, without resolving (loading) the owner entity. */
     static @Nullable UUID ownerUuid(OwnableEntity ownable) {
         EntityReference<LivingEntity> reference = ownable.getOwnerReference();

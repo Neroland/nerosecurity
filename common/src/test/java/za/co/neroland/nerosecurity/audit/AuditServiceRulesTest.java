@@ -24,6 +24,7 @@ import za.co.neroland.nerosecurity.access.MembershipSource;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
+import za.co.neroland.nerosecurity.event.SecuritySeverity;
 import za.co.neroland.nerosecurity.installation.DevicePos;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
@@ -155,8 +156,10 @@ class AuditServiceRulesTest {
         record(SecurityEventType.LASER_TRIPPED, null);
 
         List<AnonymousEvent> rows = AnonymousEvent.of(service.peekAs(null, installation, 10), NOW);
-        assertEquals(List.of(ActorKind.NONE, ActorKind.WITHHELD, ActorKind.PLAYER),
-                rows.stream().map(AnonymousEvent::actorKind).toList());
+        assertEquals(List.of(ActorKind.NONE, ActorKind.PLAYER, ActorKind.PLAYER),
+                rows.stream().map(AnonymousEvent::actorKind).toList(), "an opted-out actor reads as any player");
+        assertEquals(ActorKind.PLAYER, new AnonymousEvent(SecurityEventType.DOOR_OPENED, SecuritySeverity.INFO, 0,
+                null, ActorKind.WITHHELD).actorKind(), "the identity-free shape cannot carry WITHHELD at all");
         assertEquals(1, rows.get(0).agoSeconds());
         assertEquals(DOOR.pos(), rows.get(0).devicePos());
         for (AnonymousEvent row : rows) {

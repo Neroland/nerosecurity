@@ -1,12 +1,13 @@
 package za.co.neroland.nerosecurity.link;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
@@ -35,7 +36,8 @@ public final class LoginAlertSummary {
     static final int DELAY_TICKS = 40;
 
     private static final AtomicBoolean INITIALISED = new AtomicBoolean();
-    private static final Map<UUID, Integer> PENDING = new ConcurrentHashMap<>();
+    /** Insertion-ordered; guarded by itself. When full, the oldest pending join is dropped. */
+    private static final LinkedHashMap<UUID, Integer> PENDING = new LinkedHashMap<>();
     private static final int MAX_PENDING = 4096;
 
     private LoginAlertSummary() {
@@ -46,8 +48,12 @@ public final class LoginAlertSummary {
             return;
         }
         ServerHooks.onPlayerJoin(player -> schedule(player.getUUID()));
-        ServerHooks.onPlayerLeave(player -> PENDING.remove(player.getUUID()));
-        ServerHooks.onStopping(server -> PENDING.clear());
+        ServerHooks.onPlayerLeave(player -> forget(player.getUUID()));
+        ServerHooks.onStopping(server -> {
+            synchronized (PENDING) {
+                PENDING.clear();
+            }
+        });
         ServerHooks.onTick(server -> tick(server, ctx));
     }
 
@@ -55,29 +61,39 @@ public final class LoginAlertSummary {
         if (player == null) {
             return;
         }
-        if (PENDING.size() >= MAX_PENDING) {
-            PENDING.clear();
+        synchronized (PENDING) {
+            PENDING.remove(player);
+            while (PENDING.size() >= MAX_PENDING) {
+                Iterator<UUID> oldest = PENDING.keySet().iterator();
+                oldest.next();
+                oldest.remove();
+            }
+            PENDING.put(player, DELAY_TICKS);
         }
-        PENDING.put(player, DELAY_TICKS);
     }
 
     private static void tick(MinecraftServer server, LinkContext ctx) {
-        if (PENDING.isEmpty()) {
-            return;
-        }
-        for (Iterator<Map.Entry<UUID, Integer>> it = PENDING.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<UUID, Integer> e = it.next();
-            int left = e.getValue() - 1;
-            if (left > 0) {
-                e.setValue(left);
-                continue;
+        List<UUID> due = new ArrayList<>();
+        synchronized (PENDING) {
+            if (PENDING.isEmpty()) {
+                return;
             }
-            it.remove();
-            ServerPlayer player = server.getPlayerList().getPlayer(e.getKey());
+            for (Iterator<Map.Entry<UUID, Integer>> it = PENDING.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry<UUID, Integer> e = it.next();
+                int left = e.getValue() - 1;
+                if (left > 0) {
+                    e.setValue(left);
+                } else {
+                    it.remove();
+                    due.add(e.getKey());
+                }
+            }
+        }
+        for (UUID id : due) {
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) {
                 continue;
             }
-            UUID id = e.getKey();
             deliver(ctx.settings(), () -> ctx.alerts(id), ctx.now(), counts -> player.sendSystemMessage(
                     Component.translatable("link.nerosecurity.login_summary", counts.alerts(), counts.installations())));
         }
@@ -137,11 +153,18 @@ public final class LoginAlertSummary {
 
     static void forget(UUID player) {
         if (player != null) {
-            PENDING.remove(player);
+            synchronized (PENDING) {
+                PENDING.remove(player);
+            }
         }
     }
 
     static boolean holdsAnyFor(UUID player) {
-        return player != null && PENDING.containsKey(player);
+        if (player == null) {
+            return false;
+        }
+        synchronized (PENDING) {
+            return PENDING.containsKey(player);
+        }
     }
 }

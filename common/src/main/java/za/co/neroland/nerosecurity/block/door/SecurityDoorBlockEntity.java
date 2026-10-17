@@ -51,6 +51,7 @@ import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.menu.door.DoorPayloadHandlers;
 import za.co.neroland.nerosecurity.menu.door.SecurityDoorMenu;
+import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
@@ -600,6 +601,8 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
     }
 
     private void publish(SecurityEventType type, Installation installation, ServerLevel serverLevel, @Nullable UUID actor) {
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(serverLevel.getServer(), actor, installation);
         SecurityEventBus.publish(SecurityEvent.of(type, installation.id(), devicePos(serverLevel), actor,
                 System.currentTimeMillis()));
     }

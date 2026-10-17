@@ -55,6 +55,15 @@ public final class InstallationNames {
         return "Installation " + shortId(id);
     }
 
+    /**
+     * The neutral name an erased sole owner's installation takes when it is tombstoned:
+     * {@code "Orphaned installation " + the short id}. The owner-chosen label may name the person who was erased,
+     * so it does not survive erasure. Stored data, not a translation key: it is a name like any other.
+     */
+    public static String orphanedFor(UUID id) {
+        return "Orphaned installation " + shortId(id);
+    }
+
     /** The first eight hex characters of an id: the only form ids are suggested or listed in. */
     public static String shortId(UUID id) {
         return id.toString().substring(0, 8);

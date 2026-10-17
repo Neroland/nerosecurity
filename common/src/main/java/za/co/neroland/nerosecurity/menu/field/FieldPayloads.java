@@ -2,9 +2,13 @@ package za.co.neroland.nerosecurity.menu.field;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+
+import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessLevel;
@@ -13,6 +17,7 @@ import za.co.neroland.nerosecurity.client.screen.field.ClientFieldState;
 import za.co.neroland.nerosecurity.field.FieldSettings;
 import za.co.neroland.nerosecurity.field.FieldState;
 import za.co.neroland.nerosecurity.installation.DevicePos;
+import za.co.neroland.nerosecurity.menu.SnapshotMessages;
 import za.co.neroland.nerosecurity.network.SecurityNetwork;
 
 /**
@@ -57,15 +62,18 @@ public final class FieldPayloads {
      * Server truth for the open field screen. Display only: the server re-checks everything a configure intent says.
      * {@code viewerLevel} (OWNER for an operator) lets the screen disable owner-only choices; {@code serverEnabled}
      * is the server's {@code forceFieldsEnabled}. {@code placed} is how many field blocks are actually up, next to the
-     * {@code area} the shape asks for: fewer means holes the owner should clear.
+     * {@code area} the shape asks for: fewer means holes the owner should clear. {@code ok}/{@code message} are the
+     * outcome of the action that produced the snapshot (null message = nothing to say), server-built, for the
+     * screen's footer: a refused change arrives as {@code ok = false} with the reason.
      */
     public record FieldSnapshot(BlockPos pos, FieldSettings settings, int strength, int maxStrength, int range,
             int area, int placed, int maxArea, int drawPerTick, long energy, long capacity, FieldState state, float loadFraction,
-            int cooldownSeconds, AccessLevel viewerLevel, boolean admin, boolean breachable, boolean serverEnabled)
+            int cooldownSeconds, AccessLevel viewerLevel, boolean admin, boolean breachable, boolean serverEnabled,
+            boolean ok, @Nullable Component message)
             implements CustomPacketPayload {
 
         public static final Type<FieldSnapshot> TYPE = new Type<>(id("field_snapshot"));
-        public static final StreamCodec<FriendlyByteBuf, FieldSnapshot> STREAM_CODEC = StreamCodec.of(
+        public static final StreamCodec<RegistryFriendlyByteBuf, FieldSnapshot> STREAM_CODEC = StreamCodec.of(
                 (buf, v) -> {
                     buf.writeBlockPos(v.pos);
                     FieldSettings.STREAM_CODEC.encode(buf, v.settings);
@@ -85,18 +93,57 @@ public final class FieldPayloads {
                     buf.writeBoolean(v.admin);
                     buf.writeBoolean(v.breachable);
                     buf.writeBoolean(v.serverEnabled);
+                    SnapshotMessages.write(buf, v.ok, v.message);
                 },
-                buf -> new FieldSnapshot(buf.readBlockPos(), FieldSettings.STREAM_CODEC.decode(buf), buf.readVarInt(),
-                        buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                        buf.readVarLong(), buf.readVarLong(), FieldState.STREAM_CODEC.decode(buf), buf.readFloat(),
-                        buf.readVarInt(), AccessLevel.STREAM_CODEC.decode(buf), buf.readBoolean(), buf.readBoolean(),
-                        buf.readBoolean()));
+                buf -> {
+                    BlockPos pos = buf.readBlockPos();
+                    FieldSettings settings = FieldSettings.STREAM_CODEC.decode(buf);
+                    int strength = buf.readVarInt();
+                    int maxStrength = buf.readVarInt();
+                    int range = buf.readVarInt();
+                    int area = buf.readVarInt();
+                    int placed = buf.readVarInt();
+                    int maxArea = buf.readVarInt();
+                    int drawPerTick = buf.readVarInt();
+                    long energy = buf.readVarLong();
+                    long capacity = buf.readVarLong();
+                    FieldState state = FieldState.STREAM_CODEC.decode(buf);
+                    float loadFraction = buf.readFloat();
+                    int cooldownSeconds = buf.readVarInt();
+                    AccessLevel viewer = AccessLevel.STREAM_CODEC.decode(buf);
+                    boolean admin = buf.readBoolean();
+                    boolean breachable = buf.readBoolean();
+                    boolean serverEnabled = buf.readBoolean();
+                    boolean ok = SnapshotMessages.readOk(buf);
+                    Component message = SnapshotMessages.readMessage(buf);
+                    return new FieldSnapshot(pos, settings, strength, maxStrength, range, area, placed, maxArea,
+                            drawPerTick, energy, capacity, state, loadFraction, cooldownSeconds, viewer, admin, breachable,
+                            serverEnabled, ok, message);
+                });
 
+        /** Display values are never negative (or NaN), whatever arrives on the wire. */
         public FieldSnapshot {
             settings = settings == null ? FieldSettings.DEFAULT : settings;
             state = state == null ? FieldState.IDLE : state;
             viewerLevel = viewerLevel == null ? AccessLevel.PUBLIC : viewerLevel;
+            strength = Math.max(0, strength);
+            maxStrength = Math.max(0, maxStrength);
+            range = Math.max(0, range);
+            area = Math.max(0, area);
             placed = Math.max(0, placed);
+            maxArea = Math.max(0, maxArea);
+            drawPerTick = Math.max(0, drawPerTick);
+            energy = Math.max(0L, energy);
+            capacity = Math.max(0L, capacity);
+            loadFraction = Float.isFinite(loadFraction) ? Math.max(0f, loadFraction) : 0f;
+            cooldownSeconds = Math.max(0, cooldownSeconds);
+        }
+
+        /** The same snapshot carrying {@code ok}/{@code message} as the outcome of the action that produced it. */
+        public FieldSnapshot withOutcome(boolean ok, @Nullable Component message) {
+            return new FieldSnapshot(pos, settings, strength, maxStrength, range, area, placed, maxArea, drawPerTick,
+                    energy, capacity, state, loadFraction, cooldownSeconds, viewerLevel, admin, breachable,
+                    serverEnabled, ok, message);
         }
 
         @Override

@@ -175,6 +175,21 @@ public final class SecurityAuditLog extends SavedData {
         return removed;
     }
 
+    /**
+     * Export: the rows naming {@code actor}, per installation id (only installations with at least one), oldest
+     * first. Never another player's row.
+     */
+    public synchronized Map<UUID, List<AuditEntry>> rowsByActor(UUID actor) {
+        Map<UUID, List<AuditEntry>> out = new LinkedHashMap<>();
+        logs.forEach((id, log) -> {
+            List<AuditEntry> rows = log.byActor(actor);
+            if (!rows.isEmpty()) {
+                out.put(id, rows);
+            }
+        });
+        return out;
+    }
+
     /** The installation was dissolved: its whole log goes. */
     public synchronized void drop(UUID installationId) {
         if (installationId != null && logs.remove(installationId) != null) {

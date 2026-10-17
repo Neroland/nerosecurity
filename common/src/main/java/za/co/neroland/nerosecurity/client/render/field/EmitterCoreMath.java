@@ -49,4 +49,15 @@ public final class EmitterCoreMath {
     public static boolean lit(FieldState state, int tint) {
         return state == FieldState.PROJECTING || (state == FieldState.BROWNOUT && tint == SecurityColours.WARN);
     }
+
+    /**
+     * The deny flash over the state tint: while {@code flashing}, {@code LOCK} in the lit 8 Hz phase and dormant-dark
+     * in the other (with animations off, {@code LOCK} steady for the whole flash); otherwise {@code stateTint}.
+     */
+    public static int denyTint(int stateTint, boolean flashing, boolean flashOn, boolean animate) {
+        if (!flashing) {
+            return stateTint;
+        }
+        return !animate || flashOn ? SecurityColours.LOCK : SecurityColours.DORMANT;
+    }
 }

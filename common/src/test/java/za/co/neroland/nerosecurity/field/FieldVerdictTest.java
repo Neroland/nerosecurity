@@ -71,6 +71,24 @@ class FieldVerdictTest {
         return FieldSettings.DEFAULT.withAccess(new DeviceAccessSettings(min, keycardOnly));
     }
 
+    @Test
+    void aStoredOwnerPassesAKeycardOnlyField() {
+        AccessResolver membership = resolver(List.of(MembershipSource.INSTANCE), false);
+        assertTrue(pass(membership, installation, owner, at(AccessLevel.MEMBER, true), true),
+                "the owner passes their own keycard-only field without a card");
+        assertTrue(pass(membership, installation, owner, at(AccessLevel.OWNER, true), true),
+                "... at OWNER too");
+        assertFalse(pass(membership, installation, officer, at(AccessLevel.MEMBER, true), true),
+                "an officer without a card is still stopped");
+        assertFalse(pass(membership, installation, member, at(AccessLevel.MEMBER, true), true));
+
+        AccessResolver claimed = resolver(List.of(MembershipSource.INSTANCE, fixed(
+                Identifier.fromNamespaceAndPath("nerosecurity", "claim"),
+                new AccessVote.Deny(DenyReason.SOURCE_DENY, "access.nerosecurity.deny.claim"))), false);
+        assertFalse(pass(claimed, installation, owner, at(AccessLevel.MEMBER, true), true),
+                "the owner pass-through drops the filter only; a deny still wins");
+    }
+
     private boolean pass(AccessResolver r, Installation i, UUID who, FieldSettings s, boolean enabled) {
         return FieldVerdict.decide(r, null, i, EMITTER, who, s, enabled);
     }
@@ -109,6 +127,11 @@ class FieldVerdictTest {
         Installation locked = store.byId(installation.id()).orElseThrow();
         assertFalse(pass(membership, locked, officer, memberField, true), "lockdown: officer stopped");
         assertTrue(pass(membership, locked, owner, memberField, true), "lockdown: owner passes");
+
+        // Keycard-only never seals the owner out, lockdown or not.
+        assertTrue(pass(membership, locked, owner, at(AccessLevel.MEMBER, true), true),
+                "lockdown + keycard-only: the owner still passes without a card");
+        assertFalse(pass(membership, locked, officer, at(AccessLevel.MEMBER, true), true));
 
         // A throwing resolver path fails closed.
         AccessResolver broken = new AccessResolver(() -> {

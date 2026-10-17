@@ -39,6 +39,7 @@ class SecurityLinkActionsTest {
         lab = ctx.install(owner, "Orbital Lab", 0);
         ctx.store.setMember(lab.id(), officer, AccessLevel.OFFICER, 64);
         lab = ctx.fresh(lab);
+        ctx.online.add(owner);
     }
 
     private JsonObject lockdown(boolean enabled, String requestId) {
@@ -124,6 +125,33 @@ class SecurityLinkActionsTest {
         ctx.admin = (server, actor) -> true;
         assertEquals(LinkActionResult.Error.NOT_OWNER, error(actions.execute(operator, "lockdown", lockdown(true, "a"))));
         assertFalse(ctx.fresh(lab).lockdown().active());
+    }
+
+    @Test
+    void anOfflineOwnerIsRefusedUnlessTheServerAllowsIt() {
+        ctx.settings = ctx.settings.withLockdown(LinkLockdownMode.FULL, false);
+        ctx.online.remove(owner);
+        assertEquals(LinkActionResult.Error.PLAYER_OFFLINE_REQUIRED,
+                error(actions.execute(owner, "lockdown", lockdown(true, "a"))));
+        assertFalse(ctx.fresh(lab).lockdown().active());
+        ctx.settings = ctx.settings.withLockdown(LinkLockdownMode.FULL, true);
+        ctx.now += 20_000L;
+        assertTrue(actions.execute(owner, "lockdown", lockdown(true, "b")).ok());
+        assertTrue(ctx.fresh(lab).lockdown().active());
+    }
+
+    @Test
+    void malformedRequestsDoNotSpendARateLimitSlot() {
+        ctx.settings = ctx.settings.withLockdown(LinkLockdownMode.FULL, false);
+        JsonObject noEnabled = new JsonObject();
+        noEnabled.addProperty("installationId", lab.id().toString());
+        for (int i = 0; i < 5; i++) {
+            assertEquals(LinkActionResult.Error.VALIDATION, error(actions.execute(owner, "lockdown", noEnabled)));
+            JsonObject badId = lockdown(true, null);
+            badId.addProperty("installationId", "nope");
+            assertEquals(LinkActionResult.Error.NOT_OWNER, error(actions.execute(owner, "lockdown", badId)));
+        }
+        assertTrue(actions.execute(owner, "lockdown", lockdown(true, "ok")).ok(), "the slot was still free");
     }
 
     @Test

@@ -160,7 +160,7 @@ class ShippedQuestPackTest {
     }
 
     /**
-     * The pack's entry quest is the keycard contract later stages must honour: <i>Card Stock</i> asks
+     * The pack's entry quest is the keycard contract later releases must honour: <i>Card Stock</i> asks
      * for a crafted {@code nerosecurity:keycard}. Pinning it here means renaming the item later
      * breaks this test rather than silently orphaning the quest.
      */

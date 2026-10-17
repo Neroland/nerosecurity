@@ -31,11 +31,13 @@ import za.co.neroland.nerosecurity.client.render.door.DoorLeds;
 /**
  * The Secure Chest (the block model has no elements; this renderer is the chest): body, a lid hinged at the back
  * that swings open with easeOutCubic while anyone has the chest open, a lock plate on the lid tinted the chest's
- * minimum-level colour, and the recording LED (REC, 1 Hz) on the body. A deny flashes the plate and the LED
- * {@code LOCK} at 8 Hz for 10 ticks.
+ * minimum-level colour ({@code OFF} grey while unlinked), and the LED on the body: the {@code LOCK} strobe in
+ * lockdown, else the recording blink (REC, 1 Hz); dark while unlinked. A deny flashes the plate and the LED
+ * {@code LOCK} at 8 Hz for 10 ticks. With animations off every blink is a steady colour ({@link ChestLights}).
  *
  * <p>Extract reads only the chest's own synced fields ({@code isOpenForRender}, {@code renderMinLevel},
- * {@code renderRecording}) and its own block state. The lid anchor lives in this renderer, weakly keyed by the
+ * {@code renderRecording}, {@code renderLinked}, {@code renderLockdown}), its own block state, the game time and the
+ * client-side deny flash map. The lid anchor lives in this renderer, weakly keyed by the
  * block entity, so the chest itself carries no client animation state.
  */
 public class SecureChestRenderer implements BlockEntityRenderer<SecureChestBlockEntity, SecureChestRenderState> {
@@ -96,13 +98,9 @@ public class SecureChestRenderer implements BlockEntityRenderer<SecureChestBlock
         BlockPos pos = be.getBlockPos();
         boolean flashing = ClientDeviceFeedback.flashing(pos, now);
         boolean flashOn = flashing && (!animate || ClientDeviceFeedback.flashOn(pos, now, partialTick));
-        int level0 = SecurityColours.levelColour(be.renderMinLevel());
-        s.plate = flashOn ? SecurityColours.LOCK : level0;
-        if (flashing) {
-            s.led = flashOn ? SecurityColours.LOCK : DoorLeds.OFF;
-        } else {
-            s.led = DoorLeds.recording(be.renderRecording(), now, animate);
-        }
+        boolean linked = be.renderLinked();
+        s.plate = ChestLights.plate(linked, SecurityColours.levelColour(be.renderMinLevel()), flashOn);
+        s.led = ChestLights.led(linked, be.renderLockdown(), be.renderRecording(), flashing, flashOn, now, animate);
         BerStats.stop(t0);
     }
 

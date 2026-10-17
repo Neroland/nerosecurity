@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.access.AccessAction;
 import za.co.neroland.nerosecurity.access.AccessDecision;
-import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.access.AccessQuery;
 import za.co.neroland.nerosecurity.access.AccessResolver;
 import za.co.neroland.nerosecurity.audit.RetentionPolicy;
@@ -27,8 +26,8 @@ import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 /**
  * Server side of the hub's Privacy tab. Trusts nothing the client says: the sender's open container must be a
  * {@link SecurityHubMenu} that is still valid, the installation is re-read from the store by the menu's id,
- * OPEN at OFFICER is re-resolved at the hub (the same rule as opening the hub), and at most one request or
- * action is answered per {@link SecurityHubMenu#PRIVACY_MIN_INTERVAL_TICKS} per open menu. Actions go through
+ * OPEN_HUB (OFFICER, membership only) is re-resolved at the hub (the same rule as opening the hub), and at most
+ * one request or action is answered per {@link SecurityHubMenu#PRIVACY_MIN_INTERVAL_TICKS} per open menu. Actions go through
  * {@link PrivacyActions#current()} and act on the sender only. Every handler is guarded by {@code runSafely}.
  */
 public final class PrivacyPayloadHandlers {
@@ -106,7 +105,7 @@ public final class PrivacyPayloadHandlers {
             return null;
         }
         AccessDecision decision = AccessResolver.DEFAULT.resolve(new AccessQuery(server, player.getUUID(), installation,
-                AccessAction.OPEN, installation.hubPos()), AccessLevel.OFFICER);
+                AccessAction.OPEN_HUB, installation.hubPos()), AccessAction.OPEN_HUB.defaultMinimum);
         if (!decision.allowed()) {
             player.closeContainer();
             player.sendSystemMessage(decision.message());

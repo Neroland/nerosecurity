@@ -13,8 +13,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
+import org.jetbrains.annotations.Nullable;
+
 import za.co.neroland.nerosecurity.block.DeviceIds;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
+import za.co.neroland.nerosecurity.data.SecurityData;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.server.ServerHooks;
@@ -58,6 +61,37 @@ public final class RecordingNotice {
         ServerHooks.onStopping(server -> NOTICED.clear());
         ServerHooks.onPlayerLeave(player -> NOTICED.remove(player.getUUID()));
         ServerHooks.onTick(RecordingNotice::tick);
+        SecurityData.addStore(ERASER);
+    }
+
+    /** Transient per-player memory joins the composite eraser as store {@code "notices"}; nothing to back up. */
+    static final SecurityData.StoreEraser ERASER = new SecurityData.StoreEraser() {
+        @Override
+        public String name() {
+            return "notices";
+        }
+
+        @Override
+        public void erase(MinecraftServer server, UUID player) {
+            forget(player);
+        }
+
+        @Override
+        public void backupNow(MinecraftServer server) {
+            // Never persisted: nothing to refresh.
+        }
+    };
+
+    /** Erasure: forgets which installations {@code player} has been told about. */
+    public static void forget(UUID player) {
+        if (player != null) {
+            NOTICED.remove(player);
+        }
+    }
+
+    /** Conformance probe: is anything remembered for {@code player}? */
+    public static boolean holdsAnyFor(UUID player) {
+        return player != null && NOTICED.containsKey(player);
     }
 
     private static void tick(MinecraftServer server) {
@@ -95,7 +129,7 @@ public final class RecordingNotice {
     }
 
     /**
-     * A sensor is about to log {@code player} for {@code installation}: if they have not had that
+     * A sensor or device is about to log {@code player} for {@code installation}: if they have not had that
      * installation's notice this session and it records anything, deliver it now (before the event is
      * published). Never throws: a failure here must not stop the sensor.
      */
@@ -109,6 +143,28 @@ public final class RecordingNotice {
             }
             if (markNoticed(player.getUUID(), installation.id())) {
                 player.sendOverlayMessage(Component.translatable(KEY, installation.name()));
+            }
+        } catch (RuntimeException | LinkageError e) {
+            // The periodic check still covers the player.
+        }
+    }
+
+    /**
+     * A device is about to publish an event naming {@code actor} (a deny, a forced break, an open): if that
+     * player is online, deliver the notice first, exactly as {@link #noticeBeforeLogging(ServerPlayer,
+     * Installation)} does. A player who arrives by teleport, pearl or respawn and clicks a door before the next
+     * periodic check is therefore told before the row exists. An offline or unknown actor gets nothing (nothing
+     * can be shown). Never throws.
+     */
+    public static void noticeBeforeLogging(@Nullable MinecraftServer server, @Nullable UUID actor,
+            @Nullable Installation installation) {
+        if (server == null || actor == null || installation == null) {
+            return;
+        }
+        try {
+            ServerPlayer player = server.getPlayerList().getPlayer(actor);
+            if (player != null) {
+                noticeBeforeLogging(player, installation);
             }
         } catch (RuntimeException | LinkageError e) {
             // The periodic check still covers the player.

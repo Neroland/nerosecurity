@@ -64,9 +64,6 @@ interface LinkContext {
     /** A display name from the online list or the memory-only profile cache, else {@code "?"}. */
     String displayName(UUID player);
 
-    /** Whether the privacy opt-out withholds this actor's identity. Fails private (true) on error. */
-    boolean withheld(UUID actor);
-
     boolean isOnline(UUID player);
 
     @Nullable Lockdown enterLockdown(Installation installation, UUID actor, long now);

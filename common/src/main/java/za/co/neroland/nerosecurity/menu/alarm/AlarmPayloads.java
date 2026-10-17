@@ -36,7 +36,7 @@ public final class AlarmPayloads {
     private AlarmPayloads() {
     }
 
-    /** Declares the alarm payloads. The orchestrated network init calls this once; repeats are ignored. */
+    /** Declares the alarm payloads. The network init calls this once; repeats are ignored. */
     public static void declare() {
         if (declared) {
             return;

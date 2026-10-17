@@ -21,8 +21,8 @@ import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 
 /**
- * Server side of the monitor screen. Viewing is OPEN at MEMBER at the monitor (the monitor shows only
- * actor kinds, so it is not a log read). A refresh trusts nothing the client says: the sender's open
+ * Server side of the monitor screen. Viewing is VIEW_INSTALLATION at MEMBER at the monitor (the monitor shows
+ * only actor kinds, so it is not a log read; a keycard does not grant it). A refresh trusts nothing the client says: the sender's open
  * container must be a {@link MonitorMenu} bound to the claimed position and still valid, the
  * installation is re-read from the store, OPEN is re-resolved, and refreshes are rate-limited per open
  * menu. Failures fail closed in the {@code runSafely} shape.
@@ -32,9 +32,10 @@ public final class MonitorPayloadHandlers {
     private MonitorPayloadHandlers() {
     }
 
-    /** The decision for viewing the monitor at {@code at}: OPEN at MEMBER, any granting source. */
+    /** The decision for viewing the monitor at {@code at}: VIEW_INSTALLATION at MEMBER (membership, never a card). */
     public static AccessDecision resolveView(ServerPlayer player, @Nullable Installation installation, DevicePos at) {
-        return AccessResolver.DEFAULT.resolve(player, installation, AccessAction.OPEN, AccessLevel.MEMBER, at, null);
+        return AccessResolver.DEFAULT.resolve(player, installation, AccessAction.VIEW_INSTALLATION, AccessLevel.MEMBER,
+                at, null);
     }
 
     /** Builds and sends the snapshot to a player who was just allowed to view the monitor. */

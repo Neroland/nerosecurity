@@ -29,12 +29,13 @@ import za.co.neroland.nerosecurity.installation.InstallationService;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorMenu;
 import za.co.neroland.nerosecurity.menu.monitor.MonitorPayloadHandlers;
+import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.registry.MonitorRegistrations;
 
 /**
  * The Security Monitor's block entity. It stores nothing: no installation pointer, no event cache, no
- * imagery. It exists to be the menu provider, to report how the block was removed, and for later
- * stages' screen rendering. Every lookup goes to the store by position.
+ * imagery. It exists to be the menu provider, to report how the block was removed, and to anchor
+ * its screen rendering. Every lookup goes to the store by position.
  */
 public class SecurityMonitorBlockEntity extends BlockEntity implements MenuProvider {
 
@@ -116,7 +117,10 @@ public class SecurityMonitorBlockEntity extends BlockEntity implements MenuProvi
         InstallationService.unlinkByLoss(server, installation, at);
     }
 
-    private static void publish(SecurityEventType type, Installation installation, DevicePos at, @Nullable UUID actor) {
+    private void publish(SecurityEventType type, Installation installation, DevicePos at, @Nullable UUID actor) {
+        // Notice before logging: a named player who has not had this installation's notice gets it first.
+        RecordingNotice.noticeBeforeLogging(level instanceof ServerLevel serverLevel ? serverLevel.getServer() : null,
+                actor, installation);
         SecurityEventBus.publish(SecurityEvent.of(type, installation.id(), at, actor, System.currentTimeMillis()));
     }
 

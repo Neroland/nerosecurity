@@ -181,8 +181,9 @@ public final class KeycardService {
 
     /** Revokes one card by serial. OWNER. */
     public static ServiceResult revoke(ServerPlayer actor, Installation installation, long serial) {
+        // No position: a command, so a claim over the hub never blocks it.
         AccessDecision decision = resolve(actor, installation, AccessAction.REVOKE_CARD,
-                AccessAction.REVOKE_CARD.defaultMinimum, installation.hubPos());
+                AccessAction.REVOKE_CARD.defaultMinimum, null);
         if (!decision.allowed()) {
             return ServiceResult.failure(decision.message());
         }
@@ -197,7 +198,7 @@ public final class KeycardService {
     /** Revokes every card the installation has issued so far. OWNER. One event. */
     public static ServiceResult revokeAll(ServerPlayer actor, Installation installation) {
         AccessDecision decision = resolve(actor, installation, AccessAction.REVOKE_CARD,
-                AccessAction.REVOKE_CARD.defaultMinimum, installation.hubPos());
+                AccessAction.REVOKE_CARD.defaultMinimum, null);
         if (!decision.allowed()) {
             return ServiceResult.failure(decision.message());
         }
@@ -214,7 +215,7 @@ public final class KeycardService {
     public static ServiceResult setAutomation(ServerPlayer actor, Installation installation,
             @Nullable AccessLevel level) {
         AccessDecision decision = resolve(actor, installation, AccessAction.SET_AUTOMATION,
-                AccessAction.SET_AUTOMATION.defaultMinimum, installation.hubPos());
+                AccessAction.SET_AUTOMATION.defaultMinimum, null);
         if (!decision.allowed()) {
             return ServiceResult.failure(decision.message());
         }

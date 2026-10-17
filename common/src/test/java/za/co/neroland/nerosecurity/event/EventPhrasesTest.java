@@ -33,7 +33,7 @@ class EventPhrasesTest {
     }
 
     @Test
-    void stageThreeSeverities() {
+    void sensorAndAlarmSeverities() {
         assertEquals(SecuritySeverity.CRITICAL, SecurityEventType.LASER_TRIPPED.defaultSeverity);
         assertEquals(SecuritySeverity.CRITICAL, SecurityEventType.DEVICE_FORCED.defaultSeverity);
         assertEquals(SecuritySeverity.WARN, SecurityEventType.MOTION_DETECTED.defaultSeverity);

@@ -3,7 +3,8 @@ package za.co.neroland.nerosecurity.link;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,7 +27,8 @@ final class LinkRateLimiter {
     }
 
     private final Map<String, List<Rule>> rules;
-    private final Map<Key, Deque<Long>> calls = new HashMap<>();
+    /** Insertion-ordered; when full, the key that has existed longest is evicted first. */
+    private final LinkedHashMap<Key, Deque<Long>> calls = new LinkedHashMap<>();
 
     LinkRateLimiter(Map<String, List<Rule>> rules) {
         this.rules = Map.copyOf(rules);
@@ -80,8 +82,10 @@ final class LinkRateLimiter {
             return wait;
         }
         if (seen == null) {
-            if (calls.size() >= MAX_KEYS) {
-                calls.clear();
+            while (calls.size() >= MAX_KEYS) {
+                Iterator<Key> oldest = calls.keySet().iterator();
+                oldest.next();
+                oldest.remove();
             }
             seen = new ArrayDeque<>();
             calls.put(key, seen);

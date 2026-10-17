@@ -112,7 +112,7 @@ class CardLedgerTest {
         assertEquals(i.cards(), edited.cards(), "every invalid row was dropped; duplicates keep the first");
         assertNull(edited.automationLevel(), "an automation level above OFFICER reads as off");
 
-        // A Stage 1 save (no ledger keys at all) loads with an empty ledger and automation off.
+        // A pre-keycard save (no ledger keys at all) loads with an empty ledger and automation off.
         JsonObject legacy = json.getAsJsonObject().deepCopy();
         JsonObject legacyRow = legacy.getAsJsonArray("installations").get(0).getAsJsonObject();
         for (String key : List.of("cards", "next_serial", "min_valid_serial", "automation_level")) {

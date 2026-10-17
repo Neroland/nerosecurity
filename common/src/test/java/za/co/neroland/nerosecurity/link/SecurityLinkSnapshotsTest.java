@@ -103,7 +103,8 @@ class SecurityLinkSnapshotsTest {
         JsonArray rows = out.getAsJsonArray("events");
         assertEquals(4, rows.size());
         JsonObject newest = rows.get(0).getAsJsonObject();
-        assertEquals("withheld", newest.get("actorKind").getAsString());
+        assertEquals("player", newest.get("actorKind").getAsString(),
+                "identity-free rows never tell an opted-out actor from any other player");
         JsonObject tripped = rows.get(2).getAsJsonObject();
         assertEquals("laser_tripped", tripped.get("type").getAsString());
         assertEquals("Laser grid 1", tripped.getAsJsonObject("device").get("label").getAsString());
@@ -150,7 +151,9 @@ class SecurityLinkSnapshotsTest {
         assertTrue(out.get("actorsIncluded").getAsBoolean());
         JsonObject tripped = out.getAsJsonArray("events").get(2).getAsJsonObject();
         assertEquals("Steve", tripped.getAsJsonObject("actor").get("name").getAsString());
-        assertFalse(out.getAsJsonArray("events").get(0).getAsJsonObject().has("actor"), "withheld stays anonymous");
+        JsonObject withheld = out.getAsJsonArray("events").get(0).getAsJsonObject();
+        assertFalse(withheld.has("actor"), "withheld stays anonymous");
+        assertEquals("withheld", withheld.get("actorKind").getAsString(), "the named view says anonymous");
         assertClean(out, Set.of(lab.id().toString()));
     }
 

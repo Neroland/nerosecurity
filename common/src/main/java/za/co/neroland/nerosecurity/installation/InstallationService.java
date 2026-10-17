@@ -450,7 +450,7 @@ public final class InstallationService {
 
     /**
      * Side effects of entering a lockdown (any source), after the store write and the event: the
-     * {@link LockdownHooks} (alarms re-arm, later stages raise fields). Doors seal on their own next tick.
+     * {@link LockdownHooks} (alarms re-arm, fields raise their strength). Doors seal on their own next tick.
      */
     private static void applyLockdownEntered(MinecraftServer server, Installation installation) {
         FieldPassability.bump();
@@ -578,7 +578,17 @@ public final class InstallationService {
     }
 
     private static AccessDecision resolve(ServerPlayer actor, Installation installation, AccessAction action) {
-        return AccessResolver.DEFAULT.resolve(actor, installation, action, installation.hubPos());
+        return AccessResolver.DEFAULT.resolve(actor, installation, action, claimPosition(action, installation));
+    }
+
+    /**
+     * The position a service action is resolved at. Claims vote on block interactions only (the claim source
+     * abstains on a null position), so only a break of the hub ({@code DISSOLVE}) or a click on it with the
+     * linking tool ({@code LINK_DEVICE}) carries the hub's position. Lockdown, members, rename and the other
+     * hub-level settings are commands and screen buttons: a claim over the hub's chunk never blocks them.
+     */
+    static @Nullable DevicePos claimPosition(AccessAction action, Installation installation) {
+        return action == AccessAction.DISSOLVE || action == AccessAction.LINK_DEVICE ? installation.hubPos() : null;
     }
 
     private static SecurityInstallations store(ServerPlayer actor) {

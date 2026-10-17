@@ -62,6 +62,112 @@ class KeycardSourceTest {
         return new AccessQuery(null, who, installation, AccessAction.OPEN, null);
     }
 
+    private AccessQuery query(UUID who, Installation installation, AccessAction action) {
+        return new AccessQuery(null, who, installation, action, null);
+    }
+
+    private AccessResolver membershipAndCards() {
+        return new AccessResolver(() -> List.of(MembershipSource.INSTANCE, source()), AdminCheck.NONE, () -> true);
+    }
+
+    private static final java.util.Set<AccessAction> PASSAGE =
+            java.util.EnumSet.of(AccessAction.OPEN, AccessAction.SENSOR_PASS, AccessAction.PASS_FIELD);
+
+    @Test
+    void onlyPhysicalPassageTakesKeycardGrants() {
+        for (AccessAction action : AccessAction.values()) {
+            assertEquals(PASSAGE.contains(action), action.keycardMayGrant, action.name());
+        }
+        assertEquals(AccessLevel.OFFICER, AccessAction.OPEN_HUB.defaultMinimum, "the hub screen needs OFFICER");
+        assertEquals(AccessAction.values().length - 2, AccessAction.OPEN_HUB.ordinal(),
+                "new actions are appended, never inserted");
+
+        // A non-member holding the highest card: for every non-passage action the card counts for nothing.
+        hands = List.of(issue(store, a, AccessLevel.OWNER, true, null));
+        AccessResolver resolver = membershipAndCards();
+        for (AccessAction action : AccessAction.values()) {
+            AccessDecision decision = resolver.resolve(query(actor, a, action), action.defaultMinimum);
+            if (PASSAGE.contains(action)) {
+                assertTrue(decision.allowed(), action + ": a card grants passage");
+            } else {
+                assertFalse(decision.allowed(), action + ": a card never administers");
+                assertEquals(AccessLevel.PUBLIC, decision.effective(), action + ": the card is an abstention");
+            }
+        }
+    }
+
+    @Test
+    void anOfficerCardInTheOffHandCannotAdminister() {
+        // The visitor's main hand holds a tool (no card); the OFFICER card is in the off hand.
+        hands = List.of(issue(store, a, AccessLevel.OFFICER, false, null));
+        AccessResolver resolver = membershipAndCards();
+        for (AccessAction action : List.of(AccessAction.LINK_DEVICE, AccessAction.OPEN_HUB,
+                AccessAction.LOCKDOWN_TOGGLE, AccessAction.READ_LOG, AccessAction.SILENCE_ALARM,
+                AccessAction.EDIT_MEMBERS, AccessAction.CONFIGURE_DEVICE, AccessAction.PROGRAM_CARD,
+                AccessAction.VIEW_INSTALLATION)) {
+            AccessDecision decision = resolver.resolve(query(actor, a, action), action.defaultMinimum);
+            assertFalse(decision.allowed(), "an OFFICER card alone cannot " + action);
+        }
+        assertTrue(resolver.resolve(query(actor, a, AccessAction.OPEN), AccessLevel.OFFICER).allowed(),
+                "... but it still opens an OFFICER door");
+    }
+
+    @Test
+    void anOwnerCardOpensButDoesNotAdminister() {
+        hands = List.of(issue(store, a, AccessLevel.OWNER, true, null));
+        AccessResolver resolver = membershipAndCards();
+        for (AccessAction action : List.of(AccessAction.DISSOLVE, AccessAction.REVOKE_CARD,
+                AccessAction.PROGRAM_CARD, AccessAction.RENAME, AccessAction.SET_AUTOMATION,
+                AccessAction.CONFIGURE_ALARM_LOCKDOWN, AccessAction.SET_NOTIFY_OFFICERS,
+                AccessAction.BIND_INTEGRATION)) {
+            AccessDecision decision = resolver.resolve(query(actor, a, action), action.defaultMinimum);
+            assertFalse(decision.allowed(), "an OWNER card alone cannot " + action);
+        }
+        // Cloning resolves PROGRAM_CARD at MEMBER: a card holder who is not a member cannot clone either.
+        assertFalse(resolver.resolve(query(actor, a, AccessAction.PROGRAM_CARD), AccessLevel.MEMBER).allowed());
+        assertTrue(resolver.resolve(query(actor, a, AccessAction.OPEN), AccessLevel.OWNER).allowed(),
+                "it opens an OWNER door");
+        assertTrue(resolver.resolve(query(actor, a, AccessAction.OPEN), AccessLevel.MEMBER,
+                java.util.Set.of(KeycardSource.ID)).allowed(), "and a keycard-only door");
+
+        store.setLockdown(a.id(), new Lockdown(true, 1L, true));
+        Installation locked = store.byId(a.id()).orElseThrow();
+        assertTrue(resolver.resolve(query(actor, locked, AccessAction.OPEN), AccessLevel.MEMBER).allowed(),
+                "an OWNER card still opens a door during lockdown");
+        assertTrue(resolver.resolve(query(actor, locked, AccessAction.OPEN), AccessLevel.MEMBER,
+                java.util.Set.of(KeycardSource.ID)).allowed(), "... a keycard-only one too");
+        assertFalse(resolver.resolve(query(actor, locked, AccessAction.LOCKDOWN_TOGGLE), AccessLevel.OFFICER).allowed(),
+                "but cannot end the lockdown");
+    }
+
+    @Test
+    void membershipAndIntegrationGrantsStillAdminister() {
+        UUID officer = UUID.randomUUID();
+        store.setMember(a.id(), officer, AccessLevel.OFFICER, 64);
+        Installation withOfficer = store.byId(a.id()).orElseThrow();
+        AccessResolver resolver = membershipAndCards();
+        assertTrue(resolver.resolve(query(officer, withOfficer, AccessAction.LINK_DEVICE),
+                AccessAction.LINK_DEVICE.defaultMinimum).allowed(), "a stored officer links without a card");
+        assertTrue(resolver.resolve(query(owner, withOfficer, AccessAction.DISSOLVE),
+                AccessAction.DISSOLVE.defaultMinimum).allowed(), "a stored owner dissolves");
+
+        AccessSource faction = new AccessSource() {
+            @Override
+            public Identifier id() {
+                return Identifier.fromNamespaceAndPath("nerosecurity", "faction");
+            }
+
+            @Override
+            public AccessVote vote(AccessQuery query) {
+                return new AccessVote.Grant(AccessLevel.OFFICER);
+            }
+        };
+        AccessResolver bound = new AccessResolver(() -> List.of(MembershipSource.INSTANCE, source(), faction),
+                AdminCheck.NONE, () -> true);
+        assertTrue(bound.resolve(query(actor, a, AccessAction.LINK_DEVICE), AccessLevel.OFFICER).allowed(),
+                "an owner-chosen integration binding still grants non-passage actions");
+    }
+
     private static AccessSource deny() {
         return new AccessSource() {
             @Override

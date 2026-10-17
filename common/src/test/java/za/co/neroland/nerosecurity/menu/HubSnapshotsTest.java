@@ -124,7 +124,7 @@ class HubSnapshotsTest {
     }
 
     @Test
-    void stageFiveLangKeysExist() throws IOException {
+    void hubAndVisualLangKeysExist() throws IOException {
         JsonObject lang = JsonParser.parseString(Files.readString(
                 resources().resolve("assets/nerosecurity/lang/en_us.json"), StandardCharsets.UTF_8)).getAsJsonObject();
         for (DeviceState state : DeviceState.values()) {

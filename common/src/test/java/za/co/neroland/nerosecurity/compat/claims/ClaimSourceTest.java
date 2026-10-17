@@ -140,6 +140,26 @@ class ClaimSourceTest {
     }
 
     @Test
+    void aClaimOverTheHubDoesNotStopLockdownExitByCommand() {
+        store.setLockdown(installation.id(), new za.co.neroland.nerosecurity.installation.Lockdown(true, 1L, false));
+        Installation locked = store.byId(installation.id()).orElseThrow();
+        var resolver = resolver(List.of(MembershipSource.INSTANCE, claims(List.of(provider(false)), true)));
+        // Hub-level actions resolve with no position (InstallationService.claimPosition), so the claim abstains.
+        for (AccessAction action : List.of(AccessAction.LOCKDOWN_TOGGLE, AccessAction.EDIT_MEMBERS,
+                AccessAction.RENAME, AccessAction.SET_NOTIFY_OFFICERS, AccessAction.REVOKE_CARD,
+                AccessAction.SET_AUTOMATION, AccessAction.READ_LOG)) {
+            AccessDecision decision = resolver.resolve(new AccessQuery(null, owner, locked, action, null),
+                    action.defaultMinimum);
+            assertTrue(decision.allowed(), "a hostile claim over the hub never blocks " + action);
+        }
+        // A block interaction at the hub (breaking it) still meets the claim.
+        AccessDecision dissolve = resolver.resolve(new AccessQuery(null, owner, locked, AccessAction.DISSOLVE,
+                locked.hubPos()), AccessAction.DISSOLVE.defaultMinimum);
+        assertFalse(dissolve.allowed());
+        assertEquals(DenyReason.SOURCE_DENY, dissolve.reason());
+    }
+
+    @Test
     void claimsDisabledAbstains() {
         assertTrue(isAbstain(claims(List.of(provider(false)), false).vote(query(owner, installation, AccessAction.OPEN))));
         AccessDecision decision = resolver(List.of(MembershipSource.INSTANCE, claims(List.of(provider(false)), false)))

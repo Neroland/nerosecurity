@@ -37,7 +37,8 @@ import za.co.neroland.nerosecurity.platform.Services;
  *   <li><b>No personal data:</b> {@code sendDefaultPii=false} (no IP), no server/host name, no user
  *       identity, no player names/UUIDs. The OS account name and home directory are masked as
  *       {@code [user]} in exception messages, log messages, breadcrumbs and stack-frame file names
- *       and paths. Remaining payload: stack trace, mod/MC/loader/OS/Java versions and the loaded
+ *       and paths, and UUID-shaped tokens as {@code [uuid]}. A handled exception sends its class name
+ *       only, never its message (see {@link #exceptionValue}). Remaining payload: stack trace, mod/MC/loader/OS/Java versions and the loaded
  *       mod list.</li>
  *   <li><b>Bounded volume:</b> per-session de-duplication plus a hard cap of
  *       {@value #MAX_EVENTS_PER_SESSION} events per game session.</li>
@@ -86,6 +87,10 @@ public final class NeroSecurityTelemetry {
     /** Masks OS-account names in Windows/macOS/Linux home-directory paths. */
     private static final Pattern USER_PATH =
             Pattern.compile("(?i)(?:[A-Z]:)?[/\\\\](?:Users|home)[/\\\\][^/\\\\\\s:;,'\"]+");
+
+    /** UUID-shaped tokens (dashed or the 32-hex form): a player id, an installation id, an export file name. */
+    private static final Pattern UUID_TOKEN = Pattern.compile(
+            "(?i)\\b(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})\\b");
 
     private static volatile boolean active;
     private static final AtomicInteger eventsSent = new AtomicInteger();
@@ -413,13 +418,11 @@ public final class NeroSecurityTelemetry {
         // POPIA/GDPR scrubbing: no user identity, no hostname, no OS-account names or home paths.
         event.setUser(null);
         event.setServerName(null);
+        boolean handled = "true".equals(event.getTag("handled"));
         List<SentryException> scrubExceptions = event.getExceptions();
         if (scrubExceptions != null) {
             for (SentryException ex : scrubExceptions) {
-                String value = ex.getValue();
-                if (value != null) {
-                    ex.setValue(scrub(value));
-                }
+                ex.setValue(exceptionValue(ex.getValue(), handled));
                 SentryStackTrace st = ex.getStacktrace();
                 List<SentryStackFrame> frames = st == null ? null : st.getFrames();
                 if (frames != null) {
@@ -499,9 +502,23 @@ public final class NeroSecurityTelemetry {
     }
 
     /**
+     * What an exception's message becomes on the wire. A handled exception (caught by NeroSecurity and reported
+     * with labels) sends its class name only, never its message: a caught Core, loader or I/O exception can carry
+     * a world path, an installation label or a UUID that NeroSecurity did not write. Every other exception (a
+     * crash) keeps a {@link #scrub scrubbed} message, for triage. The exception type and NeroSecurity frames
+     * always travel. Null-safe.
+     */
+    static String exceptionValue(String value, boolean handled) {
+        if (handled || value == null) {
+            return null;
+        }
+        return scrub(value);
+    }
+
+    /**
      * Masks the OS account: the JVM's {@code user.home} (in both slash forms) and {@code user.name}
      * become {@code [user]}, and any remaining Windows/macOS/Linux home-directory path is masked the
-     * same way. Null-safe; never throws.
+     * same way. UUID-shaped tokens become {@code [uuid]}. Null-safe; never throws.
      */
     static String scrub(String text) {
         if (text == null) {
@@ -522,6 +539,6 @@ public final class NeroSecurityTelemetry {
         } catch (RuntimeException ignored) {
             // A SecurityManager refusing the property read: fall through to the pattern below.
         }
-        return USER_PATH.matcher(scrubbed).replaceAll("/[user]");
+        return UUID_TOKEN.matcher(USER_PATH.matcher(scrubbed).replaceAll("/[user]")).replaceAll("[uuid]");
     }
 }

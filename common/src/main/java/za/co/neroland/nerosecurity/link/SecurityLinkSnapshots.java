@@ -278,7 +278,7 @@ final class SecurityLinkSnapshots implements LinkSnapshotProvider {
 
     private JsonObject auditRow(Installation installation, AuditEntry entry, UUID requester, Set<String> alertIds,
             @Nullable Function<UUID, String> names) {
-        String actorKind = actorKind(entry, requester);
+        String actorKind = actorKind(entry, requester, names != null);
         JsonObject row = eventRow(installation, entry.at(), entry.type(), entry.severity(), entry.devicePos(),
                 actorKind, alertIds);
         if (names != null && "player".equals(actorKind) && entry.actor() != null) {
@@ -289,8 +289,13 @@ final class SecurityLinkSnapshots implements LinkSnapshotProvider {
         return row;
     }
 
-    static String actorKind(AuditEntry entry, UUID requester) {
-        ActorKind kind = entry.actorKind();
+    /**
+     * The row's actor kind. Without names ({@code named = false}) a withheld actor reads as {@code player}, so
+     * the identity-free rows never reveal who has opted out; only the audited {@code actors=1} read keeps
+     * {@code withheld}.
+     */
+    static String actorKind(AuditEntry entry, UUID requester, boolean named) {
+        ActorKind kind = named ? entry.actorKind() : entry.actorKind().identityFree();
         return switch (kind) {
             case NONE -> "none";
             case WITHHELD -> "withheld";

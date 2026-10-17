@@ -174,6 +174,42 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
 sourceSets.main.resources.srcDir generateModMetadata
 eclipse.synchronizationTasks generateModMetadata
 
+// Bundle the public wiki/*.md pages (plus a generated index.json) under assets/nerosecurity/wiki so the
+// link module's wiki section can serve them (WIKI CONTRACT v1).
+def generateWikiResources = tasks.register('generateWikiResources', Copy) {
+    def wikiSrcDir = file("${rootProject.projectDir}/wiki")
+    from(wikiSrcDir) {
+        include '*.md'
+        into 'assets/nerosecurity/wiki'
+    }
+    into layout.buildDirectory.dir('generated/sources/wiki')
+    doLast {
+        def outDir = layout.buildDirectory.dir('generated/sources/wiki/assets/nerosecurity/wiki').get().asFile
+        outDir.mkdirs()
+        def entries = []
+        wikiSrcDir.listFiles()?.findAll { it.isFile() && it.name.endsWith('.md') }?.sort { it.name }?.each { f ->
+            def slug = f.name.substring(0, f.name.length() - 3)
+            def title = slug.replace('-', ' ')
+            for (String line : f.readLines('UTF-8')) {
+                def t = line.trim()
+                if (t.startsWith('# ')) { title = t.substring(2).trim(); break }
+                if (!t.isEmpty()) break
+            }
+            entries << [slug: slug, title: title]
+        }
+        def sb = new StringBuilder('{\n  "pages": [\n')
+        entries.eachWithIndex { e, i ->
+            sb.append('    {"slug": ').append(groovy.json.JsonOutput.toJson(e.slug))
+              .append(', "title": ').append(groovy.json.JsonOutput.toJson(e.title)).append('}')
+              .append(i < entries.size() - 1 ? ',' : '').append('\n')
+        }
+        sb.append('  ]\n}\n')
+        new File(outDir, 'index.json').write(sb.toString(), 'UTF-8')
+    }
+}
+sourceSets.main.resources.srcDir generateWikiResources
+eclipse.synchronizationTasks generateWikiResources
+
 loom {
     accessWidenerPath = file("${branchDir}/src/main/resources/nerosecurity.accesswidener")
 

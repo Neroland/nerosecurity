@@ -17,7 +17,6 @@ import za.co.neroland.nerosecurity.access.AccessSources;
 import za.co.neroland.nerosecurity.access.AdminCheck;
 import za.co.neroland.nerosecurity.alarm.AlarmDispatcher;
 import za.co.neroland.nerosecurity.audit.AuditEntry;
-import za.co.neroland.nerosecurity.audit.AuditRecorder;
 import za.co.neroland.nerosecurity.audit.AuditService;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
@@ -123,15 +122,6 @@ final class LiveLinkContext implements LinkContext {
     @Override
     public String displayName(UUID player) {
         return PlayerNames.display(server(), player);
-    }
-
-    @Override
-    public boolean withheld(UUID actor) {
-        try {
-            return AuditRecorder.actorPolicy().withholdActor(server(), actor);
-        } catch (RuntimeException | LinkageError e) {
-            return true;
-        }
     }
 
     @Override

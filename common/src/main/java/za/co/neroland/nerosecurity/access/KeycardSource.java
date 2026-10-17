@@ -14,6 +14,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
+import za.co.neroland.nerosecurity.data.SecurityData;
 import za.co.neroland.nerosecurity.event.SecurityEvent;
 import za.co.neroland.nerosecurity.event.SecurityEventBus;
 import za.co.neroland.nerosecurity.event.SecurityEventType;
@@ -21,7 +22,9 @@ import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.keycard.CardStatus;
 import za.co.neroland.nerosecurity.keycard.KeycardData;
 import za.co.neroland.nerosecurity.keycard.KeycardVerifier;
+import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.registry.NeroSecurityDataComponents;
+import za.co.neroland.nerosecurity.server.ServerHooks;
 
 /**
  * The keycard source ({@code nerosecurity:keycard}): grants the highest level among the valid cards the
@@ -36,6 +39,10 @@ import za.co.neroland.nerosecurity.registry.NeroSecurityDataComponents;
  *       ledger. A card for this installation that fails (tampered, revoked, wrong holder) raises
  *       {@code KEYCARD_REJECTED}, at most once per installation and actor every
  *       {@link #REJECTED_COOLDOWN_MS} ms. Foreign cards raise nothing.</li>
+ *   <li>A grant counts only for actions that declare {@link AccessAction#keycardMayGrant}: a card
+ *       opens doors, chests, fields and sensors, and never manages the installation.</li>
+ *   <li>The rejection cooldown is transient, pruned of expired entries on every rejection, cleared
+ *       when the server stops, and joins the composite eraser as store {@code "keycard_cooldowns"}.</li>
  * </ul>
  */
 public final class KeycardSource implements AccessSource {
@@ -44,7 +51,6 @@ public final class KeycardSource implements AccessSource {
 
     /** 100 ticks. */
     public static final long REJECTED_COOLDOWN_MS = 5_000L;
-    private static final int COOLDOWN_PRUNE_THRESHOLD = 1_024;
 
     /** Which cards {@code actor} is presenting. Production reads the two hands; tests inject. */
     @FunctionalInterface
@@ -80,6 +86,47 @@ public final class KeycardSource implements AccessSource {
     private final Map<CooldownKey, Long> lastRejected = new ConcurrentHashMap<>();
 
     private record CooldownKey(UUID installation, UUID actor) {
+    }
+
+    /** This source's rejection cooldown as a composite-eraser store; nothing is persisted, so nothing to back up. */
+    private final SecurityData.StoreEraser eraser = new SecurityData.StoreEraser() {
+        @Override
+        public String name() {
+            return "keycard_cooldowns";
+        }
+
+        @Override
+        public void erase(MinecraftServer server, UUID player) {
+            forget(player);
+        }
+
+        @Override
+        public void backupNow(MinecraftServer server) {
+            // Never persisted: nothing to refresh.
+        }
+    };
+
+    /** Joins the production source's cooldown to the composite eraser and clears it on server stop. Idempotent. */
+    public static void registerEraser() {
+        SecurityData.addStore(INSTANCE.eraser());
+        ServerHooks.onStopping(server -> INSTANCE.lastRejected.clear());
+    }
+
+    /** This source's eraser (one instance per source, so adding it twice is ignored). */
+    public SecurityData.StoreEraser eraser() {
+        return eraser;
+    }
+
+    /** Erasure: drops every cooldown entry keyed by {@code actor}. */
+    public void forget(@Nullable UUID actor) {
+        if (actor != null) {
+            lastRejected.keySet().removeIf(key -> actor.equals(key.actor()));
+        }
+    }
+
+    /** Conformance probe: is any cooldown entry held for {@code actor}? */
+    public boolean holdsAnyFor(@Nullable UUID actor) {
+        return actor != null && lastRejected.keySet().stream().anyMatch(key -> actor.equals(key.actor()));
     }
 
     public KeycardSource(Presenter presenter, LongSupplier clock) {
@@ -124,10 +171,11 @@ public final class KeycardSource implements AccessSource {
             if (last != null && now - last < REJECTED_COOLDOWN_MS) {
                 return;
             }
-            if (lastRejected.size() >= COOLDOWN_PRUNE_THRESHOLD) {
-                lastRejected.values().removeIf(at -> now - at >= REJECTED_COOLDOWN_MS);
-            }
+            // Bounded: expired entries go on every rejection, so nothing outlives its cooldown for long.
+            lastRejected.values().removeIf(at -> now - at >= REJECTED_COOLDOWN_MS);
             lastRejected.put(key, now);
+            // Notice before logging: the presenting player hears about the recording before the row exists.
+            RecordingNotice.noticeBeforeLogging(query.server(), actor, installation);
             SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.KEYCARD_REJECTED, installation.id(),
                     query.at(), actor, now));
         } catch (RuntimeException | LinkageError e) {
