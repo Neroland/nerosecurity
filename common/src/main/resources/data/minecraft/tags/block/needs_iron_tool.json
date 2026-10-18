@@ -8,6 +8,8 @@
     "nerosecurity:security_camera",
     "nerosecurity:alarm",
     "nerosecurity:security_monitor",
-    "nerosecurity:force_field_emitter"
+    "nerosecurity:force_field_emitter",
+    "nerosecurity:keycard_programmer",
+    "nerosecurity:security_hub"
   ]
 }

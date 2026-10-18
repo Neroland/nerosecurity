@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Block and loot drops work as intended on Minecraft 26.3** (NeoForge, Fabric and Forge). Minecraft
+  26.3 changed the loot-table file format and silently ignores the old one, so conditions and drop
+  modifiers (explosion survival, door/slab block-state checks, drop counts, random chances) were skipped.
+  The 26.3 builds now ship every loot table in the new format. 26.1.2 and 26.2 were not affected.
+- The Security Hub and Keycard Programmer now need an iron pickaxe or better to drop, like every other
+  security block.
+
 ## [0.5.0-beta.1] - 2026-10-17
 
 The first build with gameplay. Requires Neroland Core 1.15.0. Scope cuts and known gaps are listed at the bottom.

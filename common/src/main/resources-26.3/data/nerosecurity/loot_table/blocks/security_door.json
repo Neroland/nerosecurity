@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:match_block",
+            "blocks": "nerosecurity:security_door",
+            "state": {
+              "part": "lower"
+            }
+          },
+          {
+            "type": "minecraft:survives_explosion"
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "nerosecurity:security_door"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "nerosecurity:blocks/security_door"
+}

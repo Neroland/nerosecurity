@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:match_block",
+            "blocks": "nerosecurity:blast_door",
+            "state": {
+              "part": "bottom_left"
+            }
+          },
+          {
+            "type": "minecraft:survives_explosion"
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "nerosecurity:blast_door"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "nerosecurity:blocks/blast_door"
+}

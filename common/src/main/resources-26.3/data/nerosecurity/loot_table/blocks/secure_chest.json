@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "nerosecurity:secure_chest"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "nerosecurity:blocks/secure_chest"
+}
