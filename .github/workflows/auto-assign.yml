@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign dario-maselli
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const assignee = 'dario-maselli';
