@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -12,7 +10,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.block.DeviceIds;
@@ -39,9 +37,9 @@ public final class CameraRegistrations {
 
     public static final RegistryEntry<BlockEntityType<SecurityCameraBlockEntity>> SECURITY_CAMERA_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register(PATH,
-                    key -> new BlockEntityType<>((pos, state) -> new SecurityCameraBlockEntity(
+                    key -> BlockEntityTypeCompat.create((pos, state) -> new SecurityCameraBlockEntity(
                             CameraRegistrations.SECURITY_CAMERA_ENTITY.get(), pos, state),
-                            Set.of(SECURITY_CAMERA.get())));
+                            SECURITY_CAMERA.get()));
 
     private CameraRegistrations() {
     }
@@ -68,8 +66,8 @@ public final class CameraRegistrations {
     public static void init() {
     }
 
-    /** Adds the camera item to Core's shared creative tab. */
+    /** Adds the camera item to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(SECURITY_CAMERA_ITEM::get);
+        ModCreativeTab.add(SECURITY_CAMERA_ITEM::get);
     }
 }

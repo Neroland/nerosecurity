@@ -45,6 +45,7 @@ import za.co.neroland.nerosecurity.client.ClientFieldPassability;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.registry.FieldRegistrations;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * A force field block ({@code nerosecurity:force_field}), placed only by an emitter into air.
@@ -216,7 +217,7 @@ public class ForceFieldBlock extends BaseEntityBlock {
 
     /** Tells the player a refused break was refused. */
     public static void refuseBreak(ServerPlayer player) {
-        player.sendOverlayMessage(Component.translatable("field.nerosecurity.break_refused"));
+        VersionCompat.overlay(player, Component.translatable("field.nerosecurity.break_refused"));
     }
 
     /** A projectile hits the block: the emitter takes projectile load unless its shooter is permitted. */
@@ -239,10 +240,20 @@ public class ForceFieldBlock extends BaseEntityBlock {
      * An explosion reaches the block: the block stays, the emitter takes {@code fieldExplosionLoadPerRadius x radius}
      * once per explosion. Never calls super (which would remove the block and drop it).
      */
+    //? if >=1.21.2 {
     @Override
     protected void onExplosionHit(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion,
             BiConsumer<ItemStack, BlockPos> onHit) {
         ForceFieldEmitterBlockEntity emitter = FieldProjector.emitterFor(level, pos);
+    //?} else {
+    /*@Override
+    protected void onExplosionHit(BlockState state, Level world, BlockPos pos, Explosion explosion,
+            BiConsumer<ItemStack, BlockPos> onHit) {
+        if (!(world instanceof ServerLevel level)) {
+            return;
+        }
+        ForceFieldEmitterBlockEntity emitter = FieldProjector.emitterFor(level, pos);
+    *///?}
         if (emitter == null) {
             return;
         }

@@ -3,11 +3,11 @@ package za.co.neroland.nerosecurity.access;
 import java.util.UUID;
 
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import org.jetbrains.annotations.Nullable;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The only thing in NeroSecurity that can produce an operator override. Read server-side on every
@@ -32,7 +32,7 @@ public interface AdminCheck {
         }
         ServerPlayer player = server.getPlayerList().getPlayer(actor);
         return player != null
-                && Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(player.createCommandSourceStack());
+                && VersionCompat.gamemasters().test(player.createCommandSourceStack());
     };
 
     /**
@@ -40,6 +40,6 @@ public interface AdminCheck {
      * permission decides, through the same predicate. The actor UUID is ignored.
      */
     static AdminCheck forSource(CommandSourceStack source) {
-        return (server, actor) -> Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(source);
+        return (server, actor) -> VersionCompat.gamemasters().test(source);
     }
 }

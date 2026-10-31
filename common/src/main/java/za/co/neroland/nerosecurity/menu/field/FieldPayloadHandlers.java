@@ -26,6 +26,7 @@ import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.menu.field.FieldPayloads.FieldConfigure;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Opening the force field settings and handling its configure intent.
@@ -52,12 +53,12 @@ public final class FieldPayloadHandlers {
         DevicePos at = DevicePos.of(level, emitter.getBlockPos());
         Installation installation = SecurityInstallations.get(level.getServer()).atDevice(at).orElse(null);
         if (installation == null) {
-            player.sendOverlayMessage(Component.translatable("device.nerosecurity.unlinked"));
+            VersionCompat.overlay(player, Component.translatable("device.nerosecurity.unlinked"));
             return;
         }
         AccessDecision decision = resolveConfigure(player, installation, at);
         if (!decision.allowed()) {
-            player.sendOverlayMessage(decision.message());
+            VersionCompat.overlay(player, decision.message());
             SecurityDevice.denyFeedback(player, emitter.getBlockPos());
             return;
         }
@@ -121,7 +122,7 @@ public final class FieldPayloadHandlers {
                     player.getUUID(), System.currentTimeMillis()));
             emitter.reconcileNow(level);
             Component done = Component.translatable("field.nerosecurity.configured");
-            player.sendOverlayMessage(done);
+            VersionCompat.overlay(player, done);
             sendSnapshot(player, level, emitter, decision, true, done);
         });
     }

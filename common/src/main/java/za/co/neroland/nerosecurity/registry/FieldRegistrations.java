@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.flag.FeatureFlags;
@@ -15,7 +13,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
@@ -51,15 +49,15 @@ public final class FieldRegistrations {
 
     public static final RegistryEntry<BlockEntityType<ForceFieldEmitterBlockEntity>> EMITTER_BE =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register(EMITTER_ID.getPath(),
-                    key -> new BlockEntityType<>((pos, state) -> new ForceFieldEmitterBlockEntity(
+                    key -> BlockEntityTypeCompat.create((pos, state) -> new ForceFieldEmitterBlockEntity(
                             FieldRegistrations.EMITTER_BE.get(), pos, state),
-                            Set.of(EMITTER_BLOCK.get())));
+                            EMITTER_BLOCK.get()));
 
     public static final RegistryEntry<BlockEntityType<ForceFieldBlockEntity>> FIELD_BE =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register(FIELD_ID.getPath(),
-                    key -> new BlockEntityType<>((pos, state) -> new ForceFieldBlockEntity(
+                    key -> BlockEntityTypeCompat.create((pos, state) -> new ForceFieldBlockEntity(
                             FieldRegistrations.FIELD_BE.get(), pos, state),
-                            Set.of(FIELD_BLOCK.get())));
+                            FIELD_BLOCK.get()));
 
     /** The field settings menu (four module slots, live status). */
     public static final RegistryEntry<MenuType<FieldMenu>> FIELD_MENU =
@@ -119,8 +117,8 @@ public final class FieldRegistrations {
     public static void init() {
     }
 
-    /** Adds the emitter item to Core's shared creative tab (the field block has no item). */
+    /** Adds the emitter item to the NeroSecurity creative tab (the field block has no item). */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(EMITTER_ITEM::get);
+        ModCreativeTab.add(EMITTER_ITEM::get);
     }
 }

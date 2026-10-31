@@ -60,9 +60,10 @@ force fields overload, and an owner is never locked out.
 
 ## Requirements
 
-- **Minecraft** 26.1.2, 26.2 or 26.3 on **NeoForge**, **MinecraftForge** or **Fabric**.
-- **Neroland Core 1.15.0** or newer (below 2.0). Every loader manifest floors it at 1.15.0.
-- **Java 25.**
+- **Minecraft** 1.21.1, 1.21.4, 1.21.5, 1.21.7–1.21.8, 1.21.9–1.21.10, 1.21.11, 26.1.2, 26.2 or 26.3 on
+  **NeoForge**, **MinecraftForge** or **Fabric**.
+- **Neroland Core 1.17.0** or newer (below 2.0). Every loader manifest floors it at 1.17.0.
+- **Java 21** for the 1.21.x builds, **Java 25** for the 26.x builds.
 
 Optional. NeroSecurity is complete without any of them. Each one is detected at start-up, and each
 loader manifest floors it at the version NeroSecurity is compiled against:

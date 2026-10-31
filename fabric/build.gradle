@@ -2,13 +2,24 @@
 // module's source directly (single copy -> no drift).
 
 plugins {
-    id 'net.fabricmc.fabric-loom'
+    // Two Loom flavours from the same plugin jar: `fabric-loom` for de-obfuscated 26.x (no mappings, no
+    // remap) and `fabric-loom-remap` for obfuscated 1.21.x (Mojang mappings + remapJar to intermediary).
+    // Neither is applied here; the node picks one below from its Minecraft version.
+    id 'net.fabricmc.fabric-loom' apply false
+    id 'net.fabricmc.fabric-loom-remap' apply false
     id 'eclipse'   // for eclipse.synchronizationTasks (VS Code / Buildship import hook)
     id 'maven-publish'
 }
 
 // MC version comes from the Stonecutter node (e.g. :fabric:26.1.2), not a global property.
 def mc = stonecutter.current.version
+// Minecraft before 26.1 ships obfuscated, so those cells need mappings and a remapped jar.
+def obfuscated = mc.startsWith('1.')
+apply plugin: obfuscated ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
+// Minecraft range: 1.21.x cells are bounded to their API line (gradle.properties); 26.x keep >=mc.
+def mcCeiling = project.findProperty("mc_ceiling_${mc}")
+def mcFloor = project.findProperty("mc_floor_${mc}") ?: mc
+def minecraftRequirement = mcCeiling ? ">=${mcFloor} <${mcCeiling}" : ">=${mc}"
 def fabricApi = project.findProperty("fabric_api_version_${mc}")
 def jeiVersion = project.findProperty("jei_version_${mc}")
 def emiFile = project.findProperty("emi_file_fabric_${mc}")
@@ -24,7 +35,8 @@ def branchDir = project.parent.projectDir
 // `<x>_compat=false` property (gradle.properties or -P) drops the dependency, excludes that bridge class and its
 // services line from the build, and leaves the optional manifest entry out, so the mod builds with no sibling
 // artifact at all. Manifest floors are the compiled versions (ecosystem floor rule).
-def compatOn = { String flag -> (rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
+// A per-Minecraft-version flag (`<x>_compat_<mc>`) overrides the global one for this cell only.
+def compatOn = { String flag -> (rootProject.findProperty("${flag}_${mc}") ?: rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
 def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
 def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
 def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
@@ -56,7 +68,8 @@ publishing {
             groupId = rootProject.mod_group_id
             artifactId = "nerosecurity-fabric-${mc}"
             version = rootProject.mod_version
-            artifact tasks.named('jar')
+            // 1.21.x consumers remap this mod with modImplementation, so they need the intermediary jar.
+            artifact tasks.named(obfuscated ? 'remapJar' : 'jar')
         }
     }
     // Remote target so a fresh CI runner / clone (empty ~/.m2) can resolve NeroSecurity — GitHub Packages
@@ -83,6 +96,16 @@ sourceSets.main.resources.srcDir rootProject.ext.commonResources
 
 dependencies {
     minecraft "com.mojang:minecraft:${mc}"
+    if (obfuscated) {
+        // Obfuscated 1.21.x: Mojang's official names, remapped to intermediary on jar. Mod dependencies
+        // (loader, Fabric API, Core) go through modImplementation so Loom remaps them.
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+        if (fabricApi != null) {
+            modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApi}"
+        }
+        modImplementation "za.co.neroland.nerolandcore:nerolandcore-fabric-${mc}:${nerolandcoreVersion}"
+    } else {
     // NOTE: no `mappings` — de-obfuscated 26.x needs none (Fabric Loom 1.17+).
     implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     if (fabricApi != null) {
@@ -94,23 +117,42 @@ dependencies {
     // remap and `modImplementation` isn't available. Core ships as its own mod and loads BEFORE
     // NeroSecurity (see fabric.mod.json depends).
     implementation "za.co.neroland.nerolandcore:nerolandcore-fabric-${mc}:${nerolandcoreVersion}"
+    }
 
     // NeroEconomy — OPTIONAL. compileOnly: never bundled, never a hard requirement. Only the economy bridge
     // class imports it, and only after isModLoaded("neroeconomy"), so NeroSecurity runs without it.
-    compileOnly "za.co.neroland.neroeconomy:neroeconomy-fabric-${mc}:${rootProject.neroeconomy_version}"
+    // On 1.21.x the sibling Nero mods are intermediary-named mod jars, so Loom must remap them (mod*).
+    def neroEconomyCoord = "za.co.neroland.neroeconomy:neroeconomy-fabric-${mc}:${rootProject.neroeconomy_version}"
+    if (obfuscated) {
+        modCompileOnly neroEconomyCoord
+    } else {
+        compileOnly neroEconomyCoord
+    }
     // Dev clients load NeroEconomy only with -PwithNeroEconomy; the default run proves it stays optional.
     if (project.hasProperty('withNeroEconomy')) {
-        runtimeOnly "za.co.neroland.neroeconomy:neroeconomy-fabric-${mc}:${rootProject.neroeconomy_version}"
+        if (obfuscated) {
+            modRuntimeOnly neroEconomyCoord
+        } else {
+            runtimeOnly neroEconomyCoord
+        }
     }
 
     // Optional siblings — compileOnly, never bundled, never required (see the compat block above).
     siblingIds.each { id ->
         if (siblingOn[id]) {
             def coord = "za.co.neroland.${id}:${id}-fabric-${mc}:${rootProject.property("${id}_version")}"
-            compileOnly coord
+            if (obfuscated) {
+                modCompileOnly coord
+            } else {
+                compileOnly coord
+            }
             // Dev clients load a sibling only with -PwithNeroFactions / -PwithNeroColonies / -PwithNerospace.
             if (project.hasProperty(siblingRun[id])) {
-                runtimeOnly coord
+                if (obfuscated) {
+                    modRuntimeOnly coord
+                } else {
+                    runtimeOnly coord
+                }
             }
         }
     }
@@ -130,8 +172,11 @@ dependencies {
     // is runtime-only). Same per-MC version as NeoForge (jei_version_<mc>, BlameJared maven from the root).
     if (jeiVersion) {
         compileOnly "mezz.jei:jei-${mc}-common-api:${jeiVersion}"
-        compileOnly "mezz.jei:jei-${mc}-fabric-api:${jeiVersion}"
-        runtimeOnly "mezz.jei:jei-${mc}-fabric:${jeiVersion}"
+        // 1.21.x: the Fabric JEI jars are intermediary-named there, so they are only wired on de-obfuscated 26.x.
+        if (!obfuscated) {
+            compileOnly "mezz.jei:jei-${mc}-fabric-api:${jeiVersion}"
+            runtimeOnly "mezz.jei:jei-${mc}-fabric:${jeiVersion}"
+        }
     }
 
     // EMI (optional recipe-viewer compat). EMI ships one jar per loader with its API inside, so compile
@@ -159,6 +204,8 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
         mod_license          : rootProject.mod_license,
         fabric_loader_version: rootProject.fabric_loader_version,
         minecraft_version    : mc,
+        minecraft_requirement: minecraftRequirement,
+        neroeconomy_version  : rootProject.neroeconomy_version,
         nerolandcore_version : nerolandcoreVersion,
         // fabric.mod.json "suggests" entries for the optional siblings: `, "<modid>": ">=<floor>"` or "".
         nerofactions_suggest : siblingOn.nerofactions ? ", \"nerofactions\": \">=${rootProject.nerofactions_version}\"" : '',
@@ -210,8 +257,19 @@ def generateWikiResources = tasks.register('generateWikiResources', Copy) {
 sourceSets.main.resources.srcDir generateWikiResources
 eclipse.synchronizationTasks generateWikiResources
 
+// The access widener's namespace differs by era: 26.x is `official` (de-obfuscated), 1.21.x is `named`
+// (Mojang mappings, remapped in remapJar). The 1.21.x file is swapped into the jar under the same name.
+def awFile = obfuscated ? file("${branchDir}/src/main/accesswidener/legacy.accesswidener")
+        : file("${branchDir}/src/main/resources/nerosecurity.accesswidener")
+if (obfuscated) {
+    tasks.named('processResources', ProcessResources) {
+        exclude 'nerosecurity.accesswidener'
+        from(awFile) { rename { 'nerosecurity.accesswidener' } }
+    }
+}
+
 loom {
-    accessWidenerPath = file("${branchDir}/src/main/resources/nerosecurity.accesswidener")
+    accessWidenerPath = awFile
 
     runs {
         client {
@@ -270,7 +328,7 @@ tasks.register('ecjCheck', JavaExec) {
         ecjSources.text = sourceSets.main.java.files.collect { it.absolutePath.replace('\\', '/') }.join('\n') + '\n'
         def srcDirs = ['@' + ecjSources.absolutePath.replace('\\', '/')]
         args = [
-                '--release', '25',
+                '--release', "${project.javaRelease}",
                 '-proc:none',
                 '-d', 'none',
                 '-properties', rootProject.file('tools/ecj.prefs').absolutePath,

@@ -646,8 +646,10 @@ public class SecurityHubScreen extends SecurityScreen<SecurityHubMenu> {
         onClose();
         //? if >=26.2 {
         minecraft.gui.setScreen(new ChatScreen(ERASE_COMMAND, false));
-        //?} else {
+        //?} else if >=1.21.9 {
         /*minecraft.setScreen(new ChatScreen(ERASE_COMMAND, false));
+        *///?} else {
+        /*minecraft.setScreen(new ChatScreen(ERASE_COMMAND));
         *///?}
     }
 

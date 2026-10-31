@@ -20,7 +20,11 @@ public final class NeroSecurityForge {
         NeroSecurityCommon.init();
         // Common init created NeroSecurity's deferred registers through Core's registration seam;
         // this attaches them to our mod bus group.
+        //? if >=1.21.6 {
         RegistrationProvider.attach(context.getModBusGroup());
+        //?} else {
+        /*RegistrationProvider.attach(context.getModEventBus());
+        *///?}
         ForgeSecurityNetwork.register();
         ForgeSecurityEvents.register();
         // Door energy and the secure chest's gated item handler (AttachCapabilitiesEvent).
@@ -28,7 +32,11 @@ public final class NeroSecurityForge {
         // Client-only: screens and the disconnect cache clear. Gated so client classes never load on
         // a dedicated server.
         if (FMLEnvironment.dist == Dist.CLIENT) {
+            //? if >=1.21.6 {
             ForgeClientSetup.init(context.getModBusGroup());
+            //?} else {
+            /*ForgeClientSetup.init(context.getModEventBus());
+            *///?}
         }
     }
 }

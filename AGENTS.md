@@ -1,5 +1,7 @@
 # Project context for AI coding agents — nerosecurity
 
+> Modrinth is temporarily being removed from the upload and is no longer being referenced. Avoid making references to modrinth.
+
 > `AGENTS.md` and `CLAUDE.md` are kept byte-identical; update both together.
 
 ## The mod
@@ -12,9 +14,12 @@
   Add shared content under `common/` and wire it through each loader entry point.
 - Mod id: **`nerosecurity`** (matches the registry namespace + every loader manifest). Package root:
   `za.co.neroland.nerosecurity`. Author: **Neroland**.
-- Version: **0.5.0-beta.1** (Stages 0–8 implemented; uncommitted, untagged).
-- Targets **MC 26.1.2, 26.2 AND 26.3** on **NeoForge, MinecraftForge/Forge, and Fabric** → the **"9 cells"**.
-  **Java 25.** Mappings = official Mojang names (26.x ships de-obfuscated; no Parchment).
+- Version: **0.6.1-beta.1** (Minecraft 1.21.x port; untagged).
+- Targets **MC 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.10, 1.21.11, 26.1.2, 26.2 AND 26.3** on **NeoForge,
+  MinecraftForge/Forge, and Fabric** → the **"27 cells"**. **Java 21** for 1.21.x, **Java 25** for 26.x.
+  Mappings = official Mojang names (26.x ships de-obfuscated; 1.21.x Fabric uses Mojang mappings + remapJar).
+  The source stays in the 26.x state; older lines use `//?` blocks and the `legacyRenames` list in
+  `stonecutter.gradle` (keep it identical to Neroland Core's, with NeroSecurity's additions at the end).
 
 ## Working rules
 
@@ -24,7 +29,7 @@
 - **Never commit or tag; leave changes for the developer**, who reviews and commits with native git (the
   source of truth).
 - **Publish trigger — be careful with `gradle.properties`.** `publish.yml` runs on any push to `main` that
-  touches `gradle.properties`, and publishes to CurseForge, Modrinth and GitHub Releases whenever no
+  touches `gradle.properties`, and publishes to CurseForge and GitHub Releases whenever no
   `v<mod_version>` tag exists yet. Bumping `mod_version` and pushing it to `main` IS a release.
 - **Use relative paths only** — never hard-code machine-specific absolute paths in committed files.
 - **Never run commands against production databases.** Treat any DB command as illustrative.

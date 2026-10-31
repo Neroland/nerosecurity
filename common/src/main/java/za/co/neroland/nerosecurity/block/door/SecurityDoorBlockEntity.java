@@ -55,6 +55,7 @@ import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
 import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleSlots;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The controller block entity shared by the Security Door and the Blast Door.
@@ -487,13 +488,13 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         AccessDecision decision = AccessResolver.DEFAULT.resolve(player, installation, AccessAction.OPEN,
                 settings.minLevel(), at, settings.grantingSources());
         if (!decision.allowed()) {
-            player.sendOverlayMessage(decision.message());
+            VersionCompat.overlay(player, decision.message());
             SecurityDevice.denyFeedback(player, worldPosition);
             denied(player, installation, serverLevel);
             return;
         }
         if (!DoorRules.passesPowerGate(decision, hasPowerToOpen())) {
-            player.sendOverlayMessage(Component.translatable("door.nerosecurity.no_power"));
+            VersionCompat.overlay(player, Component.translatable("door.nerosecurity.no_power"));
             SecurityDevice.denyFeedback(player, worldPosition);
             denied(player, installation, serverLevel);
             return;
@@ -512,12 +513,12 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
      */
     private void openSettings(ServerPlayer player, @Nullable Installation installation, DevicePos at) {
         if (installation == null) {
-            player.sendOverlayMessage(Component.translatable("device.nerosecurity.unlinked"));
+            VersionCompat.overlay(player, Component.translatable("device.nerosecurity.unlinked"));
             return;
         }
         AccessDecision decision = resolveConfigure(player, installation, at);
         if (!decision.allowed()) {
-            player.sendOverlayMessage(decision.message());
+            VersionCompat.overlay(player, decision.message());
             SecurityDevice.denyFeedback(player, worldPosition);
             return;
         }
@@ -575,9 +576,14 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
      * publish {@code DOOR_FORCED} for a non-player removal (explosion, command) and drop the link so the
      * installation keeps no ghost device. A player break already reported itself.
      */
+    //? if >=1.21.5 {
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
+    //?} else {
+    /*// Before 1.21.5 there is no block-entity removal hook; the block's onRemove calls this instead.
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+    *///?}
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
@@ -609,9 +615,16 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
 
     // --- persistence and sync -------------------------------------------------------------------
 
+    //? if >=1.21.6 {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
+    //?} else {
+    /*@Override
+    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        ValueOutput output = ValueOutput.of(tag, registries);
+    *///?}
         settings.save(output.child(KEY_SETTINGS));
         output.putString(KEY_REDSTONE, redstoneMode.serializedName());
         modules.save(output.child(KEY_MODULES));
@@ -620,9 +633,16 @@ public class SecurityDoorBlockEntity extends AbstractMachineBlockEntity implemen
         output.putInt(KEY_AUTO_CLOSE, autoCloseTicks);
     }
 
+    //? if >=1.21.6 {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+    //?} else {
+    /*@Override
+    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        ValueInput input = ValueInput.of(tag, registries);
+    *///?}
         if (this.sideConfig != null) {
             InputOnlyEnergy.enforceInputOnly(this.sideConfig.config());
         }

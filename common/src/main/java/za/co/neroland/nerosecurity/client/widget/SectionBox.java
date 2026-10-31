@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 
 import org.jetbrains.annotations.Nullable;
 
+import za.co.neroland.nerosecurity.client.GuiCompat;
 import za.co.neroland.nerosecurity.client.SecurityColours;
 
 /**
@@ -24,7 +25,7 @@ public final class SectionBox {
 
     /** Outline from ({@code x0}, {@code y0}) to ({@code x1}, {@code y1}) exclusive, optional caption. */
     public static void draw(GuiGraphicsExtractor g, Font font, int x0, int y0, int x1, int y1, @Nullable Component caption) {
-        g.outline(x0, y0, x1 - x0, y1 - y0, SecurityColours.EDGE);
+        GuiCompat.outline(g, x0, y0, x1 - x0, y1 - y0, SecurityColours.EDGE);
         if (caption != null) {
             int w = Math.min(font.width(caption), x1 - x0 - 12);
             g.fill(x0 + 4, y0, x0 + 8 + w, y0 + 1, SecurityColours.PANEL);

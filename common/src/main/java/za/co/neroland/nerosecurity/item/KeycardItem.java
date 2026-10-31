@@ -10,7 +10,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomModelData;
+//? if >=1.21.5 {
 import net.minecraft.world.item.component.TooltipDisplay;
+//?}
 
 import org.jetbrains.annotations.Nullable;
 
@@ -72,15 +74,29 @@ public class KeycardItem extends Item {
             stack.remove(DataComponents.CUSTOM_MODEL_DATA);
             return;
         }
+        //? if >=1.21.4 {
         String tier = displayTier(data.level(), data.encrypted());
         List<Integer> colours = data.encrypted() ? List.of() : List.of(data.level().colour);
         stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(tier), colours));
+        //?} else {
+        /*// 1.21.1 custom model data is a single integer with no tint channel and no item-model definitions to
+        // select on, so encoded cards keep the plain card look there (the card data itself is unchanged).
+        stack.remove(DataComponents.CUSTOM_MODEL_DATA);
+        *///?}
     }
 
+    //? if >=1.21.5 {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display,
             Consumer<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, display, tooltip, flag);
+    //?} else {
+    /*@Override
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, java.util.List<Component> lines,
+            TooltipFlag flag) {
+        super.appendHoverText(stack, context, lines, flag);
+        Consumer<Component> tooltip = lines::add;
+    *///?}
         KeycardData data = stack.get(NeroSecurityDataComponents.KEYCARD.get());
         if (data == null) {
             tooltip.accept(Component.translatable("item.nerosecurity.keycard.blank").withStyle(ChatFormatting.GRAY));

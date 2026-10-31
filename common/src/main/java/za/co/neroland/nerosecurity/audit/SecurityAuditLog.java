@@ -17,6 +17,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
+import za.co.neroland.nerolandcore.data.SavedDataCompat;
 import za.co.neroland.nerolandcore.data.SavedDataRecovery;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
@@ -61,7 +62,7 @@ public final class SecurityAuditLog extends SavedData {
             LogRow.CODEC.listOf().optionalFieldOf("logs", List.of()).forGetter(Root::logs)
     ).apply(inst, Root::new)).xmap(SecurityAuditLog::fromData, SecurityAuditLog::toData);
 
-    public static final SavedDataType<SecurityAuditLog> TYPE = new SavedDataType<>(ID, SecurityAuditLog::new, CODEC, null);
+    public static final SavedDataType<SecurityAuditLog> TYPE = SavedDataCompat.type(ID, SecurityAuditLog::new, CODEC);
 
     private final Map<UUID, AuditLog> logs = new LinkedHashMap<>();
 

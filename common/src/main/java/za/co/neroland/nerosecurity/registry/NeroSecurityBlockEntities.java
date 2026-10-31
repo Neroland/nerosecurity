@@ -1,11 +1,10 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import za.co.neroland.nerolandcore.registry.RegistrationProvider;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
@@ -24,8 +23,8 @@ public final class NeroSecurityBlockEntities {
 
     public static final RegistryEntry<BlockEntityType<SecurityHubBlockEntity>> SECURITY_HUB =
             BLOCK_ENTITIES.register("security_hub",
-                    key -> new BlockEntityType<>(SecurityHubBlockEntity::new,
-                            Set.of(NeroSecurityBlocks.SECURITY_HUB.get())));
+                    key -> BlockEntityTypeCompat.create(SecurityHubBlockEntity::new,
+                            NeroSecurityBlocks.SECURITY_HUB.get()));
 
     private NeroSecurityBlockEntities() {
     }

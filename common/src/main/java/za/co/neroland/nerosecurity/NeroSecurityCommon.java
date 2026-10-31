@@ -34,6 +34,7 @@ import za.co.neroland.nerosecurity.registry.ChestRegistrations;
 import za.co.neroland.nerosecurity.registry.DoorRegistrations;
 import za.co.neroland.nerosecurity.registry.FieldRegistrations;
 import za.co.neroland.nerosecurity.registry.LaserRegistrations;
+import za.co.neroland.nerosecurity.registry.ModCreativeTab;
 import za.co.neroland.nerosecurity.registry.MonitorRegistrations;
 import za.co.neroland.nerosecurity.registry.NeroSecurityBlockEntities;
 import za.co.neroland.nerosecurity.registry.NeroSecurityBlocks;
@@ -85,7 +86,7 @@ public final class NeroSecurityCommon {
         NeroSecurityTelemetry.init();
 
         // 3. Registries, through Core's RegistrationProvider (NeoForge/Forge entry points attach them to
-        //    the mod bus; on Fabric these calls ARE the registration). Items join Core's shared tab.
+        //    the mod bus; on Fabric these calls ARE the registration). Items join NeroSecurity's own tab.
         NeroSecurityBlocks.init();
         NeroSecurityBlockEntities.init();
         NeroSecurityDataComponents.init();
@@ -113,6 +114,7 @@ public final class NeroSecurityCommon {
         AlarmRegistrations.addToCreativeTab();
         MonitorRegistrations.addToCreativeTab();
         FieldRegistrations.addToCreativeTab();
+        ModCreativeTab.init();
 
         // 4. Player-data erasure (POPIA/GDPR), registered early: before any store or compat code,
         //    so nothing that holds player data can come online ahead of its erasure path. Every

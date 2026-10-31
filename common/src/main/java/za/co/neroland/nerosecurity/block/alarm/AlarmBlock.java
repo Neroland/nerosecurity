@@ -137,4 +137,16 @@ public class AlarmBlock extends BaseEntityBlock implements SecurityDevice {
         }
         return super.playerWillDestroy(level, pos, state, player);
     }
+
+    //? if <1.21.5 {
+    /*// Before 1.21.5 a block entity has no removal hook of its own: run its side effects (unlink, drops) here,
+    // while it still exists, whenever the block itself is replaced.
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof AlarmBlockEntity be) {
+            be.preRemoveSideEffects(pos, state);
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+    *///?}
 }

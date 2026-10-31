@@ -29,6 +29,7 @@ import za.co.neroland.nerosecurity.menu.chest.ChestPayloads.ChestConfigure;
 import za.co.neroland.nerosecurity.menu.chest.ChestPayloads.ChestSnapshot;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Server side of the secure chest settings screen. Everything starts from nothing the client claims:
@@ -52,12 +53,12 @@ public final class ChestPayloadHandlers {
         runSafely(player, "chest_open_settings", () -> {
             Installation installation = chest.installation();
             if (installation == null) {
-                player.sendOverlayMessage(Component.translatable("device.nerosecurity.unlinked"));
+                VersionCompat.overlay(player, Component.translatable("device.nerosecurity.unlinked"));
                 return;
             }
             AccessDecision decision = resolveConfigure(player, chest, installation);
             if (!decision.allowed()) {
-                player.sendOverlayMessage(decision.message());
+                VersionCompat.overlay(player, decision.message());
                 SecurityDevice.denyFeedback(player, chest.getBlockPos());
                 return;
             }
@@ -105,7 +106,7 @@ public final class ChestPayloadHandlers {
                 }
             }
             Component done = Component.translatable("chest.nerosecurity.configured");
-            player.sendOverlayMessage(done);
+            VersionCompat.overlay(player, done);
             refresh(player, chest, true, done);
         });
     }

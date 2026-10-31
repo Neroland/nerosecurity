@@ -6,7 +6,9 @@ import java.util.function.Function;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+//? if >=1.21.9 {
 import net.minecraft.server.players.NameAndId;
+//?}
 
 /**
  * Local name/UUID lookups for the hub screen and its messages. Nothing here ever makes a network
@@ -41,7 +43,15 @@ public final class PlayerNames {
             return clean(online.getName().getString());
         }
         // By-id reads of the profile cache are memory-only (no remote fetch on a miss).
+        //? if >=1.21.9 {
         return server.services().nameToIdCache().get(id).map(NameAndId::name).map(PlayerNames::clean).orElse(UNKNOWN);
+        //?} else {
+        /*net.minecraft.server.players.GameProfileCache cache = server.getProfileCache();
+        if (cache == null) {
+            return UNKNOWN;
+        }
+        return cache.get(id).map(com.mojang.authlib.GameProfile::getName).map(PlayerNames::clean).orElse(UNKNOWN);
+        *///?}
     }
 
     /** Resolves a typed player name to the id of an <em>online</em> player. Never touches the network. */

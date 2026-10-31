@@ -255,10 +255,16 @@ public class AlarmBlockEntity extends BlockEntity {
      * The block is being removed (not unloaded). If it was linked: a non-player removal raises
      * {@code DEVICE_FORCED} with no actor, and the link is dropped so no ghost device remains.
      */
+    //? if >=1.21.5 {
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         this.removing = true;
         super.preRemoveSideEffects(pos, state);
+    //?} else {
+    /*// Before 1.21.5 there is no block-entity removal hook; AlarmBlock.onRemove calls this instead.
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        this.removing = true;
+    *///?}
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
@@ -297,9 +303,16 @@ public class AlarmBlockEntity extends BlockEntity {
 
     // --- persistence ----------------------------------------------------------------------------
 
+    //? if >=1.21.6 {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
+    //?} else {
+    /*@Override
+    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        ValueOutput output = ValueOutput.of(tag, registries);
+    *///?}
         List<String> types = new ArrayList<>();
         for (SecurityEventType type : subscribed) {
             types.add(AlarmRules.typeKey(type));
@@ -313,9 +326,16 @@ public class AlarmBlockEntity extends BlockEntity {
         output.putLong(KEY_SILENCED_UNTIL, silencedUntil);
     }
 
+    //? if >=1.21.6 {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+    //?} else {
+    /*@Override
+    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        ValueInput input = ValueInput.of(tag, registries);
+    *///?}
         this.subscribed = input.read(KEY_SUBSCRIBED, NAMES).map(AlarmRules::typesFromNames)
                 .orElseGet(AlarmRules::defaultSubscribed);
         this.responses = input.read(KEY_RESPONSES, NAMES).map(AlarmRules::responsesFromNames)

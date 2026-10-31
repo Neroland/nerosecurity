@@ -22,6 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 
 import za.co.neroland.nerosecurity.command.GalleryLayout;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * CLIENT, creative-debug: a reproducible screenshot pass over the {@code /nerosecurity gallery} scene.
@@ -113,14 +114,14 @@ public final class GalleryCaptureHarness {
             return 0;
         }
         if (running) {
-            mc.player.sendSystemMessage(Component.literal("NeroSecurity gallery capture already running."));
+            VersionCompat.systemMessage(mc.player, Component.literal("NeroSecurity gallery capture already running."));
             return 0;
         }
         BlockPos origin = mc.player.blockPosition();
         QUEUE.clear();
         QUEUE.addAll(galleryQueue(origin, time));
         begin(mc);
-        mc.player.sendSystemMessage(Component.literal("NeroSecurity gallery capture: rebuilding the exhibit here, time="
+        VersionCompat.systemMessage(mc.player, Component.literal("NeroSecurity gallery capture: rebuilding the exhibit here, time="
                 + time + ", " + QUEUE.size() + " shots -> screenshots/" + SUBFOLDER + "/ (overlays hidden)."));
         return Command.SINGLE_SUCCESS;
     }
@@ -291,9 +292,13 @@ public final class GalleryCaptureHarness {
     }
 
     private static void grab(Minecraft mc, String name) {
+        //? if >=1.21.6 {
         Screenshot.grab(mc.gameDirectory, SUBFOLDER + "/" + name + ".png", mainRenderTarget(mc), 1, msg -> {
+        //?} else {
+        /*Screenshot.grab(mc.gameDirectory, SUBFOLDER + "/" + name + ".png", mainRenderTarget(mc), msg -> {
+        *///?}
             if (mc.player != null) {
-                mc.player.sendSystemMessage(msg);
+                VersionCompat.systemMessage(mc.player, msg);
             }
         });
     }
@@ -309,7 +314,7 @@ public final class GalleryCaptureHarness {
         current = null;
         QUEUE.clear();
         if (mc.player != null) {
-            mc.player.sendSystemMessage(Component.literal("NeroSecurity gallery capture done: see screenshots/"
+            VersionCompat.systemMessage(mc.player, Component.literal("NeroSecurity gallery capture done: see screenshots/"
                     + SUBFOLDER + "/."));
         }
     }

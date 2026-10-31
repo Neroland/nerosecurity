@@ -37,6 +37,7 @@ import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.item.LinkingToolItem;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.menu.ProgrammerPayloadHandlers;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The Keycard Programmer: writes, copies and wipes keycards for the installation it is linked to.
@@ -99,12 +100,21 @@ public class KeycardProgrammerBlock extends BaseEntityBlock implements SecurityD
     }
 
     /** The linking tool acts on the programmer as a device; it must not open the screen instead. */
+    //? if >=1.21.2 {
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
             InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof LinkingToolItem) {
             return InteractionResult.PASS;
         }
+    //?} else {
+    /*@Override
+    protected net.minecraft.world.ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
+            InteractionHand hand, BlockHitResult hit) {
+        if (stack.getItem() instanceof LinkingToolItem) {
+            return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+    *///?}
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
 
@@ -118,13 +128,13 @@ public class KeycardProgrammerBlock extends BaseEntityBlock implements SecurityD
         DevicePos at = DevicePos.of(serverLevel, pos);
         Installation installation = SecurityInstallations.get(serverLevel.getServer()).atDevice(at).orElse(null);
         if (installation == null) {
-            serverPlayer.sendOverlayMessage(Component.translatable("programmer.nerosecurity.unlinked"));
+            VersionCompat.overlay(serverPlayer, Component.translatable("programmer.nerosecurity.unlinked"));
             return InteractionResult.SUCCESS;
         }
         // Anyone who may use members' devices here may look; each action re-resolves its own level.
         AccessDecision decision = ProgrammerPayloadHandlers.resolveView(serverPlayer, installation, at);
         if (!decision.allowed()) {
-            serverPlayer.sendOverlayMessage(decision.message());
+            VersionCompat.overlay(serverPlayer, decision.message());
             SecurityDevice.denyFeedback(serverPlayer, pos);
             return InteractionResult.SUCCESS;
         }
@@ -132,4 +142,16 @@ public class KeycardProgrammerBlock extends BaseEntityBlock implements SecurityD
         MenuOpener.open(serverPlayer, programmer);
         return InteractionResult.SUCCESS;
     }
+
+    //? if <1.21.5 {
+    /*// Before 1.21.5 a block entity has no removal hook of its own: run its side effects (unlink, drops) here,
+    // while it still exists, whenever the block itself is replaced.
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof KeycardProgrammerBlockEntity be) {
+            be.preRemoveSideEffects(pos, state);
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+    *///?}
 }

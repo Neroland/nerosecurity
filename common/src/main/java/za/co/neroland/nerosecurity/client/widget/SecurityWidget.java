@@ -9,6 +9,11 @@ import net.minecraft.network.chat.Component;
 
 import org.jetbrains.annotations.Nullable;
 
+//? if <1.21.9 {
+/*import za.co.neroland.nerosecurity.client.compat.KeyEvent;
+import za.co.neroland.nerosecurity.client.compat.MouseButtonEvent;
+*///?}
+
 /**
  * Base of every interactive NeroSecurity widget. It owns the one rule the "no manual" test checks hardest:
  * <b>a disabled control always says why</b>.
@@ -153,4 +158,46 @@ public abstract class SecurityWidget extends AbstractWidget {
     protected void updateWidgetNarration(NarrationElementOutput output) {
         defaultButtonNarrationText(output);
     }
+
+    //? if <26.1 {
+    /*// Before 26.1 a widget draws through render/renderWidget(GuiGraphics..); the build renames this mod's
+    // extractWidgetRenderState overrides to renderWidget, and this alias keeps the explicit draw calls working.
+    public final void extractRenderState(net.minecraft.client.gui.GuiGraphics g, int mouseX, int mouseY,
+            float partialTick) {
+        render(g, mouseX, mouseY, partialTick);
+    }
+    *///?}
+
+    //? if <1.21.9 {
+    /*// Before 1.21.9 widgets receive raw mouse and key arguments. These bridges wrap them in the look-alike events
+    // (client.compat) and route them to the event-shaped methods the widgets override, as on newer lines.
+    @Override
+    public final void onClick(double mouseX, double mouseY) {
+        onClick(new MouseButtonEvent(mouseX, mouseY, 0), false);
+    }
+
+    public void onClick(MouseButtonEvent event, boolean doubleClick) {
+    }
+
+    @Override
+    public final void onRelease(double mouseX, double mouseY) {
+        onRelease(new MouseButtonEvent(mouseX, mouseY, 0));
+    }
+
+    public void onRelease(MouseButtonEvent event) {
+    }
+
+    public final boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return mouseClicked(event.x(), event.y(), event.button());
+    }
+
+    @Override
+    public final boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
+    }
+
+    public boolean keyPressed(KeyEvent event) {
+        return false;
+    }
+    *///?}
 }

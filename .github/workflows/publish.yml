@@ -1,18 +1,17 @@
 name: Publish
 
-# Builds and publishes the MULTILOADER mod (all 9 cells: fabric/neoforge/forge x 26.1.2/26.2/26.3)
+# Builds and publishes the MULTILOADER mod (all 27 cells: fabric/neoforge/forge x 1.21.1/1.21.4/1.21.5/1.21.8/1.21.10/1.21.11/26.1.2/26.2/26.3)
 # whenever the mod_version in gradle.properties has no published release yet.
 #
 # Pipeline (4 jobs):
 #   detect  -> is there a v<mod_version> release tag yet? (read-only ledger check)
 #   build   -> build all 6 cells once; extract release notes; upload the 6 distributable
 #              jars + notes as the `dist` artifact.
-#   publish -> matrix over the 9 cells: download `dist`, upload each jar to CurseForge +
-#              Modrinth as its own version tagged with the EXACT loader + game-version (each
+#   publish -> matrix over the 27 cells: download `dist`, upload each jar to CurseForge as its own version tagged with the EXACT loader + game-version (each
 #              version self-contained, carrying its own copy of the changelog).
 #   release -> runs LAST (needs: publish): download `dist`, register the Sentry release, then
 #              create the single GitHub Release + the v<version> tag. That tag is the ledger
-#              `detect` checks, so creating it last means a failed CF/MR upload leaves NO tag
+#              `detect` checks, so creating it last means a failed CurseForge upload leaves NO tag
 #              and a re-run retries cleanly instead of being skipped.
 #
 # Re-runs are safe: an already-released version (tag exists) is skipped. `workflow_dispatch`
@@ -112,7 +111,7 @@ jobs:
       # See USING-CORE.md.
       # --- end Neroland Core dependency ---
 
-      # Build all nine cells (loader x MC version). Each produces a distinctly named jar under
+      # Build all 27 cells (loader x MC version). Each produces a distinctly named jar under
       # <loader>/versions/<mc>/build/libs. Forge's distributable is the jarJar output
       # ("*-all.jar", with embedded Sentry); the plain Forge jar is not shipped.
       - name: Build all cells
@@ -121,14 +120,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           ./gradlew
-          :fabric:26.1.2:build :fabric:26.2:build :fabric:26.3:build
-          :neoforge:26.1.2:build :neoforge:26.2:build :neoforge:26.3:build
-          :forge:26.1.2:build :forge:26.2:build :forge:26.3:build
+          :fabric:1.21.1:build :fabric:1.21.4:build :fabric:1.21.5:build :fabric:1.21.8:build :fabric:1.21.10:build :fabric:1.21.11:build :fabric:26.1.2:build :fabric:26.2:build :fabric:26.3:build
+          :neoforge:1.21.1:build :neoforge:1.21.4:build :neoforge:1.21.5:build :neoforge:1.21.8:build :neoforge:1.21.10:build :neoforge:1.21.11:build :neoforge:26.1.2:build :neoforge:26.2:build :neoforge:26.3:build
+          :forge:1.21.1:build :forge:1.21.4:build :forge:1.21.5:build :forge:1.21.8:build :forge:1.21.10:build :forge:1.21.11:build :forge:26.1.2:build :forge:26.2:build :forge:26.3:build
           --stacktrace
 
-      # Publish the nine per-loader Maven artifacts to GitHub Packages (mirrors Neroland Core's publish.yml)
+      # Publish the 27 per-loader Maven artifacts to GitHub Packages (mirrors Neroland Core's publish.yml)
       # so downstream Nero mods can resolve NeroSecurity from a remote repo (CI runners + fresh clones have an
-      # empty ~/.m2). CurseForge/Modrinth/GitHub Releases carry player-facing jars, not Gradle dependencies.
+      # empty ~/.m2). CurseForge/GitHub Releases carry player-facing jars, not Gradle dependencies.
       # The jars were just built above, so `publish`'s `jar` dependency is UP-TO-DATE and this step only
       # uploads — no second build. GITHUB_TOKEN is the workflow's own token (packages: write granted above).
       # Privacy (POPIA/GDPR): only build artifacts + version strings are handled or logged.
@@ -138,9 +137,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           ./gradlew
-          :fabric:26.1.2:publish :fabric:26.2:publish :fabric:26.3:publish
-          :neoforge:26.1.2:publish :neoforge:26.2:publish :neoforge:26.3:publish
-          :forge:26.1.2:publish :forge:26.2:publish :forge:26.3:publish
+          :fabric:1.21.1:publish :fabric:1.21.4:publish :fabric:1.21.5:publish :fabric:1.21.8:publish :fabric:1.21.10:publish :fabric:1.21.11:publish :fabric:26.1.2:publish :fabric:26.2:publish :fabric:26.3:publish
+          :neoforge:1.21.1:publish :neoforge:1.21.4:publish :neoforge:1.21.5:publish :neoforge:1.21.8:publish :neoforge:1.21.10:publish :neoforge:1.21.11:publish :neoforge:26.1.2:publish :neoforge:26.2:publish :neoforge:26.3:publish
+          :forge:1.21.1:publish :forge:1.21.4:publish :forge:1.21.5:publish :forge:1.21.8:publish :forge:1.21.10:publish :forge:1.21.11:publish :forge:26.1.2:publish :forge:26.2:publish :forge:26.3:publish
           --stacktrace
 
       # Release channel from the version suffix: -alpha -> alpha, -beta -> beta, else release.
@@ -185,7 +184,7 @@ jobs:
           fi
           cat RELEASE_NOTES.md
 
-      # Gather exactly the nine distributable jars (Forge = the -all jarJar build) + the release
+      # Gather exactly the 27 distributable jars (Forge = the -all jarJar build) + the release
       # notes into dist/. `bash -e` aborts loudly if any expected jar is missing (e.g. a name
       # mismatch), and upload-artifact fails on an empty dist/ - so a path drift can't publish nothing.
       - name: Collect distributables
@@ -193,16 +192,33 @@ jobs:
           VERSION: ${{ needs.detect.outputs.version }}
         run: |
           mkdir -p dist
-          cp "fabric/versions/26.1.2/build/libs/nerosecurity-fabric-26.1.2-$VERSION.jar"     dist/
-          cp "fabric/versions/26.2/build/libs/nerosecurity-fabric-26.2-$VERSION.jar"         dist/
-          cp "fabric/versions/26.3/build/libs/nerosecurity-fabric-26.3-$VERSION.jar"         dist/
+          cp "fabric/versions/1.21.1/build/libs/nerosecurity-fabric-1.21.1-$VERSION.jar" dist/
+          cp "fabric/versions/1.21.4/build/libs/nerosecurity-fabric-1.21.4-$VERSION.jar" dist/
+          cp "fabric/versions/1.21.5/build/libs/nerosecurity-fabric-1.21.5-$VERSION.jar" dist/
+          cp "fabric/versions/1.21.8/build/libs/nerosecurity-fabric-1.21.8-$VERSION.jar" dist/
+          cp "fabric/versions/1.21.10/build/libs/nerosecurity-fabric-1.21.10-$VERSION.jar" dist/
+          cp "fabric/versions/1.21.11/build/libs/nerosecurity-fabric-1.21.11-$VERSION.jar" dist/
+          cp "fabric/versions/26.1.2/build/libs/nerosecurity-fabric-26.1.2-$VERSION.jar" dist/
+          cp "fabric/versions/26.2/build/libs/nerosecurity-fabric-26.2-$VERSION.jar" dist/
+          cp "fabric/versions/26.3/build/libs/nerosecurity-fabric-26.3-$VERSION.jar" dist/
+          cp "neoforge/versions/1.21.1/build/libs/nerosecurity-neoforge-1.21.1-$VERSION.jar" dist/
+          cp "neoforge/versions/1.21.4/build/libs/nerosecurity-neoforge-1.21.4-$VERSION.jar" dist/
+          cp "neoforge/versions/1.21.5/build/libs/nerosecurity-neoforge-1.21.5-$VERSION.jar" dist/
+          cp "neoforge/versions/1.21.8/build/libs/nerosecurity-neoforge-1.21.8-$VERSION.jar" dist/
+          cp "neoforge/versions/1.21.10/build/libs/nerosecurity-neoforge-1.21.10-$VERSION.jar" dist/
+          cp "neoforge/versions/1.21.11/build/libs/nerosecurity-neoforge-1.21.11-$VERSION.jar" dist/
           cp "neoforge/versions/26.1.2/build/libs/nerosecurity-neoforge-26.1.2-$VERSION.jar" dist/
-          cp "neoforge/versions/26.2/build/libs/nerosecurity-neoforge-26.2-$VERSION.jar"     dist/
-          cp "neoforge/versions/26.3/build/libs/nerosecurity-neoforge-26.3-$VERSION.jar"     dist/
-          cp "forge/versions/26.1.2/build/libs/nerosecurity-forge-26.1.2-$VERSION-all.jar"   dist/
-          cp "forge/versions/26.2/build/libs/nerosecurity-forge-26.2-$VERSION-all.jar"       dist/
-          cp "forge/versions/26.3/build/libs/nerosecurity-forge-26.3-$VERSION-all.jar"       dist/
-          cp RELEASE_NOTES.md dist/
+          cp "neoforge/versions/26.2/build/libs/nerosecurity-neoforge-26.2-$VERSION.jar" dist/
+          cp "neoforge/versions/26.3/build/libs/nerosecurity-neoforge-26.3-$VERSION.jar" dist/
+          cp "forge/versions/1.21.1/build/libs/nerosecurity-forge-1.21.1-$VERSION-all.jar" dist/
+          cp "forge/versions/1.21.4/build/libs/nerosecurity-forge-1.21.4-$VERSION-all.jar" dist/
+          cp "forge/versions/1.21.5/build/libs/nerosecurity-forge-1.21.5-$VERSION-all.jar" dist/
+          cp "forge/versions/1.21.8/build/libs/nerosecurity-forge-1.21.8-$VERSION-all.jar" dist/
+          cp "forge/versions/1.21.10/build/libs/nerosecurity-forge-1.21.10-$VERSION-all.jar" dist/
+          cp "forge/versions/1.21.11/build/libs/nerosecurity-forge-1.21.11-$VERSION-all.jar" dist/
+          cp "forge/versions/26.1.2/build/libs/nerosecurity-forge-26.1.2-$VERSION-all.jar" dist/
+          cp "forge/versions/26.2/build/libs/nerosecurity-forge-26.2-$VERSION-all.jar" dist/
+          cp "forge/versions/26.3/build/libs/nerosecurity-forge-26.3-$VERSION-all.jar" dist/
           ls -l dist/
 
       - name: Upload distributables
@@ -214,7 +230,7 @@ jobs:
           retention-days: 1
 
   publish:
-    name: Publish ${{ matrix.label }} ${{ matrix.mc }} (CurseForge + Modrinth)
+    name: Publish ${{ matrix.label }} ${{ matrix.mc }} (CurseForge)
     needs: [detect, build]
     if: needs.detect.outputs.changed == 'true'
     runs-on: ubuntu-latest
@@ -229,15 +245,33 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - { loader: fabric,   mc: "26.1.2", label: "Fabric",   suffix: "" }
-          - { loader: fabric,   mc: "26.2",   label: "Fabric",   suffix: "" }
-          - { loader: fabric,   mc: "26.3",   label: "Fabric",   suffix: "" }
-          - { loader: neoforge, mc: "26.1.2", label: "NeoForge", suffix: "" }
-          - { loader: neoforge, mc: "26.2",   label: "NeoForge", suffix: "" }
-          - { loader: neoforge, mc: "26.3",   label: "NeoForge", suffix: "" }
-          - { loader: forge,    mc: "26.1.2", label: "Forge",    suffix: "-all" }
-          - { loader: forge,    mc: "26.2",   label: "Forge",    suffix: "-all" }
-          - { loader: forge,    mc: "26.3",   label: "Forge",    suffix: "-all" }
+          - { loader: fabric, mc: "1.21.1", games: "1.21.1", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "1.21.4", games: "1.21.4", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "1.21.5", games: "1.21.5", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "1.21.8", games: "1.21.7,1.21.8", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "1.21.10", games: "1.21.9,1.21.10", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "1.21.11", games: "1.21.11", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "26.1.2", games: "26.1.2", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "26.2", games: "26.2", label: "Fabric", suffix: "" }
+          - { loader: fabric, mc: "26.3", games: "26.3", label: "Fabric", suffix: "" }
+          - { loader: neoforge, mc: "1.21.1", games: "1.21.1", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "1.21.4", games: "1.21.4", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "1.21.5", games: "1.21.5", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "1.21.8", games: "1.21.7,1.21.8", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "1.21.10", games: "1.21.9,1.21.10", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "1.21.11", games: "1.21.11", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "26.1.2", games: "26.1.2", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "26.2", games: "26.2", label: "NeoForge", suffix: "" }
+          - { loader: neoforge, mc: "26.3", games: "26.3", label: "NeoForge", suffix: "" }
+          - { loader: forge, mc: "1.21.1", games: "1.21.1", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "1.21.4", games: "1.21.4", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "1.21.5", games: "1.21.5", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "1.21.8", games: "1.21.7,1.21.8", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "1.21.10", games: "1.21.9,1.21.10", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "1.21.11", games: "1.21.11", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "26.1.2", games: "26.1.2", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "26.2", games: "26.2", label: "Forge", suffix: "-all" }
+          - { loader: forge, mc: "26.3", games: "26.3", label: "Forge", suffix: "-all" }
     steps:
       - name: Download distributables
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -245,63 +279,11 @@ jobs:
           name: dist
           path: dist
 
-      # One CurseForge/Modrinth version per cell, each tagged with its EXACT loader +
-      # game-version (so no jar is mislabelled). Each version carries its own copy of the
-      # changelog (self-contained per the chosen layout).
-      - name: Publish to Modrinth
-        id: upload
-        uses: Kir-Antipov/mc-publish@995edadc13559a8b28d0b7e6571229f067ec7659 # v3.3
-        with:
-          modrinth-id: ${{ secrets.MODRINTH_PROJECT_ID }}
-          modrinth-token: ${{ secrets.MODRINTH_API_TOKEN }}
-          name: NeroSecurity ${{ needs.detect.outputs.version }} - ${{ matrix.label }} ${{ matrix.mc }}
-          version: ${{ needs.detect.outputs.version }}-${{ matrix.loader }}-${{ matrix.mc }}
-          version-type: ${{ needs.build.outputs.version_type }}
-          changelog-file: dist/RELEASE_NOTES.md
-          files: dist/nerosecurity-${{ matrix.loader }}-${{ matrix.mc }}-${{ needs.detect.outputs.version }}${{ matrix.suffix }}.jar
-          loaders: ${{ matrix.loader }}
-          game-versions: ${{ matrix.mc }}
-          java: 25
-
-      # Tag the freshly-created Modrinth version with the per-version environment
-      # metadata from Modrinth's environments overhaul (Content Rules §5.1). mc-publish
-      # has no input for this, and the field is only writable via API v3, where
-      # `environment` is a flattened version field (see labrinth v3 versions.rs /
-      # v2_reroute.rs). NeroSecurity must be installed on BOTH sides (fabric.mod.json
-      # "environment": "*"), hence client_and_server — keep in sync with the v2
-      # client_side/server_side pins in modrinth-description.yml.
-      # Privacy (POPIA/GDPR): only the opaque version id is handled or logged —
-      # no personal data.
-      - name: Set Modrinth environment metadata
-        env:
-          MODRINTH_API_TOKEN: ${{ secrets.MODRINTH_API_TOKEN }}
-          VERSION_ID: ${{ steps.upload.outputs.modrinth-version }}
-        run: |
-          if [ -z "$VERSION_ID" ]; then
-            echo "::error::No Modrinth version id from the publish step; cannot set environment."
-            exit 1
-          fi
-
-          HTTP_CODE=$(curl -sS -o response.txt -w "%{http_code}" \
-            -X PATCH "https://api.modrinth.com/v3/version/${VERSION_ID}" \
-            -H "Authorization: ${MODRINTH_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -H "User-Agent: Neroland/nerosecurity-ci (dario@neroland.co.za)" \
-            --data '{"environment": "client_and_server"}')
-
-          if [ "$HTTP_CODE" != "204" ]; then
-            echo "::error::Modrinth v3 version API returned HTTP $HTTP_CODE"
-            cat response.txt
-            exit 1
-          fi
-          echo "Modrinth version ${VERSION_ID}: environment set to client_and_server (HTTP 204)."
-
       # CurseForge requires every Minecraft Java file to declare its environment
       # (Client / Server) from 2026-07-15 - enforced by the upload API. mc-publish
       # cannot set this field, so this jar is uploaded to CurseForge directly here,
       # with gameVersionNames carrying the Minecraft version, the loader AND both
-      # environments. NeroSecurity runs on BOTH sides (mirrors the Modrinth
-      # client_and_server pin above), so Client + Server are both tagged.
+      # environments. NeroSecurity runs on BOTH sides, so Client + Server are both tagged.
       # Privacy (POPIA/GDPR): only version strings, loader/MC names and the curated
       # changelog are sent or logged - no personal data.
       - name: Upload to CurseForge (with environment)
@@ -310,7 +292,7 @@ jobs:
           CF_PROJECT_ID: ${{ secrets.CURSEFORGE_PROJECT_ID }}
           DISPLAY_NAME: NeroSecurity ${{ needs.detect.outputs.version }} - ${{ matrix.label }} ${{ matrix.mc }}
           RELEASE_TYPE: ${{ needs.build.outputs.version_type }}
-          MC_VERSION: ${{ matrix.mc }}
+          MC_VERSION: ${{ matrix.games }}
           CF_LOADER: ${{ matrix.label }}
           JAR: dist/nerosecurity-${{ matrix.loader }}-${{ matrix.mc }}-${{ needs.detect.outputs.version }}${{ matrix.suffix }}.jar
         run: |
@@ -333,7 +315,7 @@ jobs:
               changelogType: "markdown",
               displayName: $name,
               releaseType: $rt,
-              gameVersionNames: [$mc, $loader, "Client", "Server"]
+              gameVersionNames: (($mc | split(",")) + [$loader, "Client", "Server"])
             }' > cf_metadata.json
 
           # CurseForge's upload endpoint intermittently answers a generic HTTP 500
@@ -400,8 +382,8 @@ jobs:
           release: nerosecurity@${{ needs.detect.outputs.version }}
           environment: ${{ needs.build.outputs.environment }}
 
-      # One GitHub Release carrying all nine jars. This also creates the v<version> tag that
-      # `detect` reads as the release ledger - intentionally the LAST step, so a failed CF/MR
+      # One GitHub Release carrying all 27 jars. This also creates the v<version> tag that
+      # `detect` reads as the release ledger - intentionally the LAST step, so a failed CurseForge
       # upload above leaves no tag and a re-run retries cleanly instead of being skipped.
       - name: Publish GitHub Release
         uses: Kir-Antipov/mc-publish@995edadc13559a8b28d0b7e6571229f067ec7659 # v3.3
@@ -412,7 +394,7 @@ jobs:
           version: ${{ needs.detect.outputs.version }}
           version-type: ${{ needs.build.outputs.version_type }}
           changelog-file: dist/RELEASE_NOTES.md
-          # dist/ holds exactly the nine distributables (Forge = -all), so this glob is precise.
+          # dist/ holds exactly the 27 distributables (Forge = -all), so this glob is precise.
           files: dist/*.jar
           java: 25
 

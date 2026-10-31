@@ -33,6 +33,7 @@ import za.co.neroland.nerosecurity.compat.factions.FactionsCompat;
 import za.co.neroland.nerosecurity.compat.nerospace.NerospaceCompat;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.ServiceResult;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 
 /**
@@ -165,7 +166,7 @@ public final class BindCommands {
             ctx.getSource().sendFailure(Component.translatable("compat.nerosecurity.absent"));
             return 0;
         }
-        UUID colony = ColoniesCompat.colonyAt(player.level(), player.blockPosition());
+        UUID colony = ColoniesCompat.colonyAt(VersionCompat.serverLevel(player), player.blockPosition());
         if (colony == null) {
             ctx.getSource().sendFailure(Component.translatable("command.nerosecurity.bind.no_colony_here"));
             return 0;

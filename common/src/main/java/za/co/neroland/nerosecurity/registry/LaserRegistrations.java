@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -14,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.block.DeviceIds;
@@ -39,9 +37,9 @@ public final class LaserRegistrations {
 
     public static final RegistryEntry<BlockEntityType<LaserGridNodeBlockEntity>> LASER_GRID_NODE_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register(DeviceIds.LASER_GRID_NODE.getPath(),
-                    key -> new BlockEntityType<>((pos, state) -> new LaserGridNodeBlockEntity(
+                    key -> BlockEntityTypeCompat.create((pos, state) -> new LaserGridNodeBlockEntity(
                             LaserRegistrations.LASER_GRID_NODE_ENTITY.get(), pos, state),
-                            Set.of(LASER_GRID_NODE.get())));
+                            LASER_GRID_NODE.get()));
 
     /** The shared sensor settings menu (laser grid node and camera, through {@code SensorMenuHost}). */
     public static final RegistryEntry<MenuType<SensorSettingsMenu>> SENSOR_MENU =
@@ -70,8 +68,8 @@ public final class LaserRegistrations {
     public static void init() {
     }
 
-    /** Adds the laser grid node item to Core's shared creative tab. */
+    /** Adds the laser grid node item to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(LASER_GRID_NODE_ITEM::get);
+        ModCreativeTab.add(LASER_GRID_NODE_ITEM::get);
     }
 }

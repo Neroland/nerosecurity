@@ -4,10 +4,16 @@ import net.minecraft.core.Direction;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+//? if >=1.21.9 {
 import net.neoforged.neoforge.transfer.DelegatingResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+//?} else {
+/*import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.wrapper.SidedInvWrapper;
+*///?}
 
 import za.co.neroland.nerolandcore.platform.NeoForgeEnergyLookup;
 
@@ -61,10 +67,16 @@ public final class NeoForgeCapabilities {
                 (be, side) -> FieldEnergyAccess.of(be, side));
 
         // Secure chest: always sided (an unsided query is treated as UP), always gated.
+        //? if >=1.21.9 {
         event.registerBlockEntity(Capabilities.Item.BLOCK, ChestRegistrations.SECURE_CHEST_BLOCK_ENTITY.get(),
                 (be, side) -> new GatedChestItemHandler(be, side == null ? Direction.UP : side));
+        //?} else {
+        /*event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ChestRegistrations.SECURE_CHEST_BLOCK_ENTITY.get(),
+                (be, side) -> new GatedChestItemHandler(be, side == null ? Direction.UP : side));
+        *///?}
     }
 
+    //? if >=1.21.9 {
     /** The secure chest's item handler: the sided vanilla view, closed whenever automation is not allowed. */
     private static final class GatedChestItemHandler extends DelegatingResourceHandler<ItemResource> {
 
@@ -124,4 +136,51 @@ public final class NeoForgeCapabilities {
             return open() ? super.extract(resource, amount, transaction) : 0;
         }
     }
+    //?} else {
+    /*// Before NeoForge 21.9 (Minecraft 1.21.9) items move through IItemHandler; same gate, same sided view.
+    private static final class GatedChestItemHandler implements IItemHandler {
+
+        private final SecureChestBlockEntity be;
+        private final IItemHandler delegate;
+
+        GatedChestItemHandler(SecureChestBlockEntity be, Direction side) {
+            this.be = be;
+            this.delegate = new SidedInvWrapper(be, side);
+        }
+
+        private boolean open() {
+            return GatedChestAccess.allows(this.be);
+        }
+
+        @Override
+        public int getSlots() {
+            return open() ? this.delegate.getSlots() : 0;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return open() ? this.delegate.getStackInSlot(slot) : ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return open() ? this.delegate.insertItem(slot, stack, simulate) : stack;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return open() ? this.delegate.extractItem(slot, amount, simulate) : ItemStack.EMPTY;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return open() ? this.delegate.getSlotLimit(slot) : 0;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return open() && this.delegate.isItemValid(slot, stack);
+        }
+    }
+    *///?}
 }

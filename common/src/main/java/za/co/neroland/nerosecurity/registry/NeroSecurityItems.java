@@ -4,7 +4,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
@@ -16,8 +15,8 @@ import za.co.neroland.nerosecurity.upgrade.SecurityModule;
 import za.co.neroland.nerosecurity.upgrade.SecurityModuleItem;
 
 /**
- * Item registrations through Neroland Core's {@link RegistrationProvider}. There is no NeroSecurity
- * creative tab: every item joins Core's shared {@code Neroland} tab (the ecosystem convention).
+ * Item registrations through Neroland Core's {@link RegistrationProvider}. Every item is listed in
+ * NeroSecurity's own {@link ModCreativeTab}.
  */
 public final class NeroSecurityItems {
 
@@ -55,15 +54,15 @@ public final class NeroSecurityItems {
     public static void init() {
     }
 
-    /** Adds every NeroSecurity item to Core's shared creative tab. */
+    /** Adds every NeroSecurity item to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(SECURITY_HUB::get);
-        CoreCreativeTab.add(LINKING_TOOL::get);
-        CoreCreativeTab.add(KEYCARD::get);
-        CoreCreativeTab.add(ENCRYPTION_MODULE::get);
-        CoreCreativeTab.add(HARDNESS_MODULE::get);
-        CoreCreativeTab.add(OPEN_SPEED_MODULE::get);
-        CoreCreativeTab.add(RANGE_MODULE::get);
-        CoreCreativeTab.add(STRENGTH_MODULE::get);
+        ModCreativeTab.add(SECURITY_HUB::get);
+        ModCreativeTab.add(LINKING_TOOL::get);
+        ModCreativeTab.add(KEYCARD::get);
+        ModCreativeTab.add(ENCRYPTION_MODULE::get);
+        ModCreativeTab.add(HARDNESS_MODULE::get);
+        ModCreativeTab.add(OPEN_SPEED_MODULE::get);
+        ModCreativeTab.add(RANGE_MODULE::get);
+        ModCreativeTab.add(STRENGTH_MODULE::get);
     }
 }

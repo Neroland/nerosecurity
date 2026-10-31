@@ -45,6 +45,7 @@ import za.co.neroland.nerosecurity.installation.ServiceResult;
 import za.co.neroland.nerosecurity.menu.HubPayloadHandlers;
 import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.registry.NeroSecurityBlockEntities;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The Security Hub: placing one registers an installation owned by the placer; it is the controller
@@ -180,7 +181,7 @@ public class SecurityHubBlock extends BaseEntityBlock {
         }
         Installation installation = hub.installation(serverLevel.getServer());
         if (installation == null) {
-            serverPlayer.sendOverlayMessage(Component.translatable("hub.nerosecurity.inert"));
+            VersionCompat.overlay(serverPlayer, Component.translatable("hub.nerosecurity.inert"));
             return InteractionResult.SUCCESS;
         }
         // The screen edits members, so even reading it is OFFICER and above; membership only, never a card.
@@ -188,7 +189,7 @@ public class SecurityHubBlock extends BaseEntityBlock {
                 serverPlayer.getUUID(), installation, AccessAction.OPEN_HUB, DevicePos.of(serverLevel, pos)),
                 AccessAction.OPEN_HUB.defaultMinimum);
         if (!decision.allowed()) {
-            serverPlayer.sendOverlayMessage(decision.message());
+            VersionCompat.overlay(serverPlayer, decision.message());
             SecurityDevice.denyFeedback(serverPlayer, pos);
             return InteractionResult.SUCCESS;
         }
@@ -213,7 +214,7 @@ public class SecurityHubBlock extends BaseEntityBlock {
         super.attack(state, level, pos, player);
         if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer
                 && !mayDissolve(serverLevel, pos, serverPlayer)) {
-            serverPlayer.sendOverlayMessage(Component.translatable("hub.nerosecurity.break_hint"));
+            VersionCompat.overlay(serverPlayer, Component.translatable("hub.nerosecurity.break_hint"));
         }
     }
 
@@ -229,7 +230,7 @@ public class SecurityHubBlock extends BaseEntityBlock {
 
     /** Sends the "sneak and break as the owner" hint after a refused break. */
     public static void refuseBreak(ServerPlayer player) {
-        player.sendOverlayMessage(Component.translatable("hub.nerosecurity.break_hint"));
+        VersionCompat.overlay(player, Component.translatable("hub.nerosecurity.break_hint"));
     }
 
     private static boolean mayDissolve(ServerLevel level, BlockPos pos, ServerPlayer player) {
@@ -260,4 +261,16 @@ public class SecurityHubBlock extends BaseEntityBlock {
         }
         return super.playerWillDestroy(level, pos, state, player);
     }
+
+    //? if <1.21.5 {
+    /*// Before 1.21.5 a block entity has no removal hook of its own: run its side effects (unlink, drops) here,
+    // while it still exists, whenever the block itself is replaced.
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof SecurityHubBlockEntity be) {
+            be.preRemoveSideEffects(pos, state);
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+    *///?}
 }

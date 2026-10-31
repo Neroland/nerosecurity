@@ -28,7 +28,11 @@ public final class NeroSecurityNeoForge {
         NeoForgeCapabilities.register(modEventBus);
         // Client-only: screens and the disconnect cache clear. Gated so client classes never load on
         // a dedicated server.
+        //? if >=1.21.9 {
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
+        //?} else {
+        /*if (FMLEnvironment.dist == Dist.CLIENT) {
+        *///?}
             NeoForgeClientSetup.init(modEventBus);
         }
     }

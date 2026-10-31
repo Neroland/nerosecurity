@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -12,7 +10,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.block.KeycardProgrammerBlock;
@@ -39,7 +37,7 @@ public final class ProgrammerRegistrations {
 
     public static final RegistryEntry<BlockEntityType<KeycardProgrammerBlockEntity>> BLOCK_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register("keycard_programmer",
-                    key -> new BlockEntityType<>(KeycardProgrammerBlockEntity::new, Set.of(BLOCK.get())));
+                    key -> BlockEntityTypeCompat.create(KeycardProgrammerBlockEntity::new, BLOCK.get()));
 
     public static final RegistryEntry<BlockItem> ITEM = NeroSecurityItems.ITEMS.register("keycard_programmer",
             key -> new KeycardProgrammerItem(BLOCK.get(), new Item.Properties().setId(key).useBlockDescriptionPrefix()));
@@ -55,8 +53,8 @@ public final class ProgrammerRegistrations {
     public static void init() {
     }
 
-    /** Adds the programmer's block item to Core's shared creative tab. */
+    /** Adds the programmer's block item to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(ITEM::get);
+        ModCreativeTab.add(ITEM::get);
     }
 }

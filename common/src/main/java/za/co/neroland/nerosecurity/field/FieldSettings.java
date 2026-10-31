@@ -45,6 +45,7 @@ public record FieldSettings(FieldShape shape, int offset, int width, int height,
     ).apply(inst, FieldSettings::new));
 
     /** Wire form. The server re-validates everything a client sends (see {@link FieldGeometry#validate}). */
+    //? if >=1.21.2 {
     public static final StreamCodec<ByteBuf, FieldSettings> STREAM_CODEC = StreamCodec.composite(
             FieldShape.STREAM_CODEC, FieldSettings::shape,
             ByteBufCodecs.VAR_INT, FieldSettings::offset,
@@ -54,6 +55,22 @@ public record FieldSettings(FieldShape shape, int offset, int width, int height,
             DeviceAccessSettings.STREAM_CODEC, FieldSettings::access,
             ByteBufCodecs.BOOL, FieldSettings::enabled,
             FieldSettings::new);
+    //?} else {
+    /*// 1.21.1's StreamCodec.composite stops at six fields; the same seven-field wire form, written out.
+    public static final StreamCodec<ByteBuf, FieldSettings> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> {
+                FieldShape.STREAM_CODEC.encode(buf, value.shape());
+                ByteBufCodecs.VAR_INT.encode(buf, value.offset());
+                ByteBufCodecs.VAR_INT.encode(buf, value.width());
+                ByteBufCodecs.VAR_INT.encode(buf, value.height());
+                ByteBufCodecs.VAR_INT.encode(buf, value.depth());
+                DeviceAccessSettings.STREAM_CODEC.encode(buf, value.access());
+                ByteBufCodecs.BOOL.encode(buf, value.enabled());
+            },
+            buf -> new FieldSettings(FieldShape.STREAM_CODEC.decode(buf), ByteBufCodecs.VAR_INT.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf), ByteBufCodecs.VAR_INT.decode(buf), ByteBufCodecs.VAR_INT.decode(buf),
+                    DeviceAccessSettings.STREAM_CODEC.decode(buf), ByteBufCodecs.BOOL.decode(buf)));
+    *///?}
 
     public FieldSettings {
         if (shape == null) {

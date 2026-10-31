@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.block.entity.KeycardProgrammerBlockEntity;
 import za.co.neroland.nerosecurity.client.ClientProgrammerState;
+import za.co.neroland.nerosecurity.client.GuiCompat;
 import za.co.neroland.nerosecurity.client.SecurityColours;
 import za.co.neroland.nerosecurity.client.screen.ProgrammerActions.CardState;
 import za.co.neroland.nerosecurity.client.widget.LevelLadder;
@@ -259,7 +260,7 @@ public class KeycardProgrammerScreen extends SecurityScreen<KeycardProgrammerMen
         int h = ProgrammerLayout.BAND_H;
         if (snap == null || this.selected == null) {
             g.fill(left, top, left + w, top + h, SecurityColours.TROUGH);
-            g.outline(left, top, w, h, SecurityColours.EDGE);
+            GuiCompat.outline(g, left, top, w, h, SecurityColours.EDGE);
             if (snap != null) {
                 drawBandText(g, Component.translatable("programmer.nerosecurity.band.none"), left, top, w - 8,
                         WidgetColours.TEXT);

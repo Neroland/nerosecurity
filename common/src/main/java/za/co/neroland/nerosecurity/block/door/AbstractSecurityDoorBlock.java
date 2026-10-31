@@ -18,7 +18,9 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+//? if >=1.21.2 {
 import net.minecraft.world.level.ScheduledTickAccess;
+//?}
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -157,16 +159,26 @@ public abstract class AbstractSecurityDoorBlock extends BaseEntityBlock implemen
     }
 
     /** A part whose sibling is gone (or is not this door's matching part any more) becomes air. */
+    //? if >=1.21.2 {
     @Override
     protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks, BlockPos pos,
             Direction directionToNeighbour, BlockPos neighbourPos, BlockState neighbourState, RandomSource random) {
+    //?} else {
+    /*@Override
+    protected BlockState updateShape(BlockState state, Direction directionToNeighbour, BlockState neighbourState,
+            net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockPos neighbourPos) {
+    *///?}
         Direction facing = state.getValue(FACING);
         List<BlockPos> parts = partPositions(controllerPos(pos, state), facing);
         int index = parts.indexOf(neighbourPos);
         if (index >= 0 && !isPart(neighbourState, facing, index)) {
             return Blocks.AIR.defaultBlockState();
         }
+        //? if >=1.21.2 {
         return super.updateShape(state, level, ticks, pos, directionToNeighbour, neighbourPos, neighbourState, random);
+        //?} else {
+        /*return super.updateShape(state, directionToNeighbour, neighbourState, level, pos, neighbourPos);
+        *///?}
     }
 
     private boolean isPart(BlockState candidate, Direction facing, int index) {
@@ -269,12 +281,21 @@ public abstract class AbstractSecurityDoorBlock extends BaseEntityBlock implemen
     // --- using ----------------------------------------------------------------------------------
 
     /** The linking tool must reach its own use handler; anything else (a keycard) uses the door. */
+    //? if >=1.21.2 {
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof LinkingToolItem) {
             return InteractionResult.PASS;
         }
+    //?} else {
+    /*@Override
+    protected net.minecraft.world.ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.getItem() instanceof LinkingToolItem) {
+            return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+    *///?}
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
 
@@ -346,4 +367,16 @@ public abstract class AbstractSecurityDoorBlock extends BaseEntityBlock implemen
         }
         return super.playerWillDestroy(level, pos, state, player);
     }
+
+    //? if <1.21.5 {
+    /*// Before 1.21.5 a block entity has no removal hook of its own: run its side effects (unlink, drops) here,
+    // while it still exists, whenever the block itself is replaced.
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof SecurityDoorBlockEntity be) {
+            be.preRemoveSideEffects(pos, state);
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+    *///?}
 }

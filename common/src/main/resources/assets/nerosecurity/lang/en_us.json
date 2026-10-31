@@ -369,6 +369,7 @@
   "item.nerosecurity.range_module.tooltip": "Fit to a laser node or camera: +4 blocks of range.",
   "item.nerosecurity.strength_module": "Strength Module",
   "item.nerosecurity.strength_module.tooltip": "Fit to an emitter: +1 strength (more load before overload, more power).",
+  "itemGroup.nerosecurity": "NeroSecurity",
   "link.nerosecurity.device.alarm": "Alarm %s",
   "link.nerosecurity.device.blast_door": "Blast door %s",
   "link.nerosecurity.device.force_field_emitter": "Field %s",

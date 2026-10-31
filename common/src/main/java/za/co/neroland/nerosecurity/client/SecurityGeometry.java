@@ -3,8 +3,12 @@ package za.co.neroland.nerosecurity.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
+//? if >=1.21.11 {
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+//?} else {
+/*import net.minecraft.client.renderer.RenderType;
+*///?}
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 
@@ -45,12 +49,20 @@ public final class SecurityGeometry {
 
     /** Lit, alpha-tested (opaque metal, panels, lids). */
     public static RenderType cutout(Identifier texture) {
+        //? if >=1.21.11 {
         return RenderTypes.entityCutout(texture);
+        //?} else {
+        /*return RenderType.entityCutout(texture);
+        *///?}
     }
 
     /** Translucent and emissive (LEDs, beams, blades, light columns, cores). Pair with FULL_BRIGHT light. */
     public static RenderType emissive(Identifier texture) {
+        //? if >=1.21.11 {
         return RenderTypes.entityTranslucentEmissive(texture);
+        //?} else {
+        /*return RenderType.entityTranslucentEmissive(texture);
+        *///?}
     }
 
     /** Model pixels → block units. */

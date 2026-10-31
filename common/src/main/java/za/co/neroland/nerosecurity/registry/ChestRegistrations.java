@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -13,7 +11,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.block.chest.SecureChestBlock;
@@ -47,7 +45,7 @@ public final class ChestRegistrations {
 
     public static final RegistryEntry<BlockEntityType<SecureChestBlockEntity>> SECURE_CHEST_BLOCK_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register("secure_chest",
-                    key -> new BlockEntityType<>(SecureChestBlockEntity::new, Set.of(SECURE_CHEST.get())));
+                    key -> BlockEntityTypeCompat.create(SecureChestBlockEntity::new, SECURE_CHEST.get()));
 
     public static final RegistryEntry<BlockItem> SECURE_CHEST_ITEM = NeroSecurityItems.ITEMS.register("secure_chest",
             key -> new SecureChestItem(SECURE_CHEST.get(),
@@ -64,8 +62,8 @@ public final class ChestRegistrations {
     public static void init() {
     }
 
-    /** Adds the secure chest to Core's shared creative tab. */
+    /** Adds the secure chest to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(SECURE_CHEST_ITEM::get);
+        ModCreativeTab.add(SECURE_CHEST_ITEM::get);
     }
 }

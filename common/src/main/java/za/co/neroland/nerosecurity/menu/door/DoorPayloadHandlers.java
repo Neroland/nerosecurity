@@ -25,6 +25,7 @@ import za.co.neroland.nerosecurity.menu.door.DoorPayloads.DoorConfigure;
 import za.co.neroland.nerosecurity.menu.door.DoorPayloads.DoorSnapshot;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Server-side handler for the door settings screen. It trusts nothing the client says: the sender's
@@ -92,7 +93,7 @@ public final class DoorPayloadHandlers {
             SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.DEVICE_CONFIGURED, installation.id(), at,
                     player.getUUID(), System.currentTimeMillis()));
             Component done = Component.translatable("door.nerosecurity.configured");
-            player.sendOverlayMessage(done);
+            VersionCompat.overlay(player, done);
             sendSnapshot(player, door, installation, decision, true, done);
         });
     }

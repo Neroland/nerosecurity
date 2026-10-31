@@ -21,7 +21,9 @@ import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.WorldlyContainer;
+//? if >=1.21.9 {
 import net.minecraft.world.entity.ContainerUser;
+//?}
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -56,6 +58,7 @@ import za.co.neroland.nerosecurity.menu.MenuOpener;
 import za.co.neroland.nerosecurity.notice.RecordingNotice;
 import za.co.neroland.nerosecurity.registry.ChestRegistrations;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The secure chest's block entity: 27 slots, the shared {@link DeviceAccessSettings}, and the two
@@ -291,7 +294,7 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
         if (installation != null) {
             AccessDecision decision = resolveOpen(player, installation);
             if (!decision.allowed()) {
-                player.sendOverlayMessage(decision.message());
+                VersionCompat.overlay(player, decision.message());
                 SecurityDevice.denyFeedback(player, worldPosition);
                 reportDenied(player, installation);
                 return;
@@ -349,9 +352,18 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
      * {@code CHEST_FORCED} with no actor, and the link is dropped so no ghost device remains. Store
      * bookkeeping only; the world is not touched beyond the vanilla content drop.
      */
+    //? if >=1.21.5 {
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
+    //?} else {
+    /*// Before 1.21.5 there is no block-entity removal hook; the block's onRemove calls this instead.
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        // Vanilla's own container drop (the 1.21.5+ base hook) happens here on the older lines.
+        if (level != null) {
+            net.minecraft.world.Containers.dropContents(level, pos, this);
+        }
+    *///?}
         sessions.clear();
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
@@ -449,7 +461,11 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     }
 
     @Override
+    //? if >=1.21.9 {
     public void startOpen(ContainerUser user) {
+    //?} else {
+    /*public void startOpen(Player user) {
+    *///?}
         if (isRemoved() || !(level instanceof ServerLevel) || !(user instanceof ServerPlayer player)) {
             return;
         }
@@ -463,7 +479,11 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
     }
 
     @Override
+    //? if >=1.21.9 {
     public void stopOpen(ContainerUser user) {
+    //?} else {
+    /*public void stopOpen(Player user) {
+    *///?}
         if (!(user instanceof ServerPlayer player)) {
             return;
         }
@@ -544,18 +564,40 @@ public class SecureChestBlockEntity extends BlockEntity implements WorldlyContai
 
     // --- persistence ----------------------------------------------------------------------------
 
+    //? if >=1.21.6 {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
+    //?} else {
+    /*@Override
+    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        ValueOutput output = ValueOutput.of(tag, registries);
+    *///?}
+        //? if >=1.21.6 {
         ContainerHelper.saveAllItems(output, items);
+        //?} else {
+        /*ContainerHelper.saveAllItems(output.tag(), items, output.registries());
+        *///?}
         settings.save(output.child(KEY_SETTINGS));
     }
 
+    //? if >=1.21.6 {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+    //?} else {
+    /*@Override
+    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        ValueInput input = ValueInput.of(tag, registries);
+    *///?}
         items = NonNullList.withSize(SIZE, ItemStack.EMPTY);
+        //? if >=1.21.6 {
         ContainerHelper.loadAllItems(input, items);
+        //?} else {
+        /*ContainerHelper.loadAllItems(input.tag(), items, input.registries());
+        *///?}
         settings = DeviceAccessSettings.load(input.childOrEmpty(KEY_SETTINGS));
         // Renderer-only fields: present in the client's update tag, never written to disk.
         visualMinLevel = AccessLevel.byName(input.getStringOr(KEY_MIN_LEVEL, "")).orElse(settings.minLevel());

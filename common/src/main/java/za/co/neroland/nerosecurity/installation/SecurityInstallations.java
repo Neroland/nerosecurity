@@ -29,6 +29,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 
 import org.jetbrains.annotations.Nullable;
 
+import za.co.neroland.nerolandcore.data.SavedDataCompat;
 import za.co.neroland.nerolandcore.data.SavedDataRecovery;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
@@ -74,7 +75,7 @@ public final class SecurityInstallations extends SavedData {
 
     /** DFU-free: the codec is the whole format. */
     public static final SavedDataType<SecurityInstallations> TYPE =
-            new SavedDataType<>(ID, SecurityInstallations::new, CODEC, null);
+            SavedDataCompat.type(ID, SecurityInstallations::new, CODEC);
 
     /** The production eraser, joined to {@link SecurityData}'s composite at init. */
     private static final SecurityData.StoreEraser ERASER = eraser(SecurityInstallations::get);

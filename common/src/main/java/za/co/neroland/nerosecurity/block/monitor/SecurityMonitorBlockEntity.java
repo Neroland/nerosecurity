@@ -99,9 +99,14 @@ public class SecurityMonitorBlockEntity extends BlockEntity implements MenuProvi
      * command, another mod) publishes {@code DEVICE_FORCED} with no actor, and the link is dropped so no
      * ghost device squats the position. Store and event work only.
      */
+    //? if >=1.21.5 {
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
+    //?} else {
+    /*// Before 1.21.5 there is no block-entity removal hook; the block's onRemove calls this instead.
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+    *///?}
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }

@@ -27,7 +27,11 @@ def branchDir = project.parent.projectDir
 // `<x>_compat=false` property (gradle.properties or -P) drops the dependency, excludes that bridge class and its
 // services line from the build, and leaves the optional manifest entry out, so the mod builds with no sibling
 // artifact at all. Manifest floors are the compiled versions (ecosystem floor rule).
-def compatOn = { String flag -> (rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
+// A per-Minecraft-version flag (`<x>_compat_<mc>`) overrides the global one for this cell only.
+def compatOn = { String flag -> (rootProject.findProperty("${flag}_${mc}") ?: rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
+// Minecraft range: 1.21.x cells are bounded to their API line (gradle.properties); 26.x keep [mc,).
+def mcCeiling = project.findProperty("mc_ceiling_${mc}")
+def mcFloor = project.findProperty("mc_floor_${mc}") ?: mc
 def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
 def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
 def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
@@ -179,7 +183,7 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
         mod_name               : rootProject.mod_name,
         mod_authors            : rootProject.mod_authors,
         mod_license            : rootProject.mod_license,
-        minecraft_version_range: "[${mc},)",
+        minecraft_version_range: mcCeiling ? "[${mcFloor},${mcCeiling})" : "[${mc},)",
         // Floor at the compiled Core version: a too-old Core would be missing APIs NeroSecurity
         // links against, which surfaces as a NoSuchMethodError deep in gameplay instead of a clean
         // "update Neroland Core" loader message.
@@ -309,7 +313,7 @@ tasks.register('ecjCheck', JavaExec) {
         ecjSources.text = sourceSets.main.java.files.collect { it.absolutePath.replace('\\', '/') }.join('\n') + '\n'
         def srcDirs = ['@' + ecjSources.absolutePath.replace('\\', '/')]
         args = [
-                '--release', '25',
+                '--release', "${project.javaRelease}",
                 '-proc:none',
                 '-d', 'none',
                 '-properties', rootProject.file('tools/ecj.prefs').absolutePath,

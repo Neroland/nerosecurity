@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The single door every NeroSecurity GUI goes through — {@code openMenu}, but it cannot take the
@@ -73,7 +74,7 @@ public final class MenuOpener {
             // Nothing further to do; the client will resync on its own.
         }
         try {
-            player.sendSystemMessage(Component.translatable("gui.nerosecurity.menu_open_failed"));
+            VersionCompat.systemMessage(player, Component.translatable("gui.nerosecurity.menu_open_failed"));
         } catch (RuntimeException | LinkageError ignored) {
             // The player simply does not get the notice.
         }

@@ -128,12 +128,21 @@ public class ForceFieldEmitterBlock extends BaseEntityBlock implements SecurityD
     // --- using ----------------------------------------------------------------------------------
 
     /** The linking tool must reach its own use handler; anything else opens the settings. */
+    //? if >=1.21.2 {
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof LinkingToolItem) {
             return InteractionResult.PASS;
         }
+    //?} else {
+    /*@Override
+    protected net.minecraft.world.ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.getItem() instanceof LinkingToolItem) {
+            return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+    *///?}
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
 
@@ -159,4 +168,16 @@ public class ForceFieldEmitterBlock extends BaseEntityBlock implements SecurityD
         }
         return super.playerWillDestroy(level, pos, state, player);
     }
+
+    //? if <1.21.5 {
+    /*// Before 1.21.5 a block entity has no removal hook of its own: run its side effects (unlink, drops) here,
+    // while it still exists, whenever the block itself is replaced.
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof ForceFieldEmitterBlockEntity be) {
+            be.preRemoveSideEffects(pos, state);
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+    *///?}
 }

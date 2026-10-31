@@ -21,6 +21,7 @@ import za.co.neroland.nerosecurity.data.SecurityData;
 import za.co.neroland.nerosecurity.installation.Installation;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.server.ServerHooks;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The "recording active" notice (notice before logging, POPIA s18 / GDPR Art. 13): the first time in a
@@ -123,7 +124,7 @@ public final class RecordingNotice {
                     continue;
                 }
                 seen.add(area.installationId());
-                player.sendOverlayMessage(Component.translatable(KEY, installation.name()));
+                VersionCompat.overlay(player, Component.translatable(KEY, installation.name()));
             }
         }
     }
@@ -142,7 +143,7 @@ public final class RecordingNotice {
                 return;
             }
             if (markNoticed(player.getUUID(), installation.id())) {
-                player.sendOverlayMessage(Component.translatable(KEY, installation.name()));
+                VersionCompat.overlay(player, Component.translatable(KEY, installation.name()));
             }
         } catch (RuntimeException | LinkageError e) {
             // The periodic check still covers the player.

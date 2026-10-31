@@ -72,7 +72,7 @@ NeroSecurity is the most privacy-sensitive mod in the ecosystem, because cameras
 
 ## Requirements & compatibility
 
-- **Requires [Neroland Core](https://modrinth.com/mod/nerolandcore)** — install it alongside NeroSecurity (it loads first).
+- **Requires [Neroland Core](https://nerolandmc.net/mods/neroland-core/)** — install it alongside NeroSecurity (it loads first).
 - Conventional `c:` tags and loader-native power/item capabilities mean **Create**, **AE2**, **Mekanism**, **Ad Astra** and **Energized Power** interoperate — powering fields and doors, or exposing secure chests via item handlers — as the 26.x ecosystem fills in, with no hard dependency on any of them.
 - **Modpacks are allowed and encouraged** — any platform, no need to ask. Use the official files and credit *NeroSecurity by Neroland* with links to the [CurseForge page](https://www.curseforge.com/minecraft/mc-mods/nerosecurity) and the [GitHub repository](https://github.com/Neroland/nerosecurity). Full terms: [LICENSE](https://github.com/Neroland/nerosecurity/blob/main/LICENSE).
 

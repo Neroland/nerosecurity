@@ -27,7 +27,9 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+//? if >=1.21.2 {
 import net.minecraft.world.level.redstone.Orientation;
+//?}
 import net.minecraft.world.phys.BlockHitResult;
 
 import org.jetbrains.annotations.Nullable;
@@ -103,10 +105,17 @@ public class LaserGridNodeBlock extends BaseEntityBlock implements SecurityDevic
     }
 
     /** A block appeared or vanished next to the node: re-check the pair on its next tick. */
+    //? if >=1.21.2 {
     @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block,
             @Nullable Orientation orientation, boolean movedByPiston) {
         super.neighborChanged(state, level, pos, block, orientation, movedByPiston);
+    //?} else {
+    /*@Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos fromPos,
+            boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, block, fromPos, movedByPiston);
+    *///?}
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof LaserGridNodeBlockEntity node) {
             node.markPairDirty();
         }
@@ -132,12 +141,21 @@ public class LaserGridNodeBlock extends BaseEntityBlock implements SecurityDevic
     // --- using ----------------------------------------------------------------------------------
 
     /** The linking tool must reach its own use handler; anything else opens the settings. */
+    //? if >=1.21.2 {
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof LinkingToolItem) {
             return InteractionResult.PASS;
         }
+    //?} else {
+    /*@Override
+    protected net.minecraft.world.ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.getItem() instanceof LinkingToolItem) {
+            return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+    *///?}
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
 
@@ -163,4 +181,16 @@ public class LaserGridNodeBlock extends BaseEntityBlock implements SecurityDevic
         }
         return super.playerWillDestroy(level, pos, state, player);
     }
+
+    //? if <1.21.5 {
+    /*// Before 1.21.5 a block entity has no removal hook of its own: run its side effects (unlink, drops) here,
+    // while it still exists, whenever the block itself is replaced.
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof LaserGridNodeBlockEntity be) {
+            be.preRemoveSideEffects(pos, state);
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+    *///?}
 }

@@ -25,6 +25,7 @@ import za.co.neroland.nerosecurity.menu.HubPayloads.HubRename;
 import za.co.neroland.nerosecurity.menu.HubPayloads.HubSetMember;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Server-side handlers for the hub screen's payloads. All run on the server thread, and every one
@@ -139,7 +140,7 @@ public final class HubPayloadHandlers {
         if (!result.ok()) {
             player.sendSystemMessage(result.message());
         } else {
-            player.sendOverlayMessage(result.message());
+            VersionCompat.overlay(player, result.message());
         }
         Installation fresh = SecurityInstallations.get(player.level().getServer()).byId(installationId).orElse(null);
         if (fresh == null) {

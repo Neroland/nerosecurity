@@ -187,4 +187,19 @@ public class KeycardProgrammerMenu extends AbstractContainerMenu {
             return 1;
         }
     }
+
+    //? if <1.21.2 {
+    /*// 1.21.1 has no AbstractContainerMenu.addStandardInventorySlots; same layout as the 1.21.2+ helper.
+    private void addStandardInventorySlots(net.minecraft.world.Container container, int left, int top) {
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                addSlot(new net.minecraft.world.inventory.Slot(container, col + (row + 1) * 9, left + col * 18,
+                        top + row * 18));
+            }
+        }
+        for (int col = 0; col < 9; col++) {
+            addSlot(new net.minecraft.world.inventory.Slot(container, col, left + col * 18, top + 58));
+        }
+    }
+    *///?}
 }

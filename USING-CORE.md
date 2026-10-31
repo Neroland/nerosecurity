@@ -2,8 +2,8 @@
 
 Every Neroland Core surface this mod actually consumes, checked against the `za.co.neroland.nerolandcore`
 imports in `common/src` and the three loader source trees. NeroSecurity compiles against
-**Neroland Core 1.15.0** and floors every loader manifest at that compiled version
-(`[1.15.0,2.0)` on NeoForge/Forge, `>=1.15.0 <2.0.0` on Fabric), so an older Core is refused by
+**Neroland Core 1.17.0** and floors every loader manifest at that compiled version
+(`[1.17.0,2.0)` on NeoForge/Forge, `>=1.17.0 <2.0.0` on Fabric), so an older Core is refused by
 the loader with a clear message instead of failing later with a missing-method error.
 
 ## Getting Core at build time
@@ -25,7 +25,7 @@ once in `gradle.properties` (`nerolandcore_version`). `stonecutter.gradle` resol
 | Package | API | Used for |
 | --- | --- | --- |
 | `config` | `ConfigSchema`, `ConfigManager`, `ConfigValue` | The whole `config/nerosecurity.properties` schema |
-| `registry` | `RegistrationProvider` (+ `RegistryEntry`), `CoreCreativeTab`, `BlockCodecs` | Registering blocks, items, block entities, menus and data components; the shared creative tab; block codecs |
+| `registry` | `RegistrationProvider` (+ `RegistryEntry`), `BlockCodecs` | Registering blocks, items, block entities, menus, data components and NeroSecurity's own creative tab; block codecs |
 | `machine` | `AbstractMachineBlockEntity` | Energy buffer and ticking for doors, laser nodes, cameras and emitters |
 | `energy` | `NeroEnergyStorage` | The energy buffer type and the insert-only views handed to other mods |
 | `sideconfig` | `SideConfig`, `SideConfigComponent`, `Channel`, `ChannelConfig`, `RelativeFace`, `SideGating`, `SideMode`, `SidePreset` | Fixed insert-only energy routing on every powered device |
@@ -49,14 +49,14 @@ listed in the wiki's [Config](wiki/Config.md) page.
 
 ## Registries — `za.co.neroland.nerolandcore.registry`
 
-**Used:** `RegistrationProvider` and `RegistrationProvider.RegistryEntry`, `CoreCreativeTab`, `BlockCodecs`.
+**Used:** `RegistrationProvider` and `RegistrationProvider.RegistryEntry`, `BlockCodecs`.
 
 - `registry/NeroSecurityBlocks`, `NeroSecurityItems`, `NeroSecurityBlockEntities`, `NeroSecurityMenus`
   and `NeroSecurityDataComponents` create one `RegistrationProvider` each; the per-feature
   `*Registrations` classes add their entries through them. The Forge and NeoForge entry points hand
   Core their mod bus with `RegistrationProvider.attach(...)`.
-- Every block item and item is added to Core's shared creative tab with `CoreCreativeTab.add(...)`.
-  NeroSecurity has no tab of its own.
+- Every block item and item is listed in NeroSecurity's own creative tab, `registry/ModCreativeTab`,
+  registered through the same `RegistrationProvider`. Nothing is added to Core's tab.
 - Every block's `MapCodec` is built with `BlockCodecs.simple(...)`.
 
 ## Machines, energy and side configuration

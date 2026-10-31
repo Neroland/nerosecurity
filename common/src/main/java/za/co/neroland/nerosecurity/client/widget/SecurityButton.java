@@ -9,6 +9,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
+import za.co.neroland.nerosecurity.client.GuiCompat;
 import za.co.neroland.nerosecurity.client.SecurityColours;
 
 /**
@@ -116,7 +117,7 @@ public class SecurityButton extends SecurityWidget {
         g.fill(x + 1, y + 1, x + w - 1, y + 2, 0x22FFFFFF);
         if (danger && this.active && hot) {
             // A second edge line so a focused danger button reads as focused without relying on hue.
-            g.outline(x + 1, y + 1, w - 2, h - 2, SecurityColours.DANGER_EDGE);
+            GuiCompat.outline(g, x + 1, y + 1, w - 2, h - 2, SecurityColours.DANGER_EDGE);
         }
         int text = !this.active ? WidgetColours.DISABLED_TEXT
                 : (hot || selected ? WidgetColours.BUTTON_TEXT_HOT : WidgetColours.BUTTON_TEXT);

@@ -6,6 +6,8 @@ import net.minecraft.network.chat.Component;
 
 import org.jetbrains.annotations.Nullable;
 
+import za.co.neroland.nerosecurity.client.GuiCompat;
+
 /**
  * A 7×7 status glyph plus its word. The glyph's <b>shape</b> differs per {@link Status} (filled square /
  * hollow square with a dot / outline / cross), so colour is never the only signal; the word is white.
@@ -48,10 +50,10 @@ public final class StatusDot {
         switch (shape) {
             case FILLED_SQUARE -> g.fill(x, y, x + SIZE, y + SIZE, argb);
             case HOLLOW_WITH_DOT -> {
-                g.outline(x, y, SIZE, SIZE, argb);
+                GuiCompat.outline(g, x, y, SIZE, SIZE, argb);
                 g.fill(x + 2, y + 2, x + 5, y + 5, argb);
             }
-            case OUTLINE -> g.outline(x, y, SIZE, SIZE, argb);
+            case OUTLINE -> GuiCompat.outline(g, x, y, SIZE, SIZE, argb);
             case CROSS -> {
                 for (int i = 0; i < SIZE; i++) {
                     g.fill(x + i, y + i, x + i + 1, y + i + 1, argb);

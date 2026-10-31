@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Client-only {@code /nsber} command: prints the last {@link BerStats#WINDOW}-frame block-entity-renderer average
@@ -39,7 +40,7 @@ public final class BerCommand {
     private static void say(String text) {
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && mc.player != null) {
-            mc.player.sendSystemMessage(Component.literal(text));
+            VersionCompat.systemMessage(mc.player, Component.literal(text));
         }
     }
 }

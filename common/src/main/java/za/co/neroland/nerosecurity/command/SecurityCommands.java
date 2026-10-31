@@ -33,6 +33,7 @@ import za.co.neroland.nerosecurity.installation.PlayerNames;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.installation.ServiceResult;
 import za.co.neroland.nerosecurity.keycard.KeycardService;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
 
 /**
@@ -108,7 +109,7 @@ public final class SecurityCommands {
                                         .executes(ctx -> runSafely(ctx.getSource(), "notify-officers",
                                                 () -> notifyOfficers(ctx, false))))))
                 .then(Commands.literal("admin")
-                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .requires(VersionCompat.gamemasters())
                         .then(Commands.literal("unlock")
                                 .then(InstallationArgument.argument(InstallationArgument.Scope.ALL)
                                         .executes(ctx -> runSafely(ctx.getSource(), "admin unlock", () -> adminUnlock(ctx)))))

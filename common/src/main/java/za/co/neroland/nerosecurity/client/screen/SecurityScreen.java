@@ -128,7 +128,13 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
      */
     protected SecurityScreen(T menu, Inventory inventory, Component title, int panelWidth, int panelHeight,
                              boolean showInventory, @Nullable LongSupplier versionSource) {
+        //? if >=26.1 {
         super(menu, inventory, title, panelWidth, panelHeight + (showInventory ? INVENTORY_HEIGHT : 0));
+        //?} else {
+        /*super(menu, inventory, title);
+        this.imageWidth = panelWidth;
+        this.imageHeight = panelHeight + (showInventory ? INVENTORY_HEIGHT : 0);
+        *///?}
         this.panelWidth = panelWidth;
         this.panelHeight = panelHeight;
         this.showInventory = showInventory;
@@ -375,6 +381,7 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
 
     // --- drawing --------------------------------------------------------------------------------
 
+    //? if >=26.1 {
     @Override
     public final void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         ConfirmPanel modalPanel = confirm;
@@ -390,6 +397,58 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
             modalPanel.extract(g, this.font, mouseX, mouseY, partialTick);
         }
     }
+    //?} else if >=1.21.6 {
+    /*// Before 26.1 the container screen draws background (renderBg), widgets, slots and labels in render(..);
+    // the hull and panel go in renderBg so they stay behind the widgets, exactly as on 26.x.
+    @Override
+    public final void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        ConfirmPanel modalPanel = confirm;
+        boolean modal = modalPanel != null;
+        this.frameMouseX = modal ? OFFSCREEN : mouseX;
+        this.frameMouseY = modal ? OFFSCREEN : mouseY;
+        super.render(g, frameMouseX, frameMouseY, partialTick);
+        extractOverlay(g, frameMouseX, frameMouseY, partialTick);
+        if (modalPanel != null) {
+            g.nextStratum();
+            modalPanel.extract(g, this.font, mouseX, mouseY, partialTick);
+        } else {
+            this.renderTooltip(g, frameMouseX, frameMouseY);
+        }
+    }
+
+    @Override
+    protected final void renderBg(GuiGraphicsExtractor g, float partialTick, int mouseX, int mouseY) {
+        drawHull(g);
+        extractPanel(g, frameMouseX, frameMouseY, partialTick);
+    }
+    *///?} else {
+    /*// Before 26.1 the container screen draws background (renderBg), widgets, slots and labels in render(..);
+    // the hull and panel go in renderBg so they stay behind the widgets, exactly as on 26.x.
+    @Override
+    public final void render(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        ConfirmPanel modalPanel = confirm;
+        boolean modal = modalPanel != null;
+        this.frameMouseX = modal ? OFFSCREEN : mouseX;
+        this.frameMouseY = modal ? OFFSCREEN : mouseY;
+        super.render(g, frameMouseX, frameMouseY, partialTick);
+        extractOverlay(g, frameMouseX, frameMouseY, partialTick);
+        if (modalPanel != null) {
+            // No GUI strata before 1.21.6: lift the modal above the slot items instead.
+            g.pose().pushPose();
+            g.pose().translate(0.0F, 0.0F, 400.0F);
+            modalPanel.extract(g, this.font, mouseX, mouseY, partialTick);
+            g.pose().popPose();
+        } else {
+            this.renderTooltip(g, frameMouseX, frameMouseY);
+        }
+    }
+
+    @Override
+    protected final void renderBg(GuiGraphicsExtractor g, float partialTick, int mouseX, int mouseY) {
+        drawHull(g);
+        extractPanel(g, frameMouseX, frameMouseY, partialTick);
+    }
+    *///?}
 
     /**
      * The screen body, drawn on the panel before the widgets (so section boxes and troughs sit behind them).
@@ -481,12 +540,17 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
         int my = frameMouseY;
         if (mx >= x && mx < x + w && my >= y && my < y + h) {
             List<FormattedCharSequence> lines = font.split(text, TOOLTIP_WIDTH);
+            //? if >=1.21.6 {
             g.setTooltipForNextFrame(font, lines, mx, my);
+            //?} else {
+            /*setTooltipForNextRenderPass(lines);
+            *///?}
         }
     }
 
     // --- input ----------------------------------------------------------------------------------
 
+    //? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (confirm != null) {
@@ -510,6 +574,45 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
         }
         return super.mouseDragged(event, dx, dy);
     }
+    //?} else {
+    /*// Before 1.21.9 screens receive raw mouse/key arguments; these bridges wrap them in the look-alike events
+    // (client.compat) so subclasses override the same event-shaped methods as on newer lines.
+    @Override
+    public final boolean mouseClicked(double x, double y, int button) {
+        return mouseClicked(new MouseButtonEvent(x, y, button), false);
+    }
+
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (confirm != null) {
+            return confirm.mouseClicked(event, doubleClick);
+        }
+        return super.mouseClicked(event.x(), event.y(), event.button());
+    }
+
+    @Override
+    public final boolean mouseReleased(double x, double y, int button) {
+        return mouseReleased(new MouseButtonEvent(x, y, button));
+    }
+
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (confirm != null) {
+            return true;
+        }
+        return super.mouseReleased(event.x(), event.y(), event.button());
+    }
+
+    @Override
+    public final boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+        return mouseDragged(new MouseButtonEvent(x, y, button), dx, dy);
+    }
+
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (confirm != null) {
+            return true;
+        }
+        return super.mouseDragged(event.x(), event.y(), event.button(), dx, dy);
+    }
+    *///?}
 
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
@@ -524,6 +627,7 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
         return super.mouseScrolled(x, y, scrollX, scrollY);
     }
 
+    //? if >=1.21.9 {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (confirm != null) {
@@ -544,6 +648,36 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
         }
         return super.charTyped(event);
     }
+    //?} else {
+    /*@Override
+    public final boolean keyPressed(int key, int scancode, int modifiers) {
+        return keyPressed(new KeyEvent(key, scancode, modifiers));
+    }
+
+    public boolean keyPressed(KeyEvent event) {
+        if (confirm != null) {
+            return confirm.keyPressed(event);
+        }
+        // A focused text box keeps every key except Esc and Tab, so typing "e" never closes the screen.
+        if (getFocused() instanceof EditBox box && box.canConsumeInput() && !event.isEscape() && !event.isCycleFocus()) {
+            box.keyPressed(event.key(), event.scancode(), event.modifiers());
+            return true;
+        }
+        return super.keyPressed(event.key(), event.scancode(), event.modifiers());
+    }
+
+    @Override
+    public final boolean charTyped(char codepoint, int modifiers) {
+        return charTyped(new CharacterEvent(codepoint, modifiers));
+    }
+
+    public boolean charTyped(CharacterEvent event) {
+        if (confirm != null) {
+            return true;
+        }
+        return super.charTyped(event.codepoint(), event.modifiers());
+    }
+    *///?}
 
     /** The ✕ in the top-right corner, drawn as two diagonals so it needs no glyph. Navigation, never held. */
     private static final class CloseButton extends SecurityButton {

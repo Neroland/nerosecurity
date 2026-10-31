@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -13,7 +11,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.block.door.BlastDoorBlock;
@@ -45,15 +43,15 @@ public final class DoorRegistrations {
 
     public static final RegistryEntry<BlockEntityType<SecurityDoorBlockEntity>> SECURITY_DOOR_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register("security_door",
-                    key -> new BlockEntityType<>((pos, state) -> new SecurityDoorBlockEntity(
+                    key -> BlockEntityTypeCompat.create((pos, state) -> new SecurityDoorBlockEntity(
                             DoorRegistrations.SECURITY_DOOR_ENTITY.get(), pos, state),
-                            Set.of(SECURITY_DOOR.get())));
+                            SECURITY_DOOR.get()));
 
     public static final RegistryEntry<BlockEntityType<SecurityDoorBlockEntity>> BLAST_DOOR_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register("blast_door",
-                    key -> new BlockEntityType<>((pos, state) -> new SecurityDoorBlockEntity(
+                    key -> BlockEntityTypeCompat.create((pos, state) -> new SecurityDoorBlockEntity(
                             DoorRegistrations.BLAST_DOOR_ENTITY.get(), pos, state),
-                            Set.of(BLAST_DOOR.get())));
+                            BLAST_DOOR.get()));
 
     public static final RegistryEntry<MenuType<SecurityDoorMenu>> SECURITY_DOOR_MENU =
             NeroSecurityMenus.MENUS.register("security_door",
@@ -86,9 +84,9 @@ public final class DoorRegistrations {
     public static void init() {
     }
 
-    /** Adds both door items to Core's shared creative tab. */
+    /** Adds both door items to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(SECURITY_DOOR_ITEM::get);
-        CoreCreativeTab.add(BLAST_DOOR_ITEM::get);
+        ModCreativeTab.add(SECURITY_DOOR_ITEM::get);
+        ModCreativeTab.add(BLAST_DOOR_ITEM::get);
     }
 }

@@ -5,7 +5,11 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+//? if >=26.1 {
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
+//?} else {
+/*import net.neoforged.neoforge.event.level.BlockEvent.BreakEvent;
+*///?}
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -18,8 +22,8 @@ import za.co.neroland.nerosecurity.server.ServerHooks;
 /**
  * NeoForge server-side wiring: the {@code /nerosecurity} command tree (built in common), the server
  * lifecycle hooks ({@link ServerHooks}: started, stopping, end of tick, player join and leave) and the hub
- * break guard. 26.x moved the break event to {@code event.level.block.BreakBlockEvent}; it fires for every
- * player break, creative included, so creative mode cannot bypass the hub's break rule.
+ * break guard. 26.x moved the break event to {@code event.level.block.BreakBlockEvent} (before 26.1 it is
+ * {@code BlockEvent.BreakEvent}, same getters); it fires for every player break, creative included, so creative mode cannot bypass the hub's break rule.
  */
 public final class NeoForgeSecurityEvents {
 
@@ -30,7 +34,11 @@ public final class NeoForgeSecurityEvents {
     public static void register() {
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
                 SecurityCommands.register(event.getDispatcher()));
+        //? if >=26.1 {
         NeoForge.EVENT_BUS.addListener((BreakBlockEvent event) -> {
+        //?} else {
+        /*NeoForge.EVENT_BUS.addListener((BreakEvent event) -> {
+        *///?}
             if (event.getState().getBlock() instanceof SecurityHubBlock
                     && event.getLevel() instanceof ServerLevel level
                     && event.getPlayer() instanceof ServerPlayer player

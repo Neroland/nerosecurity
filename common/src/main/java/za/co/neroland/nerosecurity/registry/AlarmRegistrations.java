@@ -1,7 +1,5 @@
 package za.co.neroland.nerosecurity.registry;
 
-import java.util.Set;
-
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -13,7 +11,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
-import za.co.neroland.nerolandcore.registry.CoreCreativeTab;
+import za.co.neroland.nerolandcore.registry.BlockEntityTypeCompat;
 import za.co.neroland.nerolandcore.registry.RegistrationProvider.RegistryEntry;
 
 import za.co.neroland.nerosecurity.block.alarm.AlarmBlock;
@@ -47,7 +45,7 @@ public final class AlarmRegistrations {
 
     public static final RegistryEntry<BlockEntityType<AlarmBlockEntity>> ALARM_BLOCK_ENTITY =
             NeroSecurityBlockEntities.BLOCK_ENTITIES.register("alarm",
-                    key -> new BlockEntityType<>(AlarmBlockEntity::new, Set.of(ALARM.get())));
+                    key -> BlockEntityTypeCompat.create(AlarmBlockEntity::new, ALARM.get()));
 
     public static final RegistryEntry<BlockItem> ALARM_ITEM = NeroSecurityItems.ITEMS.register("alarm",
             key -> new AlarmItem(ALARM.get(), new Item.Properties().setId(key).useBlockDescriptionPrefix()));
@@ -62,8 +60,8 @@ public final class AlarmRegistrations {
     public static void init() {
     }
 
-    /** Adds the alarm to Core's shared creative tab. */
+    /** Adds the alarm to the NeroSecurity creative tab. */
     public static void addToCreativeTab() {
-        CoreCreativeTab.add(ALARM_ITEM::get);
+        ModCreativeTab.add(ALARM_ITEM::get);
     }
 }

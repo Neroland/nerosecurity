@@ -675,9 +675,14 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
      * The emitter is being replaced (not unloaded): take the field down, drop the modules, and if it was linked publish
      * {@code DEVICE_FORCED} for a non-player removal and drop the link so the installation keeps no ghost device.
      */
+    //? if >=1.21.5 {
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
+    //?} else {
+    /*// Before 1.21.5 there is no block-entity removal hook; the block's onRemove calls this instead.
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+    *///?}
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
@@ -707,9 +712,16 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
 
     // --- persistence -----------------------------------------------------------------------------
 
+    //? if >=1.21.6 {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
+    //?} else {
+    /*@Override
+    protected void saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        ValueOutput output = ValueOutput.of(tag, registries);
+    *///?}
         settings.save(output.child(KEY_SETTINGS));
         modules.save(output.child(KEY_MODULES));
         output.putString(KEY_STATE, fieldState.jsonName());
@@ -719,9 +731,16 @@ public class ForceFieldEmitterBlockEntity extends AbstractMachineBlockEntity
         output.store(KEY_PROJECTED, Codec.LONG_STREAM, projected.stream().mapToLong(BlockPos::asLong));
     }
 
+    //? if >=1.21.6 {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+    //?} else {
+    /*@Override
+    protected void loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        ValueInput input = ValueInput.of(tag, registries);
+    *///?}
         if (this.sideConfig != null) {
             InputOnlyEnergy.enforceInputOnly(this.sideConfig.config());
         }

@@ -4,7 +4,9 @@ import java.util.UUID;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
+//? if >=1.21.5 {
 import net.minecraft.world.entity.EntityReference;
+//?}
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.monster.Enemy;
@@ -125,8 +127,12 @@ public final class SensorPermission {
 
     /** The owner's UUID from the stored reference, without resolving (loading) the owner entity. */
     static @Nullable UUID ownerUuid(OwnableEntity ownable) {
+        //? if >=1.21.5 {
         EntityReference<LivingEntity> reference = ownable.getOwnerReference();
         return reference == null ? null : reference.getUUID();
+        //?} else {
+        /*return ownable.getOwnerUUID();
+        *///?}
     }
 
     /** Classifies a game entity at a sensor. */

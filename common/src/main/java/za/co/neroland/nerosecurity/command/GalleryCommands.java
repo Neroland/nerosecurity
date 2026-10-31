@@ -17,7 +17,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+//? if >=1.21.6 {
 import net.minecraft.util.ProblemReporter;
+//?}
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.decoration.GlowItemFrame;
@@ -28,7 +30,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
+//? if >=1.21.6 {
 import net.minecraft.world.level.storage.TagValueInput;
+//?}
 import net.minecraft.world.phys.AABB;
 
 import org.jetbrains.annotations.Nullable;
@@ -76,6 +80,7 @@ import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.installation.ServiceResult;
 import za.co.neroland.nerosecurity.keycard.KeycardService;
 import za.co.neroland.nerosecurity.notice.InstallationAreas;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 import za.co.neroland.nerosecurity.registry.AlarmRegistrations;
 import za.co.neroland.nerosecurity.registry.CameraRegistrations;
 import za.co.neroland.nerosecurity.registry.ChestRegistrations;
@@ -148,7 +153,7 @@ public final class GalleryCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("nerosecurity")
                 .then(Commands.literal("gallery")
-                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .requires(VersionCompat.gamemasters())
                         .executes(ctx -> runSafely(ctx.getSource(), "gallery", () -> build(ctx.getSource())))
                         .then(Commands.literal("clear")
                                 .executes(ctx -> runSafely(ctx.getSource(), "gallery clear",
@@ -193,7 +198,7 @@ public final class GalleryCommands {
         if (player == null) {
             return 0;
         }
-        ServerLevel level = player.level();
+        ServerLevel level = VersionCompat.serverLevel(player);
         BlockPos origin = player.blockPosition();
 
         // 1. Never stack: a previous gallery at this origin comes down first, installation included.
@@ -350,7 +355,7 @@ public final class GalleryCommands {
         if (player == null) {
             return 0;
         }
-        ServerLevel level = player.level();
+        ServerLevel level = VersionCompat.serverLevel(player);
         BlockPos origin = player.blockPosition();
         if (!hasGalleryAt(level, origin)) {
             source.sendFailure(Component.translatable("command.nerosecurity.gallery.nothing_here"));
@@ -1060,7 +1065,11 @@ public final class GalleryCommands {
         // ArmorStand#setMarker is private in 26.x, so the flag goes in the only public way: Entity#load.
         CompoundTag markerTag = new CompoundTag();
         markerTag.putBoolean("Marker", true);
+        //? if >=1.21.6 {
         stand.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), markerTag));
+        //?} else {
+        /*stand.load(markerTag);
+        *///?}
         stand.refreshDimensions();
         stand.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5); // load() zeroed the position
         stand.setCustomName(Component.literal(text));

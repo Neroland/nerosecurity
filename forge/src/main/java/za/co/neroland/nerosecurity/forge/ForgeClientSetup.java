@@ -9,7 +9,12 @@ import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+//? if >=1.21.6 {
 import net.minecraftforge.eventbus.api.bus.BusGroup;
+//?} else {
+/*import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.IEventBus;
+*///?}
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import za.co.neroland.nerosecurity.client.BerCommand;
@@ -46,6 +51,7 @@ public final class ForgeClientSetup {
     private ForgeClientSetup() {
     }
 
+    //? if >=1.21.6 {
     public static void init(BusGroup modBusGroup) {
         FMLClientSetupEvent.getBus(modBusGroup).addListener(event -> event.enqueueWork(() -> {
             MenuScreens.register(NeroSecurityMenus.SECURITY_HUB.get(), SecurityHubScreen::new);
@@ -57,7 +63,7 @@ public final class ForgeClientSetup {
             MenuScreens.register(MonitorRegistrations.MENU.get(), MonitorScreen::new);
             MenuScreens.register(FieldRegistrations.FIELD_MENU.get(), FieldSettingsScreen::new);
         }));
-        EntityRenderersEvent.RegisterRenderers.BUS.addListener(ForgeClientSetup::onRegisterRenderers);
+        listenRenderers(modBusGroup);
         // Deny/accept sound and flash for the acting player (DeviceFeedback payload).
         ClientDeviceFeedback.init();
         // Client-only /nsber (BER budget readout).
@@ -75,6 +81,43 @@ public final class ForgeClientSetup {
             SecurityNetwork.clearClientCaches();
         });
     }
+    //?} else {
+    /*// Forge before 1.21.6 (EventBus 6): a mod event bus plus the one global game bus, typed listeners.
+    public static void init(IEventBus modEventBus) {
+        modEventBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(() -> {
+            MenuScreens.register(NeroSecurityMenus.SECURITY_HUB.get(), SecurityHubScreen::new);
+            MenuScreens.register(ProgrammerRegistrations.MENU.get(), KeycardProgrammerScreen::new);
+            MenuScreens.register(DoorRegistrations.SECURITY_DOOR_MENU.get(), SecurityDoorScreen::new);
+            MenuScreens.register(ChestRegistrations.SECURE_CHEST_SETTINGS_MENU.get(), SecureChestSettingsScreen::new);
+            MenuScreens.register(LaserRegistrations.SENSOR_MENU.get(), SensorSettingsScreen::new);
+            MenuScreens.register(AlarmRegistrations.ALARM_MENU.get(), AlarmScreen::new);
+            MenuScreens.register(MonitorRegistrations.MENU.get(), MonitorScreen::new);
+            MenuScreens.register(FieldRegistrations.FIELD_MENU.get(), FieldSettingsScreen::new);
+        }));
+        modEventBus.addListener(ForgeClientSetup::onRegisterRenderers);
+        // Deny/accept sound and flash for the acting player (DeviceFeedback payload).
+        ClientDeviceFeedback.init();
+        // Client-only /nsber (BER budget readout) and the /nsecgallery capture harness.
+        MinecraftForge.EVENT_BUS.addListener((RegisterClientCommandsEvent event) ->
+                BerCommand.register(event.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener((RegisterClientCommandsEvent event) ->
+                GalleryCaptureHarness.registerClientCommands(event.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent.Post event) -> GalleryCaptureHarness.tick());
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) ->
+                SecurityNetwork.clearClientCaches());
+    }
+    *///?}
+
+    //? if >=1.21.9 {
+    private static void listenRenderers(BusGroup modBusGroup) {
+        EntityRenderersEvent.RegisterRenderers.BUS.addListener(ForgeClientSetup::onRegisterRenderers);
+    }
+    //?} else if >=1.21.6 {
+    /*// Forge 1.21.6 - 1.21.8: mod-bus events are reached through the mod's bus group.
+    private static void listenRenderers(BusGroup modBusGroup) {
+        EntityRenderersEvent.RegisterRenderers.getBus(modBusGroup).addListener(ForgeClientSetup::onRegisterRenderers);
+    }
+    *///?}
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         ClientBlockEntityRenderers.registerAll(new ClientBlockEntityRenderers.Sink() {

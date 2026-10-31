@@ -12,7 +12,9 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+//? if >=1.21.5 {
 import net.minecraft.world.item.component.TooltipDisplay;
+//?}
 import net.minecraft.world.item.context.UseOnContext;
 
 import za.co.neroland.nerosecurity.block.entity.SecurityHubBlockEntity;
@@ -23,6 +25,7 @@ import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.installation.ServiceResult;
 import za.co.neroland.nerosecurity.registry.NeroSecurityDataComponents;
 import za.co.neroland.nerosecurity.sound.SecuritySounds;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * The Linking Tool. Sneak-use on a hub selects it; use on a device links that device to the selected
@@ -35,10 +38,18 @@ public class LinkingToolItem extends Item {
         super(properties);
     }
 
+    //? if >=1.21.5 {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display,
             Consumer<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, display, tooltip, flag);
+    //?} else {
+    /*@Override
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, java.util.List<Component> lines,
+            TooltipFlag flag) {
+        super.appendHoverText(stack, context, lines, flag);
+        Consumer<Component> tooltip = lines::add;
+    *///?}
         SelectedHub selected = stack.get(NeroSecurityDataComponents.SELECTED_HUB.get());
         if (selected != null) {
             tooltip.accept(Component.translatable("item.nerosecurity.linking_tool.selected", selected.name())
@@ -61,9 +72,9 @@ public class LinkingToolItem extends Item {
         if (sneaking && level.getBlockEntity(pos) instanceof SecurityHubBlockEntity hub) {
             Installation installation = hub.installation(level.getServer());
             if (installation == null) {
-                player.sendOverlayMessage(Component.translatable("hub.nerosecurity.inert"));
+                VersionCompat.overlay(player, Component.translatable("hub.nerosecurity.inert"));
             } else {
-                player.sendOverlayMessage(InstallationService.selectHub(player, tool, installation).message());
+                VersionCompat.overlay(player, InstallationService.selectHub(player, tool, installation).message());
             }
             return InteractionResult.SUCCESS;
         }
@@ -75,34 +86,34 @@ public class LinkingToolItem extends Item {
             Optional<Installation> linked = store.atDevice(device);
             if (linked.isPresent()) {
                 ServiceResult unlinked = InstallationService.unlinkDevice(player, linked.get(), device);
-                player.sendOverlayMessage(unlinked.message());
+                VersionCompat.overlay(player, unlinked.message());
                 if (unlinked.ok()) {
                     SecuritySounds.LINK.play(level, pos);
                 }
             } else {
-                player.sendOverlayMessage(Component.translatable("tool.nerosecurity.not_a_device"));
+                VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.not_a_device"));
             }
             return InteractionResult.SUCCESS;
         }
 
         // Plain use on a device: link it to the selected installation.
         if (!InstallationService.isDevice(level.getBlockState(pos))) {
-            player.sendOverlayMessage(Component.translatable("tool.nerosecurity.not_a_device"));
+            VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.not_a_device"));
             return InteractionResult.SUCCESS;
         }
         SelectedHub selected = tool.get(NeroSecurityDataComponents.SELECTED_HUB.get());
         if (selected == null) {
-            player.sendOverlayMessage(Component.translatable("tool.nerosecurity.no_hub"));
+            VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.no_hub"));
             return InteractionResult.SUCCESS;
         }
         Optional<Installation> installation = store.byId(selected.installationId());
         if (installation.isEmpty()) {
             tool.remove(NeroSecurityDataComponents.SELECTED_HUB.get());
-            player.sendOverlayMessage(Component.translatable("tool.nerosecurity.hub_gone"));
+            VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.hub_gone"));
             return InteractionResult.SUCCESS;
         }
         ServiceResult result = InstallationService.linkDevice(player, installation.get(), level, pos);
-        player.sendOverlayMessage(result.message());
+        VersionCompat.overlay(player, result.message());
         if (result.ok()) {
             SecuritySounds.LINK.play(level, pos);
         }

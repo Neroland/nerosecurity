@@ -11,6 +11,9 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
+//? if <1.21.6 {
+/*import net.minecraftforge.common.MinecraftForge;
+*///?}
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.wrapper.SidedInvWrapper;
 
@@ -61,10 +64,18 @@ public final class ForgeCapabilities {
 
     /** Called once from the Forge entry point. */
     public static void register() {
+        //? if >=1.21.6 {
         AttachCapabilitiesEvent.BlockEntities.BUS.addListener(ForgeCapabilities::onAttachBlockEntity);
+        //?} else {
+        /*MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, ForgeCapabilities::onAttachBlockEntity);
+        *///?}
     }
 
+    //? if >=1.21.6 {
     private static void onAttachBlockEntity(AttachCapabilitiesEvent.BlockEntities event) {
+    //?} else {
+    /*private static void onAttachBlockEntity(AttachCapabilitiesEvent<BlockEntity> event) {
+    *///?}
         if (event.getObject() instanceof SecurityDoorBlockEntity door) {
             EnergyProvider<SecurityDoorBlockEntity> provider = new EnergyProvider<>(door, DoorEnergyAccess::of);
             event.addCapability(DOOR_ENERGY, provider);

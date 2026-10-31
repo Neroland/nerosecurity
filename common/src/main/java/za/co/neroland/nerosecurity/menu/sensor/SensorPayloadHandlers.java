@@ -26,6 +26,7 @@ import za.co.neroland.nerosecurity.menu.sensor.SensorPayloads.SensorSnapshot;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.sensor.SensorSettings;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Opening the shared sensor settings screen and handling its configure intent, for both sensors.
@@ -54,12 +55,12 @@ public final class SensorPayloadHandlers {
         DevicePos at = DevicePos.of(level, be.getBlockPos());
         Installation installation = SecurityInstallations.get(level.getServer()).atDevice(at).orElse(null);
         if (installation == null) {
-            player.sendOverlayMessage(Component.translatable("device.nerosecurity.unlinked"));
+            VersionCompat.overlay(player, Component.translatable("device.nerosecurity.unlinked"));
             return;
         }
         AccessDecision decision = resolveConfigure(player, installation, at);
         if (!decision.allowed()) {
-            player.sendOverlayMessage(decision.message());
+            VersionCompat.overlay(player, decision.message());
             SecurityDevice.denyFeedback(player, be.getBlockPos());
             return;
         }
@@ -124,7 +125,7 @@ public final class SensorPayloadHandlers {
                 SecurityEventBus.publish(SecurityEvent.of(SecurityEventType.DEVICE_CONFIGURED, installation.id(), at,
                         player.getUUID(), System.currentTimeMillis()));
                 done = Component.translatable("sensor.nerosecurity.configured");
-                player.sendOverlayMessage(done);
+                VersionCompat.overlay(player, done);
             }
             sendSnapshot(player, host, installation, decision, true, done);
         });

@@ -31,6 +31,7 @@ import za.co.neroland.nerosecurity.menu.alarm.AlarmPayloads.AlarmSilence;
 import za.co.neroland.nerosecurity.menu.alarm.AlarmPayloads.AlarmSnapshot;
 import za.co.neroland.nerosecurity.platform.Services;
 import za.co.neroland.nerosecurity.telemetry.NeroSecurityTelemetry;
+import za.co.neroland.nerosecurity.platform.VersionCompat;
 
 /**
  * Server side of the alarm settings screen. Everything starts from nothing the client claims: the
@@ -63,12 +64,12 @@ public final class AlarmPayloadHandlers {
         runSafely(player, "alarm_open_settings", () -> {
             Installation installation = alarm.installation();
             if (installation == null) {
-                player.sendOverlayMessage(Component.translatable("device.nerosecurity.unlinked"));
+                VersionCompat.overlay(player, Component.translatable("device.nerosecurity.unlinked"));
                 return;
             }
             AccessDecision decision = resolve(player, alarm, installation, AccessAction.CONFIGURE_DEVICE);
             if (!decision.allowed()) {
-                player.sendOverlayMessage(decision.message());
+                VersionCompat.overlay(player, decision.message());
                 SecurityDevice.denyFeedback(player, alarm.getBlockPos());
                 return;
             }
@@ -123,7 +124,7 @@ public final class AlarmPayloadHandlers {
                 publish(player, alarm, installation, SecurityEventType.DEVICE_CONFIGURED);
             }
             Component done = Component.translatable("alarm.nerosecurity.configured");
-            player.sendOverlayMessage(done);
+            VersionCompat.overlay(player, done);
             refresh(player, alarm, true, done);
         });
     }
@@ -149,7 +150,7 @@ public final class AlarmPayloadHandlers {
             alarm.silenceUntil(AlarmRules.silencedUntil(System.currentTimeMillis(), minutes));
             publish(player, alarm, installation, SecurityEventType.ALARM_SILENCED);
             Component silenced = Component.translatable("alarm.nerosecurity.silenced", minutes);
-            player.sendOverlayMessage(silenced);
+            VersionCompat.overlay(player, silenced);
             refresh(player, alarm, true, silenced);
         });
     }
