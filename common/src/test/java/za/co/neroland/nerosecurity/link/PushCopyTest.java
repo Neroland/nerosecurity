@@ -64,8 +64,9 @@ class PushCopyTest {
         assertEquals("Orbital Lab", body);
         assertTrue(alertText.contains("Orbital Lab"));
 
-        // The live row itself: no actor, no position, no owner.
-        String row = event.payload().toString();
+        // The live row itself: no actor, no position, no owner. The installation id is random and may legitimately
+        // contain "-456" (its third group always starts with "4"), so it is masked before the position check.
+        String row = event.payload().toString().replace(installation.id().toString(), "{installation}");
         assertFalse(row.contains(ACTOR.toString()) || row.contains(OWNER.toString()));
         assertFalse(row.contains("Steve") || row.contains("Alex"));
         assertFalse(row.contains("-456") || row.contains("\"x\"") || row.contains("overworld"));

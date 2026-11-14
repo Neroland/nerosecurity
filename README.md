@@ -71,7 +71,7 @@ loader manifest floors it at the version NeroSecurity is compiled against:
 | Mod | Minimum | What it adds |
 | --- | --- | --- |
 | NeroEconomy | 0.4.0-beta.1 | A ready seam for paid security tiers. Nothing costs credits yet. |
-| NeroFactions | 0.5.0-beta.1 | Bind an installation to a faction; members get access by reputation tier, capped at OFFICER. |
+| NeroFactions | 0.7.0-beta.1 | Bind an installation to a faction; members get access by reputation tier, capped at OFFICER. |
 | NeroColonies | 0.5.0-beta.1 | Bind to a colony; members get access by role, capped at OFFICER. |
 | Nerospace | 1.5.0 | Bind to a station; its current owner gets OFFICER. |
 | Open Parties and Claims | 0.32.7 (0.32.8 on 26.3) | Claims can refuse access on claimed land. They never grant. |

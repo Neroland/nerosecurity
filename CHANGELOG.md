@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0-beta.1] - 2026-11-14
+
+### Changed
+
+- **Faction rules now need NeroFactions 0.7.0-beta.1 or newer.** The NeroFactions integration now reads
+  memberships and tiers through NeroFactions' public API instead of its internals. Access decisions are
+  unchanged: a faction member is granted by their tier, capped at the binding's maximum; an outsider
+  (including negative standing), an unknown faction or an unrecognised tier grants nothing; and without
+  NeroFactions installed the other access rules apply exactly as before.
+
 ## [0.6.0-beta.1] - 2026-10-30
 
 NeroSecurity now runs on Minecraft 1.21.x as well as 26.x. Requires Neroland Core 1.17.0.

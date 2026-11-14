@@ -19,7 +19,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface FactionsBridge {
 
-    /** A player's standing with a faction (the names match NeroFactions' tiers one to one). */
+    /** A player's standing with a faction (lower-cased in Locale.ROOT, the names match NeroFactions' tier ids). */
     enum Tier {
         OUTSIDER, ASSOCIATE, MEMBER, TRUSTED, INNER_CIRCLE
     }
@@ -30,6 +30,6 @@ public interface FactionsBridge {
     /** Every faction {@code player} is currently a member of (for the bind command's suggestions). */
     Set<Identifier> membershipsOf(@Nullable MinecraftServer server, UUID player);
 
-    /** {@code player}'s tier in {@code faction} from their reputation, or null when the faction is unknown. */
+    /** {@code player}'s tier in {@code faction}, or null when the faction or the tier id is unknown (abstain). */
     @Nullable Tier tierOf(@Nullable MinecraftServer server, UUID player, Identifier faction);
 }
