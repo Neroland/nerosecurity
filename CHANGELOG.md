@@ -33,7 +33,7 @@ NeroSecurity now runs on Minecraft 1.21.x as well as 26.x. Requires Neroland Cor
 ### Changed
 
 - Now requires Neroland Core 1.17.0 or later.
-- Optional integrations now target NeroEconomy 0.5.0-beta.1, Nerospace 2.0.1, NeroFactions 0.6.1-beta.1 and
+- Optional integrations now target NeroEconomy 0.5.0-beta.1, Nerospace 2.1.1-beta.1, NeroFactions 0.6.1-beta.1 and
   NeroColonies 0.6.1-beta.1 or later.
 - **NeroSecurity now has its own creative tab.** Every NeroSecurity block and item moved out of Neroland
   Core's tab into a dedicated NeroSecurity tab, in the same order.
