@@ -17,6 +17,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (including negative standing), an unknown faction or an unrecognised tier grants nothing; and without
   NeroFactions installed the other access rules apply exactly as before.
 
+### Dependencies
+
+- Updated Neroland Core from 1.17.0 to 1.17.6.
+- Updated NeroEconomy from 0.5.0-beta.1 to 0.5.1-beta.1.
+- Updated NeroColonies from 0.6.1-beta.1 to 0.8.0-beta.1.
+- Updated NeroFactions from 0.7.0-beta.1 to 0.7.0-beta.2.
+- Updated Nerospace from 2.1.1-beta.1 to 2.2.0.
+- Updated Fabric Loader from 0.19.5 to 0.20.1.
+- Updated Fabric API (Minecraft 1.21.1) from 0.116.17+1.21.1 to 0.116.18+1.21.1.
+- Updated Fabric API (Minecraft 26.3) from 0.162.0+26.3 to 0.166.2+26.3.
+- Updated NeoForge (Minecraft 1.21.1) from 21.1.265 to 21.1.266.
+- Updated NeoForge (Minecraft 26.1.2) from 26.1.2.116 to 26.1.2.126.
+- Updated NeoForge (Minecraft 26.2) from 26.2.0.90 to 26.2.0.93.
+- Updated NeoForge (Minecraft 26.3) from 26.3.0.76 to 26.3.0.103.
+- Updated Forge (Minecraft 1.21.1) from 1.21.1-52.1.20 to 1.21.1-52.1.21.
+- Updated Forge (Minecraft 1.21.11) from 1.21.11-61.2.4 to 1.21.11-61.2.5.
+- Updated Forge (Minecraft 26.1.2) from 26.1.2-64.1.4 to 26.1.2-64.1.6.
+- Updated Forge (Minecraft 26.2) from 26.2-65.1.4 to 26.2-65.1.6.
+- Updated Forge (Minecraft 26.3) from 26.3-66.0.11 to 26.3-66.1.8.
+- Updated JEI (Minecraft 26.1.2) from 29.47.0.109 to 29.53.0.115.
+- Updated JEI (Minecraft 26.2) from 30.42.0.236 to 30.48.0.244.
+- Updated JEI (Minecraft 26.3) from 31.12.0.65 to 31.17.0.113.
+- Updated the EMI port for Minecraft 26.3 to build+62 on Fabric and NeoForge.
+- Updated Open Parties and Claims (Minecraft 1.21.1) from 0.32.7 to 0.33.0.
+- Updated Open Parties and Claims (Minecraft 1.21.8) from 0.32.7 to 0.33.0.
+- Updated Open Parties and Claims (Minecraft 1.21.10) from 0.32.7 to 0.33.0.
+- Updated Open Parties and Claims (Minecraft 1.21.11) from 0.32.7 to 0.33.0.
+- Updated Open Parties and Claims (Minecraft 26.1.2) from 0.32.7 to 0.33.0.
+- Updated Open Parties and Claims (Minecraft 26.2) from 0.32.7 to 0.33.0.
+- Updated Open Parties and Claims (Minecraft 26.3) from 0.32.8 to 0.33.0.
+- Updated Stonecutter from 0.9.8 to 0.10.
+- Updated the Gradle distribution from 9.8.1 to 9.9.1.
+- Updated the Sentry Java SDK from 8.60.0 to 8.64.0.
+
 ## [0.6.0-beta.1] - 2026-10-30
 
 NeroSecurity now runs on Minecraft 1.21.x as well as 26.x. Requires Neroland Core 1.17.0.
