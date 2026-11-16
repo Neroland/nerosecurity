@@ -20,6 +20,7 @@ import za.co.neroland.nerosecurity.data.SecurityData;
 import za.co.neroland.nerosecurity.economy.SecurityEconomy;
 import za.co.neroland.nerosecurity.installation.SecurityInstallations;
 import za.co.neroland.nerosecurity.link.SecurityLinkModule;
+import za.co.neroland.nerosecurity.map.SecurityMapLayers;
 import za.co.neroland.nerosecurity.lockdown.LockdownChannel;
 import za.co.neroland.nerosecurity.lockdown.LockdownHooks;
 import za.co.neroland.nerosecurity.lockdown.LockdownScheduler;
@@ -172,6 +173,8 @@ public final class NeroSecurityCommon {
         // 6. Network: declare payloads once. Each loader registers them on nerosecurity:main right
         //    after this method returns (Forge seals its channel at build()).
         SecurityNetwork.init();
+
+        SecurityMapLayers.register(); // 6b. Map layers through Core's map registry; no map mod is named.
 
         // 7. Link module LAST — it reads everything above. Guarded; can never break startup.
         SecurityLinkModule.init();

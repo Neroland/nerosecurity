@@ -532,5 +532,9 @@
   "ui.nerosecurity.scroll.up": "Scroll up",
   "ui.nerosecurity.waiting": "Waiting for the server…",
   "ui.nerosecurity.why.unavailable": "Not available right now.",
-  "ui.nerosecurity.yes": "Yes"
+  "ui.nerosecurity.yes": "Yes",
+  "map.layer.nerosecurity.installations": "Security installations",
+  "map.layer.nerosecurity.installation_devices": "Security devices",
+  "map.layer.nerosecurity.fields": "Force fields",
+  "map.nerosecurity.device": "Security device"
 }

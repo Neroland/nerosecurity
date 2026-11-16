@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1-beta.1] - 2026-11-16
+
+### Added
+
+- Map layers through Neroland Core's map API: your installations' hubs, their linked devices and the footprint of each loaded force field, shown only to the installation's owners, officers and members. Shown by a map mod that reads Core's map registry; nothing changes without one.
+
+### Dependencies
+
+- Updated Neroland Core from 1.17.6 to 1.19.0 (1.19.0 adds the map API).
+
 ## [0.7.0-beta.1] - 2026-11-14
 
 ### Changed

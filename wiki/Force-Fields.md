@@ -97,3 +97,5 @@ keeps its default. Put them in `config/nerosecurity.properties`.
 - [Lockdown](Lockdown.md)
 - [Blocks and Screens](Blocks-and-Screens.md)
 - [Home](Home.md)
+
+**On maps.** With a map mod that reads Neroland Core's map registry, your installations' hubs, devices and active field footprints appear as map layers, visible only to the installation's owners, officers and members.
