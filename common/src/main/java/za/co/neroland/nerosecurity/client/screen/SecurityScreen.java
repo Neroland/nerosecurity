@@ -548,6 +548,32 @@ public abstract class SecurityScreen<T extends AbstractContainerMenu> extends Ab
         }
     }
 
+    /** Whether the mouse is over the given absolute rectangle this frame (never while a confirm panel is open). */
+    protected final boolean hovering(int x, int y, int w, int h) {
+        int mx = frameMouseX;
+        int my = frameMouseY;
+        return mx >= x && mx < x + w && my >= y && my < y + h;
+    }
+
+    /**
+     * Shows a multi-line gauge tooltip (each line wrapped) while the mouse is over the given absolute rectangle.
+     * Build the lines only when {@link #hovering} is true. Suppressed while a confirm panel is open.
+     */
+    protected final void explainLines(GuiGraphicsExtractor g, int x, int y, int w, int h, List<Component> lines) {
+        if (lines.isEmpty() || !hovering(x, y, w, h)) {
+            return;
+        }
+        List<FormattedCharSequence> wrapped = new ArrayList<>();
+        for (Component line : lines) {
+            wrapped.addAll(font.split(line, TOOLTIP_WIDTH));
+        }
+        //? if >=1.21.6 {
+        g.setTooltipForNextFrame(font, wrapped, frameMouseX, frameMouseY);
+        //?} else {
+        /*setTooltipForNextRenderPass(wrapped);
+        *///?}
+    }
+
     // --- input ----------------------------------------------------------------------------------
 
     //? if >=1.21.9 {

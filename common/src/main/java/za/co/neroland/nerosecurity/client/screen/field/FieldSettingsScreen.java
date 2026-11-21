@@ -1,5 +1,6 @@
 package za.co.neroland.nerosecurity.client.screen.field;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
@@ -13,6 +14,8 @@ import net.minecraft.world.entity.player.Inventory;
 import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.access.AccessLevel;
+import za.co.neroland.nerosecurity.client.GaugeMath;
+import za.co.neroland.nerosecurity.client.GaugeTooltips;
 import za.co.neroland.nerosecurity.client.SecurityColours;
 import za.co.neroland.nerosecurity.client.screen.SecurityScreen;
 import za.co.neroland.nerosecurity.client.screen.field.FieldText.Dim;
@@ -77,6 +80,9 @@ public class FieldSettingsScreen extends SecurityScreen<FieldMenu> {
     private static final int CONTROL_H = 16;
     private static final int LINE = 10;
 
+    /** Gauge rates, measured from the synced values over the last ~20 ticks (load resets on an overload drop). */
+    private final GaugeMath.RateWindow energyWindow = new GaugeMath.RateWindow();
+    private final GaugeMath.RateWindow loadWindow = new GaugeMath.RateWindow(50);
     private LevelLadder ladder;
     private Toggle enabled;
     private Toggle keycardOnly;
@@ -295,6 +301,24 @@ public class FieldSettingsScreen extends SecurityScreen<FieldMenu> {
         Gauge.draw(g, font, x + LOAD_X + LOAD_LABEL_W, y + GAUGES_Y, W - PAD - LOAD_X - LOAD_LABEL_W, load / 100f,
                 load >= 100 ? SecurityColours.LOCK : (load >= 80 ? SecurityColours.WARN : SecurityColours.FIELD),
                 Component.literal(String.format(Locale.ROOT, "%d %%", load)));
+        long tick = GaugeTooltips.gameTick();
+        energyWindow.sample(tick, energy);
+        loadWindow.sample(tick, load);
+        FieldState fieldState = menu.state();
+        if (hovering(x + PAD, y + GAUGES_Y - 1, POWER_W, 10)) {
+            List<Component> lines = new ArrayList<>();
+            // The draw is known only while projecting at module strength (a lockdown boosts it).
+            long used = fieldState == FieldState.PROJECTING && !menu.lockdown() ? menu.drawPerTick() : -1L;
+            GaugeTooltips.energy(lines, energy, capacity, energyWindow.perTick(), used,
+                    fieldState == FieldState.BROWNOUT ? Component.translatable(fieldState.translationKey()) : null);
+            explainLines(g, x + PAD, y + GAUGES_Y - 1, POWER_W, 10, lines);
+        }
+        if (hovering(x + LOAD_X, y + GAUGES_Y - 1, W - PAD - LOAD_X, 10)) {
+            List<Component> lines = new ArrayList<>();
+            GaugeTooltips.load(lines, load, loadWindow.perSecond(), fieldState == FieldState.OVERLOADED,
+                    menu.cooldownSeconds());
+            explainLines(g, x + LOAD_X, y + GAUGES_Y - 1, W - PAD - LOAD_X, 10, lines);
+        }
 
         boolean serverEnabled = snap == null || snap.serverEnabled();
         FieldText.Row row = FieldText.state(serverEnabled, menu.linked(), menu.lockdown(), menu.state());

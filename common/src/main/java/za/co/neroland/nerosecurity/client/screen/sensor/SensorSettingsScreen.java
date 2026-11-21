@@ -11,6 +11,8 @@ import net.minecraft.world.entity.player.Inventory;
 import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.access.AccessLevel;
+import za.co.neroland.nerosecurity.client.GaugeMath;
+import za.co.neroland.nerosecurity.client.GaugeTooltips;
 import za.co.neroland.nerosecurity.client.SecurityColours;
 import za.co.neroland.nerosecurity.client.screen.SecurityScreen;
 import za.co.neroland.nerosecurity.client.widget.Gauge;
@@ -61,6 +63,8 @@ public class SensorSettingsScreen extends SecurityScreen<SensorSettingsMenu> {
 
     private static final SensorEntityMode[] MODES = SensorEntityMode.values();
 
+    /** The power gauge's rate, measured from the synced amount over the last ~20 ticks. */
+    private final GaugeMath.RateWindow energyWindow = new GaugeMath.RateWindow();
     private LevelLadder ladder;
     private Segmented mode;
     private Segmented fov;
@@ -218,6 +222,13 @@ public class SensorSettingsScreen extends SecurityScreen<SensorSettingsMenu> {
                 capacity <= 0 ? 0f : energy / (float) capacity,
                 energy <= 0 ? SecurityColours.WARN : SecurityColours.INK_CYAN,
                 Component.literal(String.format(Locale.ROOT, "%,d / %,d", energy, capacity)));
+        energyWindow.sample(GaugeTooltips.gameTick(), energy);
+        if (hovering(x + PAD, y + POWER_Y - 1, LEFT_W, 10)) {
+            List<Component> lines = new ArrayList<>();
+            GaugeTooltips.energy(lines, energy, capacity, energyWindow.perTick(), -1L,
+                    energy <= 0 ? Component.translatable("sensor.nerosecurity.disarmed.power") : null);
+            explainLines(g, x + PAD, y + POWER_Y - 1, LEFT_W, 10, lines);
+        }
 
         boolean linked = menu.linked() || (snap != null && snap.linked());
         SensorText.Row state = SensorText.state(linked, menu.armed(), laser, menu.paired(), energy > 0);

@@ -1,5 +1,7 @@
 package za.co.neroland.nerosecurity.client.screen.door;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -10,6 +12,8 @@ import org.jetbrains.annotations.Nullable;
 
 import za.co.neroland.nerosecurity.access.AccessLevel;
 import za.co.neroland.nerosecurity.block.door.RedstoneMode;
+import za.co.neroland.nerosecurity.client.GaugeMath;
+import za.co.neroland.nerosecurity.client.GaugeTooltips;
 import za.co.neroland.nerosecurity.client.SecurityColours;
 import za.co.neroland.nerosecurity.client.screen.SecurityScreen;
 import za.co.neroland.nerosecurity.client.widget.Gauge;
@@ -54,6 +58,8 @@ public class SecurityDoorScreen extends SecurityScreen<SecurityDoorMenu> {
     private static final int BOX_Y1 = 148;
     private static final int GAUGE_LABEL_W = 36;
 
+    /** The power gauge's rate, measured from the synced amount over the last ~20 ticks. */
+    private final GaugeMath.RateWindow energyWindow = new GaugeMath.RateWindow();
     private LevelLadder ladder;
     private Toggle keycardOnly;
     private Toggle redstone;
@@ -181,6 +187,13 @@ public class SecurityDoorScreen extends SecurityScreen<SecurityDoorMenu> {
         Gauge.draw(g, font, x + PAD + GAUGE_LABEL_W, y + POWER_Y, LEFT_W - GAUGE_LABEL_W,
                 capacity <= 0 ? 0f : energy / (float) capacity,
                 unpowered ? SecurityColours.WARN : SecurityColours.INK_CYAN, energyLabel(energy, capacity));
+        energyWindow.sample(GaugeTooltips.gameTick(), energy);
+        if (hovering(x + PAD, y + POWER_Y - 1, LEFT_W, 10)) {
+            List<Component> lines = new ArrayList<>();
+            GaugeTooltips.energy(lines, energy, capacity, energyWindow.perTick(), -1L,
+                    unpowered ? Component.translatable("door.nerosecurity.no_power") : null);
+            explainLines(g, x + PAD, y + POWER_Y - 1, LEFT_W, 10, lines);
+        }
 
         DoorText.Row link = DoorText.link(linked);
         Component linkText = linked
