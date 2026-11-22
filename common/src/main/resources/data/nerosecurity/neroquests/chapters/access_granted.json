@@ -26,6 +26,16 @@
       "quest": "nerosecurity:access_granted/head_of_security",
       "x": 8,
       "y": 0
+    },
+    {
+      "quest": "nerosecurity:access_granted/encrypted_keycard",
+      "x": 2,
+      "y": 2
+    },
+    {
+      "quest": "nerosecurity:access_granted/fortress",
+      "x": 10,
+      "y": 0
     }
   ]
 }

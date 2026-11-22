@@ -104,6 +104,9 @@ public final class KeycardService {
         }
         publish(SecurityEventType.KEYCARD_WRITTEN, installation, at, actor.getUUID());
         SecurityMilestones.record(actor, SecurityMilestones.Milestone.FIRST_KEYCARD);
+        if (encrypted) {
+            SecurityMilestones.record(actor, SecurityMilestones.Milestone.FIRST_ENCRYPTED_KEYCARD);
+        }
         return ServiceResult.success(Component.translatable("programmer.nerosecurity.written", level.displayName()));
     }
 

@@ -294,6 +294,16 @@ public final class InstallationService {
                         }
                     }
                 }
+                store(actor).atDevice(device).ifPresent(linked -> {
+                    if (SecurityMilestones.isFortress(linked.hubPos() != null, linked.devices().values())) {
+                        MinecraftServer server = level.getServer();
+                        for (UUID owner : linked.owners()) {
+                            if (!Installation.TOMBSTONE_OWNER.equals(owner)) {
+                                SecurityMilestones.record(server, owner, SecurityMilestones.Milestone.FORTRESS);
+                            }
+                        }
+                    }
+                });
                 yield ServiceResult.success(Component.translatable("tool.nerosecurity.linked", installation.name()));
             }
             case ALREADY_LINKED_HERE -> ServiceResult.failure(Component.translatable("tool.nerosecurity.already_linked"));

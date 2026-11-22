@@ -1,0 +1,21 @@
+{
+  "title": "quest.nerosecurity.access_granted.encrypted_keycard.title",
+  "description": "quest.nerosecurity.access_granted.encrypted_keycard.desc",
+  "icon": "minecraft:ender_eye",
+  "prerequisites": [
+    "nerosecurity:access_granted/first_keycard"
+  ],
+  "objectives": [
+    {
+      "type": "neroquests:gate_open",
+      "gate": "nerosecurity:first_encrypted_keycard"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 150
+    }
+  ],
+  "scope": "player"
+}

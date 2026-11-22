@@ -60,7 +60,7 @@ class ShippedQuestPackTest {
                 }
             }
         }
-        assertEquals(5, quests.size(), "the access_granted chapter ships exactly five quests");
+        assertEquals(7, quests.size(), "the access_granted chapter ships exactly seven quests");
 
         List<String> complaints = new ArrayList<>();
         JsonObject chapter = parse(chapterFile);

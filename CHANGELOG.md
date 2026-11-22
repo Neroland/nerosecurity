@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-11-26
+
+### Added
+
+- A public, stable access API for other mods: `za.co.neroland.nerosecurity.api.SecurityAccess.mayOpen(player, level, pos)` answers whether a player may open a device, using the same rules as opening it by hand. It returns true when no installation covers the device.
+- Two new player milestone gates. `nerosecurity:first_encrypted_keycard` opens when you write your first encrypted keycard. `nerosecurity:fortress` opens for an installation's owners when a hub has at least four security cameras, a force field emitter and a blast door linked. Like the other milestones, they are records only and never decide access.
+
 ## [0.7.1] - 2026-11-21
 
 ### Changed

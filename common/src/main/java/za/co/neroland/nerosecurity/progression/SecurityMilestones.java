@@ -1,5 +1,6 @@
 package za.co.neroland.nerosecurity.progression;
 
+import java.util.Collection;
 import java.util.UUID;
 
 import net.minecraft.resources.Identifier;
@@ -38,7 +39,14 @@ public final class SecurityMilestones {
         /** The player registered a security hub and linked at least one device to it. */
         INSTALLATION_ONLINE("installation_online"),
         /** The owner triggered and then cleared a lockdown on their own installation (a drill, not an alarm). */
-        LOCKDOWN_DRILL("lockdown_drill");
+        LOCKDOWN_DRILL("lockdown_drill"),
+        /** The player wrote their first encrypted keycard (an owner-only card from a programmer with a module). */
+        FIRST_ENCRYPTED_KEYCARD("first_encrypted_keycard"),
+        /**
+         * An installation the player owns reached fortress strength: a hub with at least
+         * {@link #FORTRESS_MIN_CAMERAS} cameras, a force field emitter and a blast door linked to it.
+         */
+        FORTRESS("fortress");
 
         private final Identifier gate;
 
@@ -51,6 +59,13 @@ public final class SecurityMilestones {
             return gate;
         }
     }
+
+    /** Cameras an installation needs, alongside a force field emitter and a blast door, for {@link Milestone#FORTRESS}. */
+    public static final int FORTRESS_MIN_CAMERAS = 4;
+
+    private static final String CAMERA = "security_camera";
+    private static final String FORCE_FIELD = "force_field_emitter";
+    private static final String BLAST_DOOR = "blast_door";
 
     private SecurityMilestones() {
     }
@@ -72,5 +87,32 @@ public final class SecurityMilestones {
      */
     public static boolean record(MinecraftServer server, UUID playerId, Milestone milestone) {
         return ProgressionGates.open(server, playerId, milestone.gate());
+    }
+
+    /**
+     * Whether a hub with these linked devices counts as a fortress: at least {@link #FORTRESS_MIN_CAMERAS}
+     * security cameras, at least one force field emitter and at least one blast door, all NeroSecurity
+     * blocks. Pure, so it runs in a plain JVM; the device map holds block ids only (no players).
+     */
+    public static boolean isFortress(boolean hasHub, Collection<Identifier> linkedBlocks) {
+        if (!hasHub) {
+            return false;
+        }
+        int cameras = 0;
+        boolean field = false;
+        boolean door = false;
+        for (Identifier block : linkedBlocks) {
+            if (block == null || !NeroSecurityCommon.MOD_ID.equals(block.getNamespace())) {
+                continue;
+            }
+            switch (block.getPath()) {
+                case CAMERA -> cameras++;
+                case FORCE_FIELD -> field = true;
+                case BLAST_DOOR -> door = true;
+                default -> {
+                }
+            }
+        }
+        return cameras >= FORTRESS_MIN_CAMERAS && field && door;
     }
 }

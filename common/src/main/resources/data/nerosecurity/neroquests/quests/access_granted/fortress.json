@@ -1,0 +1,21 @@
+{
+  "title": "quest.nerosecurity.access_granted.fortress.title",
+  "description": "quest.nerosecurity.access_granted.fortress.desc",
+  "icon": "minecraft:obsidian",
+  "prerequisites": [
+    "nerosecurity:access_granted/head_of_security"
+  ],
+  "objectives": [
+    {
+      "type": "neroquests:gate_open",
+      "gate": "nerosecurity:fortress"
+    }
+  ],
+  "rewards": [
+    {
+      "type": "neroquests:xp",
+      "amount": 300
+    }
+  ],
+  "scope": "player"
+}
