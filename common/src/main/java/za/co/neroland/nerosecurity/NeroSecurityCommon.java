@@ -123,6 +123,8 @@ public final class NeroSecurityCommon {
         SecurityData.init();
         // 4a. The installation store joins the composite eraser before any server starts.
         SecurityInstallations.registerEraser();
+        // 4a'. Neroland Core's land-protection SPI: hubs, linked devices and force fields are protected.
+        za.co.neroland.nerosecurity.installation.SecurityClaimCheck.register();
         // 4b. Access sources: the built-in membership source is always first.
         AccessSources.init();
         //     The keycard source's transient rejection cooldown joins the composite eraser.

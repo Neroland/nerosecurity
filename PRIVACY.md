@@ -187,6 +187,11 @@ you opted out, and the security alerts NeroSecurity raised for you in the compan
 time and whether you read them). Other mods' alerts are theirs to export. It never contains another player's id or name. You can ask for one export
 per minute (`privacyExportCooldownSeconds`); the file is deleted after 7 days.
 
+**One export for every Neroland mod.** The same data (without the companion-app alerts, which Neroland Core
+exports for every mod itself) is also part of `/neroland data exportme`, Neroland Core's export of everything
+every Neroland mod keeps about you. That export is built in memory and handed to you in chat as click-to-copy
+text; nothing is written to a file or logged.
+
 **Erasure.** NeroSecurity is registered with Neroland Core's shared per-player erasure hook, so one request
 removes a player from every Neroland mod: a player can run `/neroland data eraseme`, and an operator can run
 `/neroland data erase <uuid>` (Core's inactivity retention sweep uses the same path). For NeroSecurity this

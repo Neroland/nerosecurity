@@ -9,6 +9,8 @@ import net.minecraft.server.MinecraftServer;
 
 import org.jetbrains.annotations.Nullable;
 
+import za.co.neroland.nerolandcore.data.PlayerDataExport;
+
 import za.co.neroland.nerosecurity.NeroSecurityCommon;
 import za.co.neroland.nerosecurity.audit.AuditRecorder;
 import za.co.neroland.nerosecurity.config.NeroSecurityConfig;
@@ -36,6 +38,7 @@ public final class SecurityPrivacy {
         PrivacyOptOuts.registerEraser();
         SecurityData.addStore(exportsEraser(
                 server -> server == null ? null : PrivacyExport.directory(server), SecurityPrivacyActions.INSTANCE));
+        PlayerDataExport.register(NeroSecurityCommon.MOD_ID, PrivacyExport::exportForCore);
         AuditRecorder.setActorPolicy(PrivacyOptOuts.policy());
         PrivacyActions.install(SecurityPrivacyActions.INSTANCE);
         ServerHooks.onStarted(SecurityPrivacy::purgeExports);

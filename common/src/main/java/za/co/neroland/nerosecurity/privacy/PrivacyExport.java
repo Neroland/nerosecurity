@@ -181,6 +181,35 @@ public final class PrivacyExport {
         return root;
     }
 
+    /**
+     * The same document for Neroland Core's {@code /neroland data export}: built in memory, never written to a
+     * file or logged. It leaves out the NeroLink alerts (Core exports those for every module itself) and the
+     * file-retention note, and is {@code null} when NeroSecurity holds nothing about the subject.
+     */
+    public static @Nullable JsonObject buildForCore(UUID subject, SecurityInstallations installations,
+            SecurityAuditLog audit, boolean optedOut, long now) {
+        JsonObject doc = build(subject, installations, audit, optedOut, List.of(), now);
+        boolean empty = !optedOut && doc.getAsJsonArray("installations_owned").isEmpty()
+                && doc.getAsJsonArray("memberships").isEmpty()
+                && doc.getAsJsonArray("keycards_bound_to_you").isEmpty()
+                && doc.getAsJsonArray("audit_rows_naming_you").isEmpty();
+        if (empty) {
+            return null;
+        }
+        doc.remove("link");
+        JsonObject notes = doc.getAsJsonObject("notes");
+        if (notes != null) {
+            notes.remove("retention");
+        }
+        return doc;
+    }
+
+    /** Core's exporter: {@link #buildForCore} over the live stores. Server thread; reads only. */
+    public static @Nullable JsonObject exportForCore(MinecraftServer server, UUID subject) {
+        return buildForCore(subject, SecurityInstallations.get(server), SecurityAuditLog.get(server),
+                PrivacyOptOuts.get(server).isOptedOut(subject), System.currentTimeMillis());
+    }
+
     private static JsonObject pos(DevicePos pos) {
         JsonObject out = new JsonObject();
         out.addProperty("dimension", pos.dimension().toString());
