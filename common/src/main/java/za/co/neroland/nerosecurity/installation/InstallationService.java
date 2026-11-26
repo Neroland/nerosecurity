@@ -232,7 +232,7 @@ public final class InstallationService {
         if (!decision.allowed()) {
             return ServiceResult.failure(decision.message());
         }
-        tool.set(NeroSecurityDataComponents.SELECTED_HUB.get(), new SelectedHub(installation.id(), installation.name()));
+        NeroSecurityDataComponents.setSelectedHub(tool, new SelectedHub(installation.id(), installation.name()));
         return ServiceResult.success(Component.translatable("tool.nerosecurity.selected", installation.name()));
     }
 

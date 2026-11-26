@@ -8,7 +8,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.storage.ValueInput;
@@ -41,10 +43,19 @@ public record DeviceAccessSettings(AccessLevel minLevel, boolean keycardOnly) {
             Codec.BOOL.optionalFieldOf("keycard_only", false).forGetter(DeviceAccessSettings::keycardOnly)
     ).apply(inst, DeviceAccessSettings::new));
 
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, DeviceAccessSettings> STREAM_CODEC = StreamCodec.composite(
             AccessLevel.STREAM_CODEC, DeviceAccessSettings::minLevel,
             ByteBufCodecs.BOOL, DeviceAccessSettings::keycardOnly,
             DeviceAccessSettings::new);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, DeviceAccessSettings> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> {
+                AccessLevel.STREAM_CODEC.encode(buf, value.minLevel());
+                buf.writeBoolean(value.keycardOnly());
+            },
+            buf -> new DeviceAccessSettings(AccessLevel.STREAM_CODEC.decode(buf), buf.readBoolean()));
+    *///?}
 
     public DeviceAccessSettings {
         if (minLevel == null) {

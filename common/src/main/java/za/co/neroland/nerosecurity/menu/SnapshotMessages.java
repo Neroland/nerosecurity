@@ -2,7 +2,9 @@ package za.co.neroland.nerosecurity.menu;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+//? if >=1.20.5 {
 import net.minecraft.network.chat.ComponentSerialization;
+//?}
 
 import org.jetbrains.annotations.Nullable;
 
@@ -21,7 +23,11 @@ public final class SnapshotMessages {
         buf.writeBoolean(ok);
         buf.writeBoolean(message != null);
         if (message != null) {
+            //? if >=1.20.5 {
             ComponentSerialization.TRUSTED_STREAM_CODEC.encode(buf, message);
+            //?} else {
+            /*buf.writeComponent(message);
+            *///?}
         }
     }
 
@@ -30,6 +36,10 @@ public final class SnapshotMessages {
     }
 
     public static @Nullable Component readMessage(RegistryFriendlyByteBuf buf) {
+        //? if >=1.20.5 {
         return buf.readBoolean() ? ComponentSerialization.TRUSTED_STREAM_CODEC.decode(buf) : null;
+        //?} else {
+        /*return buf.readBoolean() ? buf.readComponent() : null;
+        *///?}
     }
 }

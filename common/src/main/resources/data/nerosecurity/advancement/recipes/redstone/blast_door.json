@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "nerosecurity:security_door"
+            "items": ["nerosecurity:security_door"]
           }
         ]
       },

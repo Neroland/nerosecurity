@@ -148,20 +148,31 @@ public class LaserGridNodeBlock extends BaseEntityBlock implements SecurityDevic
         if (stack.getItem() instanceof LinkingToolItem) {
             return InteractionResult.PASS;
         }
-    //?} else {
+        return super.useItemOn(stack, state, level, pos, player, hand, hit);
+    }
+    //?} else if >=1.20.5 {
     /*@Override
     protected net.minecraft.world.ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, InteractionHand hand, BlockHitResult hit) {
         if (stack.getItem() instanceof LinkingToolItem) {
             return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
         }
-    *///?}
         return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
+    *///?}
 
+    //? if >=1.20.5 {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
             BlockHitResult hit) {
+    //?} else {
+    /*@Override
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+            net.minecraft.world.InteractionHand hand, BlockHitResult hit) {
+        if (player.getItemInHand(hand).getItem() instanceof LinkingToolItem) {
+            return InteractionResult.PASS;
+        }
+    *///?}
         if (!(level instanceof ServerLevel) || !(player instanceof ServerPlayer serverPlayer)
                 || !(level.getBlockEntity(pos) instanceof LaserGridNodeBlockEntity node)) {
             return InteractionResult.SUCCESS;

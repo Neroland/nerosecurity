@@ -124,9 +124,15 @@ public class SecureChestBlock extends BaseEntityBlock implements SecurityDevice 
         return new SecureChestBlockEntity(pos, state);
     }
 
+    //? if >=1.20.5 {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
             BlockHitResult hit) {
+    //?} else {
+    /*@Override
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+            net.minecraft.world.InteractionHand hand, BlockHitResult hit) {
+    *///?}
         if (!(level instanceof ServerLevel) || !(player instanceof ServerPlayer serverPlayer)
                 || !(level.getBlockEntity(pos) instanceof SecureChestBlockEntity chest)) {
             return InteractionResult.SUCCESS;

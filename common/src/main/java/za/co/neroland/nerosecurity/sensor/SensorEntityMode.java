@@ -6,7 +6,9 @@ import com.mojang.serialization.Codec;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 import org.jetbrains.annotations.Nullable;
@@ -29,8 +31,14 @@ public enum SensorEntityMode {
     public static final Codec<SensorEntityMode> CODEC = Codec.STRING.xmap(SensorEntityMode::byName,
             SensorEntityMode::jsonName);
 
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, SensorEntityMode> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(
             i -> i >= 0 && i < values().length ? values()[i] : DEFAULT, SensorEntityMode::ordinal);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, SensorEntityMode> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> buf.writeVarInt(value.ordinal()),
+            buf -> { int i = buf.readVarInt(); return i >= 0 && i < values().length ? values()[i] : DEFAULT; });
+    *///?}
 
     /** {@code "players_only" | "players_and_hostiles" | "all_living"}; also the lang key suffix. */
     public String jsonName() {

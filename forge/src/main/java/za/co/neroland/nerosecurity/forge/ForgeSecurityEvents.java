@@ -117,7 +117,7 @@ public final class ForgeSecurityEvents {
         });
         MinecraftForge.EVENT_BUS.addListener((ServerStartedEvent event) -> ServerHooks.fireStarted(event.getServer()));
         MinecraftForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> ServerHooks.fireStopping(event.getServer()));
-        MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent.Post event) -> ServerHooks.fireTick(event.getServer()));
+        registerServerTick();
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
             if (event.getEntity() instanceof ServerPlayer player) {
                 ServerHooks.firePlayerJoin(player);
@@ -128,6 +128,20 @@ public final class ForgeSecurityEvents {
                 ServerHooks.firePlayerLeave(player);
             }
         });
+    }
+    *///?}
+
+    //? if <1.21.6 {
+    /*private static void registerServerTick() {
+        //? if >=1.20.6 {
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent.Post event) -> ServerHooks.fireTick(event.getServer()));
+        //?} else {
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ServerTickEvent event) -> {
+            if (event.phase == TickEvent.Phase.END) {
+                ServerHooks.fireTick(event.getServer());
+            }
+        });
+        //?}
     }
     *///?}
 }

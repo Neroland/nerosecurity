@@ -6,7 +6,9 @@ import com.mojang.serialization.Codec;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 /** What a force field emitter projects: a flat wall or a hollow box shell. */
@@ -19,8 +21,14 @@ public enum FieldShape {
     /** Lower-case name codec; an unknown name reads as {@link #PLANE}. */
     public static final Codec<FieldShape> CODEC = Codec.STRING.xmap(FieldShape::byName, FieldShape::jsonName);
 
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, FieldShape> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(
             i -> values()[Math.floorMod(i, values().length)], FieldShape::ordinal);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, FieldShape> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> buf.writeVarInt(value.ordinal()),
+            buf -> { int i = buf.readVarInt(); return values()[Math.floorMod(i, values().length)]; });
+    *///?}
 
     public String jsonName() {
         return name().toLowerCase(Locale.ROOT);

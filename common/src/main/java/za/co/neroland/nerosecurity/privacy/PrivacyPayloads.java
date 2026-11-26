@@ -5,7 +5,9 @@ import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+//? if >=1.20.5 {
 import net.minecraft.network.chat.ComponentSerialization;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -111,7 +113,11 @@ public final class PrivacyPayloads {
             buf.writeBoolean(v.ok);
             buf.writeBoolean(v.message != null);
             if (v.message != null) {
+                //? if >=1.20.5 {
                 ComponentSerialization.TRUSTED_STREAM_CODEC.encode(buf, v.message);
+                //?} else {
+                /*buf.writeComponent(v.message);
+                *///?}
             }
         }
 
@@ -126,7 +132,11 @@ public final class PrivacyPayloads {
             boolean optedOut = buf.readBoolean();
             boolean available = buf.readBoolean();
             boolean ok = buf.readBoolean();
+            //? if >=1.20.5 {
             Component message = buf.readBoolean() ? ComponentSerialization.TRUSTED_STREAM_CODEC.decode(buf) : null;
+            //?} else {
+            /*Component message = buf.readBoolean() ? buf.readComponent() : null;
+            *///?}
             return new PrivacySnapshot(auditEnabled, days, max, count, oldest, cameras, members, optedOut, available,
                     ok, message);
         }
@@ -142,7 +152,12 @@ public final class PrivacyPayloads {
 
         public static final HubPrivacyRequest INSTANCE = new HubPrivacyRequest();
         public static final Type<HubPrivacyRequest> TYPE = new Type<>(id("hub_privacy_request"));
+        //? if >=1.20.5 {
         public static final StreamCodec<FriendlyByteBuf, HubPrivacyRequest> STREAM_CODEC = StreamCodec.unit(INSTANCE);
+        //?} else {
+        /*public static final StreamCodec<FriendlyByteBuf, HubPrivacyRequest> STREAM_CODEC =
+                StreamCodec.of((buf, value) -> {}, buf -> INSTANCE);
+        *///?}
 
         @Override
         public Type<? extends CustomPacketPayload> type() {

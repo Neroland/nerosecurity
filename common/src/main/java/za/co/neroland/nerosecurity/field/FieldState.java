@@ -4,7 +4,9 @@ import java.util.Locale;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 /** A force field emitter's state (see {@link FieldStateMachine}). Persisted by name. */
@@ -18,8 +20,14 @@ public enum FieldState {
     /** Collapsed under load; re-forms after its cooldown once the buffer holds enough to restart. */
     OVERLOADED;
 
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, FieldState> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(
             i -> values()[Math.floorMod(i, values().length)], FieldState::ordinal);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, FieldState> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> buf.writeVarInt(value.ordinal()),
+            buf -> { int i = buf.readVarInt(); return values()[Math.floorMod(i, values().length)]; });
+    *///?}
 
     public String jsonName() {
         return name().toLowerCase(Locale.ROOT);

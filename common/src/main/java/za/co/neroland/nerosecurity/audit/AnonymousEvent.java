@@ -7,7 +7,9 @@ import java.util.Optional;
 import io.netty.buffer.ByteBuf;
 
 import net.minecraft.core.BlockPos;
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 import org.jetbrains.annotations.Nullable;
@@ -26,6 +28,7 @@ import za.co.neroland.nerosecurity.event.SecuritySeverity;
 public record AnonymousEvent(SecurityEventType type, SecuritySeverity severity, int agoSeconds,
         @Nullable BlockPos devicePos, ActorKind actorKind) {
 
+    //? if >=1.20.5 {
     private static final StreamCodec<ByteBuf, SecurityEventType> TYPE_CODEC =
             ByteBufCodecs.VAR_INT.map(i -> SecurityEventType.values()[Math.floorMod(i, SecurityEventType.values().length)],
                     SecurityEventType::ordinal);
@@ -43,6 +46,23 @@ public record AnonymousEvent(SecurityEventType type, SecuritySeverity severity, 
             ByteBufCodecs.optional(BlockPos.STREAM_CODEC), e -> Optional.ofNullable(e.devicePos()),
             KIND_CODEC, AnonymousEvent::actorKind,
             (type, severity, ago, pos, kind) -> new AnonymousEvent(type, severity, ago, pos.orElse(null), kind));
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, AnonymousEvent> STREAM_CODEC = StreamCodec.of(
+            (buf, event) -> {
+                buf.writeVarInt(event.type().ordinal());
+                buf.writeVarInt(event.severity().ordinal());
+                buf.writeVarInt(event.agoSeconds());
+                buf.writeNullable(event.devicePos(), net.minecraft.network.FriendlyByteBuf::writeBlockPos);
+                buf.writeVarInt(event.actorKind().ordinal());
+            },
+            buf -> new AnonymousEvent(readEnum(buf, SecurityEventType.values()),
+                    readEnum(buf, SecuritySeverity.values()), buf.readVarInt(),
+                    buf.readNullable(net.minecraft.network.FriendlyByteBuf::readBlockPos), readEnum(buf, ActorKind.values())));
+
+    private static <E> E readEnum(net.minecraft.network.FriendlyByteBuf buf, E[] values) {
+        return values[Math.floorMod(buf.readVarInt(), values.length)];
+    }
+    *///?}
 
     public AnonymousEvent {
         agoSeconds = Math.max(0, agoSeconds);

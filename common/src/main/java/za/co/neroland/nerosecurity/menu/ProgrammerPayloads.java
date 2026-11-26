@@ -4,7 +4,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+//? if >=1.20.5 {
 import net.minecraft.network.chat.ComponentSerialization;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -85,7 +87,11 @@ public final class ProgrammerPayloads {
             buf.writeBoolean(value.ok);
             buf.writeBoolean(value.message != null);
             if (value.message != null) {
+                //? if >=1.20.5 {
                 ComponentSerialization.TRUSTED_STREAM_CODEC.encode(buf, value.message);
+                //?} else {
+                /*buf.writeComponent(value.message);
+                *///?}
             }
         }
 
@@ -97,7 +103,11 @@ public final class ProgrammerPayloads {
             int issued = Math.max(0, buf.readVarInt());
             int cap = Math.max(0, buf.readVarInt());
             boolean ok = buf.readBoolean();
+            //? if >=1.20.5 {
             Component message = buf.readBoolean() ? ComponentSerialization.TRUSTED_STREAM_CODEC.decode(buf) : null;
+            //?} else {
+            /*Component message = buf.readBoolean() ? buf.readComponent() : null;
+            *///?}
             return new ProgrammerSnapshot(pos, viewer, hasModule, basicMax, issued, cap, ok, message);
         }
 

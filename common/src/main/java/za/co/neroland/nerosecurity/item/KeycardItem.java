@@ -4,12 +4,16 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import net.minecraft.ChatFormatting;
+//? if >=1.20.5 {
 import net.minecraft.core.component.DataComponents;
+//?}
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+//? if >=1.20.5 {
 import net.minecraft.world.item.component.CustomModelData;
+//?}
 //? if >=1.21.5 {
 import net.minecraft.world.item.component.TooltipDisplay;
 //?}
@@ -47,7 +51,7 @@ public class KeycardItem extends Item {
 
     /** Whether {@code stack} carries card data (written, not blank). */
     public static boolean isEncoded(@Nullable ItemStack stack) {
-        return stack != null && !stack.isEmpty() && stack.has(NeroSecurityDataComponents.KEYCARD.get());
+        return stack != null && !stack.isEmpty() && NeroSecurityDataComponents.hasKeycard(stack);
     }
 
     /**
@@ -69,7 +73,8 @@ public class KeycardItem extends Item {
         if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof KeycardItem)) {
             return;
         }
-        KeycardData data = stack.get(NeroSecurityDataComponents.KEYCARD.get());
+        //? if >=1.20.5 {
+        KeycardData data = NeroSecurityDataComponents.keycard(stack);
         if (data == null) {
             stack.remove(DataComponents.CUSTOM_MODEL_DATA);
             return;
@@ -83,6 +88,8 @@ public class KeycardItem extends Item {
         // select on, so encoded cards keep the plain card look there (the card data itself is unchanged).
         stack.remove(DataComponents.CUSTOM_MODEL_DATA);
         *///?}
+        //?}
+
     }
 
     //? if >=1.21.5 {
@@ -97,7 +104,7 @@ public class KeycardItem extends Item {
         super.appendHoverText(stack, context, lines, flag);
         Consumer<Component> tooltip = lines::add;
     *///?}
-        KeycardData data = stack.get(NeroSecurityDataComponents.KEYCARD.get());
+        KeycardData data = NeroSecurityDataComponents.keycard(stack);
         if (data == null) {
             tooltip.accept(Component.translatable("item.nerosecurity.keycard.blank").withStyle(ChatFormatting.GRAY));
             return;

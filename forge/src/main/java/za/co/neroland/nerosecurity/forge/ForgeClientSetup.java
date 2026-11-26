@@ -102,7 +102,7 @@ public final class ForgeClientSetup {
                 BerCommand.register(event.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener((RegisterClientCommandsEvent event) ->
                 GalleryCaptureHarness.registerClientCommands(event.getDispatcher()));
-        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent.Post event) -> GalleryCaptureHarness.tick());
+        registerClientTick();
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) ->
                 SecurityNetwork.clearClientCaches());
     }
@@ -130,4 +130,18 @@ public final class ForgeClientSetup {
                 DoorChestHubRenderers::register,
                 SensorFieldRenderers::register);
     }
+
+    //? if <1.21.6 {
+    /*private static void registerClientTick() {
+        //? if >=1.20.6 {
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent.Post event) -> GalleryCaptureHarness.tick());
+        //?} else {
+        MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> {
+            if (event.phase == TickEvent.Phase.END) {
+                GalleryCaptureHarness.tick();
+            }
+        });
+        //?}
+    }
+    *///?}
 }

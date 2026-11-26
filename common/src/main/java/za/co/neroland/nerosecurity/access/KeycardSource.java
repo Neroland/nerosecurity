@@ -68,11 +68,11 @@ public final class KeycardSource implements AccessSource {
             return List.of();
         }
         List<KeycardData> cards = new ArrayList<>(2);
-        KeycardData main = player.getMainHandItem().get(NeroSecurityDataComponents.KEYCARD.get());
+        KeycardData main = NeroSecurityDataComponents.keycard(player.getMainHandItem());
         if (main != null) {
             cards.add(main);
         }
-        KeycardData off = player.getOffhandItem().get(NeroSecurityDataComponents.KEYCARD.get());
+        KeycardData off = NeroSecurityDataComponents.keycard(player.getOffhandItem());
         if (off != null) {
             cards.add(off);
         }

@@ -80,13 +80,23 @@ public final class SecurityModuleSlots {
 
     public void save(ValueOutput output) {
         for (int i = 0; i < items.size(); i++) {
+            //? if >=1.20.5 {
             output.store(KEY_PREFIX + i, ItemStack.OPTIONAL_CODEC, items.get(i));
+            //?} else {
+            /*if (!items.get(i).isEmpty()) {
+                output.store(KEY_PREFIX + i, ItemStack.CODEC, items.get(i));
+            }
+            *///?}
         }
     }
 
     public void load(ValueInput input) {
         for (int i = 0; i < items.size(); i++) {
+            //? if >=1.20.5 {
             items.set(i, input.read(KEY_PREFIX + i, ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
+            //?} else {
+            /*items.set(i, input.read(KEY_PREFIX + i, ItemStack.CODEC).orElse(ItemStack.EMPTY));
+            *///?}
         }
     }
 }

@@ -151,8 +151,13 @@ public class ForceFieldBlock extends BaseEntityBlock {
         return adjacent.is(this) || super.skipRendering(state, adjacent, direction);
     }
 
+    //? if >=1.20.5 {
     @Override
     protected boolean isPathfindable(BlockState state, PathComputationType type) {
+    //?} else {
+    /*@Override
+    public boolean isPathfindable(BlockState state, BlockGetter getter, BlockPos pos, PathComputationType type) {
+    *///?}
         return false;
     }
 
@@ -244,20 +249,24 @@ public class ForceFieldBlock extends BaseEntityBlock {
     @Override
     protected void onExplosionHit(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion,
             BiConsumer<ItemStack, BlockPos> onHit) {
-        ForceFieldEmitterBlockEntity emitter = FieldProjector.emitterFor(level, pos);
-    //?} else {
+        absorbExplosion(level, pos, explosion, explosion.radius());
+    }
+    //?} else if >=1.20.3 {
     /*@Override
     protected void onExplosionHit(BlockState state, Level world, BlockPos pos, Explosion explosion,
             BiConsumer<ItemStack, BlockPos> onHit) {
         if (!(world instanceof ServerLevel level)) {
             return;
         }
-        ForceFieldEmitterBlockEntity emitter = FieldProjector.emitterFor(level, pos);
+        absorbExplosion(level, pos, explosion, explosion.radius());
+    }
     *///?}
-        if (emitter == null) {
-            return;
+
+    public static void absorbExplosion(ServerLevel level, BlockPos pos, Explosion explosion, float radius) {
+        ForceFieldEmitterBlockEntity emitter = FieldProjector.emitterFor(level, pos);
+        if (emitter != null) {
+            emitter.absorb(LoadSource.EXPLOSION, null, radius, System.identityHashCode(explosion));
         }
-        emitter.absorb(LoadSource.EXPLOSION, null, explosion.radius(), System.identityHashCode(explosion));
     }
 
     /** An orphan (its emitter gone, unloaded, or no longer projecting this position) removes itself. */

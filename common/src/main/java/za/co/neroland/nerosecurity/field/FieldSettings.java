@@ -5,7 +5,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -55,7 +57,7 @@ public record FieldSettings(FieldShape shape, int offset, int width, int height,
             DeviceAccessSettings.STREAM_CODEC, FieldSettings::access,
             ByteBufCodecs.BOOL, FieldSettings::enabled,
             FieldSettings::new);
-    //?} else {
+    //?} else if >=1.20.5 {
     /*// 1.21.1's StreamCodec.composite stops at six fields; the same seven-field wire form, written out.
     public static final StreamCodec<ByteBuf, FieldSettings> STREAM_CODEC = StreamCodec.of(
             (buf, value) -> {
@@ -70,6 +72,19 @@ public record FieldSettings(FieldShape shape, int offset, int width, int height,
             buf -> new FieldSettings(FieldShape.STREAM_CODEC.decode(buf), ByteBufCodecs.VAR_INT.decode(buf),
                     ByteBufCodecs.VAR_INT.decode(buf), ByteBufCodecs.VAR_INT.decode(buf), ByteBufCodecs.VAR_INT.decode(buf),
                     DeviceAccessSettings.STREAM_CODEC.decode(buf), ByteBufCodecs.BOOL.decode(buf)));
+    *///?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, FieldSettings> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> {
+                FieldShape.STREAM_CODEC.encode(buf, value.shape());
+                buf.writeVarInt(value.offset());
+                buf.writeVarInt(value.width());
+                buf.writeVarInt(value.height());
+                buf.writeVarInt(value.depth());
+                DeviceAccessSettings.STREAM_CODEC.encode(buf, value.access());
+                buf.writeBoolean(value.enabled());
+            },
+            buf -> new FieldSettings(FieldShape.STREAM_CODEC.decode(buf), buf.readVarInt(), buf.readVarInt(),
+                    buf.readVarInt(), buf.readVarInt(), DeviceAccessSettings.STREAM_CODEC.decode(buf), buf.readBoolean()));
     *///?}
 
     public FieldSettings {

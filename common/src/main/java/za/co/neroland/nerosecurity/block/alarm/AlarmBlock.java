@@ -114,9 +114,15 @@ public class AlarmBlock extends BaseEntityBlock implements SecurityDevice {
 
     // --- using ----------------------------------------------------------------------------------
 
+    //? if >=1.20.5 {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
             BlockHitResult hit) {
+    //?} else {
+    /*@Override
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+            net.minecraft.world.InteractionHand hand, BlockHitResult hit) {
+    *///?}
         if (!player.isShiftKeyDown()) {
             return InteractionResult.PASS;
         }

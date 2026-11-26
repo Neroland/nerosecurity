@@ -4,16 +4,24 @@
 plugins {
     id 'net.minecraftforge.gradle'
     id 'net.minecraftforge.jarjar'
+    id 'net.minecraftforge.renamer' apply false
     id 'eclipse'
     id 'maven-publish'
 }
 
 // MC version comes from the Stonecutter node (e.g. :forge:26.1.2), not a global property.
 def mc = stonecutter.current.version
+def mc120 = mc == '1.20' || mc.startsWith('1.20.')
+def preComponents = stonecutter.eval(mc, '<1.20.5')
+if (preComponents) {
+    apply plugin: 'net.minecraftforge.renamer'
+}
 def forgeVersion = project.findProperty("forge_version_${mc}")
-def jeiVersion = project.findProperty("jei_version_${mc}")
+def jeiMc = mc == '1.20.5' ? '1.20.6' : mc
+def jeiVersion = project.findProperty("jei_version_${jeiMc}")
 def emiFile = project.findProperty("emi_file_neoforge_${mc}")
-def nerolandcoreVersion = project.findProperty('nerolandcore_version')
+def nerolandcoreVersion = project.findProperty(mc120 ? 'nerolandcore_version_1.20' : 'nerolandcore_version')
+def neroeconomyVersion = project.findProperty(preComponents ? 'neroeconomy_version_pre_components' : mc120 ? 'neroeconomy_version_1.20' : 'neroeconomy_version')
 
 if (!forgeVersion) {
     throw new GradleException("Missing forge_version_${mc} in gradle.properties")
@@ -35,6 +43,11 @@ def compatOn = { String flag -> (rootProject.findProperty("${flag}_${mc}") ?: ro
 def mcCeiling = project.findProperty("mc_ceiling_${mc}")
 def mcFloor = project.findProperty("mc_floor_${mc}") ?: mc
 def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
+def siblingVersion = { id ->
+    (preComponents && id == "nerofactions" ? rootProject.property("nerofactions_version_pre_components") : null)
+        ?: (mc120 ? rootProject.findProperty("${id}_version_1.20") : null)
+            ?: rootProject.property("${id}_version")
+}
 def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
 def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
 def siblingRun = [nerofactions: 'withNeroFactions', nerocolonies: 'withNeroColonies', nerospace: 'withNerospace']
@@ -130,6 +143,9 @@ repositories {
 
 dependencies {
     implementation minecraft.dependency("net.minecraftforge:forge:${forgeVersion}")
+    if (stonecutter.eval(mc, '<1.20.3')) {
+        annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+    }
     if (stonecutter.eval(mc, '>=1.21.6')) {
         annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.6'
     }
@@ -140,12 +156,12 @@ dependencies {
 
     // NeroEconomy — OPTIONAL. compileOnly: never bundled, never a hard requirement. Only the economy bridge
     // class imports it, and only after isModLoaded("neroeconomy"), so NeroSecurity runs without it.
-    compileOnly "za.co.neroland.neroeconomy:neroeconomy-forge-${mc}:${rootProject.neroeconomy_version}"
+    compileOnly "za.co.neroland.neroeconomy:neroeconomy-forge-${mc}:${neroeconomyVersion}"
 
     // Optional siblings — compileOnly, never bundled, never required (see the compat block above).
     siblingIds.each { id ->
         if (siblingOn[id]) {
-            def coord = "za.co.neroland.${id}:${id}-forge-${mc}:${rootProject.property("${id}_version")}"
+            def coord = "za.co.neroland.${id}:${id}-forge-${mc}:${siblingVersion(id)}"
             compileOnly coord
         }
     }
@@ -159,7 +175,7 @@ dependencies {
 
     // JEI common API only; Forge 26.x loader artifacts are not yet published on the pinned JEI lines.
     if (jeiVersion) {
-        compileOnly "mezz.jei:jei-${mc}-common-api:${jeiVersion}"
+        compileOnly "mezz.jei:jei-${jeiMc}-common-api:${jeiVersion}"
     }
 
     // EMI: compile-only, so any shared compat/emi plugin compiles in the Forge cells. The port publishes no
@@ -175,6 +191,35 @@ def tomlDep = { String modId, String floor, String reqKey, String reqVal ->
     "\n[[dependencies.${rootProject.mod_id}]]\nmodId = \"${modId}\"\n${reqKey} = ${reqVal}\nversionRange = \"[${floor},)\"\nordering = \"AFTER\"\nside = \"BOTH\"\n"
 }
 // Expand mods.toml from src/main/templates into generated resources.
+if (preComponents) {
+    renamer.mappings.from minecraft.dependency.toSrgFile
+    if (stonecutter.eval(mc, '<1.20.3')) {
+        renamer.enableMixinRefmaps {
+            config 'nerosecurity-common.mixins.json'
+            refMap = 'nerosecurity.refmap.json'
+        }
+        tasks.named('processResources') {
+            filesMatching('nerosecurity-common.mixins.json') {
+                filter { line -> line.replace('"minVersion": "0.8",', '"minVersion": "0.8", "refmap": "nerosecurity.refmap.json",') }
+            }
+        }
+        tasks.named('jar', Jar) {
+            manifest.attributes('MixinConfigs': 'nerosecurity-common.mixins.json')
+        }
+    }
+    def bundled = tasks.named('jarJar', Jar) {
+        archiveClassifier = 'dev-all'
+    }
+    renamer.classes('renameReleaseJar', bundled) {
+        if (stonecutter.eval(mc, '<1.20.3')) {
+            mappings renamer.mixin.generatedMappings
+        }
+        archiveClassifier = 'all'
+    }
+    tasks.named('assemble') { dependsOn 'renameReleaseJar' }
+}
+
+
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
     def props = [
         mod_id                    : rootProject.mod_id,
@@ -186,9 +231,9 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
         minecraft_version_range   : mcCeiling ? "[${mcFloor},${mcCeiling})" : "[${mc},)",
         // Floor at the compiled Core version — see the NeoForge build script for the reasoning.
         nerolandcore_version_range: "[${nerolandcoreVersion},2.0)",
-        nerofactions_dep          : siblingOn.nerofactions ? tomlDep('nerofactions', rootProject.nerofactions_version, 'mandatory', 'false') : '',
-        nerocolonies_dep          : siblingOn.nerocolonies ? tomlDep('nerocolonies', rootProject.nerocolonies_version, 'mandatory', 'false') : '',
-        nerospace_dep             : siblingOn.nerospace ? tomlDep('nerospace', rootProject.nerospace_version, 'mandatory', 'false') : '',
+        nerofactions_dep          : siblingOn.nerofactions ? tomlDep('nerofactions', siblingVersion('nerofactions'), 'mandatory', 'false') : '',
+        nerocolonies_dep          : siblingOn.nerocolonies ? tomlDep('nerocolonies', siblingVersion('nerocolonies'), 'mandatory', 'false') : '',
+        nerospace_dep             : siblingOn.nerospace ? tomlDep('nerospace', siblingVersion('nerospace'), 'mandatory', 'false') : '',
         opac_dep                  : opacOn ? tomlDep('openpartiesandclaims', opacVersion.toString(), 'mandatory', 'false') : '',
     ]
     inputs.properties(props)

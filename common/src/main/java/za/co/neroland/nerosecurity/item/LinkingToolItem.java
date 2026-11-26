@@ -50,7 +50,7 @@ public class LinkingToolItem extends Item {
         super.appendHoverText(stack, context, lines, flag);
         Consumer<Component> tooltip = lines::add;
     *///?}
-        SelectedHub selected = stack.get(NeroSecurityDataComponents.SELECTED_HUB.get());
+        SelectedHub selected = NeroSecurityDataComponents.selectedHub(stack);
         if (selected != null) {
             tooltip.accept(Component.translatable("item.nerosecurity.linking_tool.selected", selected.name())
                     .withStyle(ChatFormatting.AQUA));
@@ -101,14 +101,14 @@ public class LinkingToolItem extends Item {
             VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.not_a_device"));
             return InteractionResult.SUCCESS;
         }
-        SelectedHub selected = tool.get(NeroSecurityDataComponents.SELECTED_HUB.get());
+        SelectedHub selected = NeroSecurityDataComponents.selectedHub(tool);
         if (selected == null) {
             VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.no_hub"));
             return InteractionResult.SUCCESS;
         }
         Optional<Installation> installation = store.byId(selected.installationId());
         if (installation.isEmpty()) {
-            tool.remove(NeroSecurityDataComponents.SELECTED_HUB.get());
+            NeroSecurityDataComponents.clearSelectedHub(tool);
             VersionCompat.overlay(player, Component.translatable("tool.nerosecurity.hub_gone"));
             return InteractionResult.SUCCESS;
         }

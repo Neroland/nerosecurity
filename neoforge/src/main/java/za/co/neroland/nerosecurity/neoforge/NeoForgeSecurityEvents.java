@@ -12,7 +12,9 @@ import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 *///?}
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+//? if >=1.20.5 {
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+//?}
 
 import za.co.neroland.nerosecurity.block.SecurityHubBlock;
 import za.co.neroland.nerosecurity.block.field.ForceFieldBlock;
@@ -55,7 +57,15 @@ public final class NeoForgeSecurityEvents {
         });
         NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> ServerHooks.fireStarted(event.getServer()));
         NeoForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> ServerHooks.fireStopping(event.getServer()));
+        //? if >=1.20.5 {
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> ServerHooks.fireTick(event.getServer()));
+        //?} else {
+        /*NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.TickEvent.ServerTickEvent event) -> {
+            if (event.phase == net.neoforged.neoforge.event.TickEvent.Phase.END) {
+                ServerHooks.fireTick(event.getServer());
+            }
+        });
+        *///?}
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
             if (event.getEntity() instanceof ServerPlayer player) {
                 ServerHooks.firePlayerJoin(player);

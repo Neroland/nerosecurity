@@ -11,7 +11,9 @@ import io.netty.handler.codec.DecoderException;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 /**
@@ -43,8 +45,14 @@ public enum AccessLevel {
             AccessLevel::jsonName);
 
     /** Network codec: the ordinal as a var-int. An out-of-range ordinal fails the decode. */
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, AccessLevel> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(
             AccessLevel::byOrdinal, AccessLevel::ordinal);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, AccessLevel> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> buf.writeVarInt(value.ordinal()),
+            buf -> AccessLevel.byOrdinal(buf.readVarInt()));
+    *///?}
 
     /** 0xRRGGBB. */
     public final int colour;

@@ -13,7 +13,12 @@ import za.co.neroland.nerosecurity.NeroSecurityCommon;
 @Mod(NeroSecurityCommon.MOD_ID)
 public final class NeroSecurityForge {
 
+    //? if >=1.20.5 {
     public NeroSecurityForge(FMLJavaModLoadingContext context) {
+    //?} else {
+    /*public NeroSecurityForge() {
+        FMLJavaModLoadingContext context = FMLJavaModLoadingContext.get();
+    *///?}
         NeroSecurityCommon.LOGGER.info("[NeroSecurity] Forge bootstrap");
         // Common init declares the payloads; the channel below is sealed the moment it is built,
         // so that ordering is mandatory on Forge.

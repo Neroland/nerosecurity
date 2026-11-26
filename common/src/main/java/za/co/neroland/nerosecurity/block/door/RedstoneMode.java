@@ -2,7 +2,9 @@ package za.co.neroland.nerosecurity.block.door;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 /**
@@ -14,8 +16,14 @@ public enum RedstoneMode {
     IGNORE("ignore"),
     OPEN_WHILE_POWERED("open");
 
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, RedstoneMode> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(
             RedstoneMode::byOrdinal, RedstoneMode::ordinal);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, RedstoneMode> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> buf.writeVarInt(value.ordinal()),
+            buf -> RedstoneMode.byOrdinal(buf.readVarInt()));
+    *///?}
 
     private final String serializedName;
 

@@ -116,7 +116,7 @@ public final class KeycardService {
      */
     public static ServiceResult clone(ServerPlayer actor, Installation installation, DevicePos at, ItemStack source,
             ItemStack blank, boolean hasModule) {
-        KeycardData original = isKeycard(source) ? source.get(NeroSecurityDataComponents.KEYCARD.get()) : null;
+        KeycardData original = isKeycard(source) ? NeroSecurityDataComponents.keycard(source) : null;
         if (original == null) {
             return fail("programmer.nerosecurity.no_card");
         }
@@ -171,11 +171,11 @@ public final class KeycardService {
         if (!decision.allowed()) {
             return ServiceResult.failure(decision.message());
         }
-        KeycardData data = card.get(NeroSecurityDataComponents.KEYCARD.get());
+        KeycardData data = NeroSecurityDataComponents.keycard(card);
         if (KeycardVerifier.signedBy(installation, data)) {
             store(actor).revokeCard(installation.id(), data.serial());
         }
-        card.remove(NeroSecurityDataComponents.KEYCARD.get());
+        NeroSecurityDataComponents.clearKeycard(card);
         publish(SecurityEventType.KEYCARD_WIPED, installation, at, actor.getUUID());
         return ServiceResult.success(Component.translatable("programmer.nerosecurity.wiped"));
     }
@@ -294,7 +294,7 @@ public final class KeycardService {
 
     /** Whether {@code stack} is a keycard with no card data (a blank). */
     public static boolean isBlank(@Nullable ItemStack stack) {
-        return isKeycard(stack) && !stack.has(NeroSecurityDataComponents.KEYCARD.get());
+        return isKeycard(stack) && !NeroSecurityDataComponents.hasKeycard(stack);
     }
 
     // --- helpers --------------------------------------------------------------------------------
@@ -310,7 +310,7 @@ public final class KeycardService {
                 KeycardPayload payload = new KeycardPayload(installation.id(), level, issue.serial(), encrypted,
                         boundOwner != null, now);
                 byte[] signature = KeycardSigner.sign(installation, payload);
-                target.set(NeroSecurityDataComponents.KEYCARD.get(), KeycardData.of(payload, signature, installation.name()));
+                NeroSecurityDataComponents.setKeycard(target, KeycardData.of(payload, signature, installation.name()));
                 return ServiceResult.success(Component.empty());
             }
             case LEDGER_FULL -> {

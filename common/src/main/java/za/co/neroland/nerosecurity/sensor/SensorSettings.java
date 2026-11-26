@@ -5,7 +5,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import io.netty.buffer.ByteBuf;
 
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -37,11 +39,22 @@ public record SensorSettings(AccessLevel minLevel, SensorEntityMode entityMode, 
             Codec.INT.optionalFieldOf("fov", 90).forGetter(SensorSettings::fovDegrees)
     ).apply(inst, SensorSettings::new));
 
+    //? if >=1.20.5 {
     public static final StreamCodec<ByteBuf, SensorSettings> STREAM_CODEC = StreamCodec.composite(
             AccessLevel.STREAM_CODEC, SensorSettings::minLevel,
             SensorEntityMode.STREAM_CODEC, SensorSettings::entityMode,
             ByteBufCodecs.VAR_INT, SensorSettings::fovDegrees,
             SensorSettings::new);
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, SensorSettings> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> {
+                AccessLevel.STREAM_CODEC.encode(buf, value.minLevel());
+                SensorEntityMode.STREAM_CODEC.encode(buf, value.entityMode());
+                buf.writeVarInt(value.fovDegrees());
+            },
+            buf -> new SensorSettings(AccessLevel.STREAM_CODEC.decode(buf),
+                    SensorEntityMode.STREAM_CODEC.decode(buf), buf.readVarInt()));
+    *///?}
 
     public SensorSettings {
         if (minLevel == null) {

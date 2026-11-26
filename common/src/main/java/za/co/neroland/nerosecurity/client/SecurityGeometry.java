@@ -75,12 +75,30 @@ public final class SecurityGeometry {
     /** One complete vertex. */
     public static void vertex(VertexConsumer c, PoseStack.Pose pose, float x, float y, float z, float u, float v,
             float nx, float ny, float nz, int argb, int light) {
+        //? if >=1.21 {
         c.addVertex(pose, x, y, z)
                 .setColor((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, (argb >>> 24) & 0xFF)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(light)
                 .setNormal(pose, nx, ny, nz);
+        //?} else if >=1.20.5 {
+        /*c.vertex(pose.pose(), x, y, z)
+                .color((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, (argb >>> 24) & 0xFF)
+                .uv(u, v)
+                .overlayCoords(OverlayTexture.NO_OVERLAY)
+                .uv2(light)
+                .normal(pose, nx, ny, nz)
+                .endVertex();
+        *///?} else {
+        /*c.vertex(pose.pose(), x, y, z)
+                .color((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, (argb >>> 24) & 0xFF)
+                .uv(u, v)
+                .overlayCoords(OverlayTexture.NO_OVERLAY)
+                .uv2(light)
+                .normal(pose.normal(), nx, ny, nz)
+                .endVertex();
+        *///?}
     }
 
     /**

@@ -13,7 +13,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.DecoderException;
 
 import net.minecraft.core.UUIDUtil;
+//? if >=1.20.5 {
 import net.minecraft.network.codec.ByteBufCodecs;
+//?}
 import net.minecraft.network.codec.StreamCodec;
 
 import za.co.neroland.nerosecurity.access.AccessLevel;
@@ -47,6 +49,15 @@ public record KeycardData(UUID installationId, AccessLevel level, long serial, b
                 : DataResult.error(() -> "Keycard signature must be " + SIGNATURE_BYTES + " bytes");
     }, ByteBuffer::wrap);
 
+    //? if >=1.20.5 {
+    private static final Codec<String> LABEL_CODEC = Codec.string(0, LABEL_MAX);
+    //?} else {
+    /*private static final Codec<String> LABEL_CODEC = Codec.STRING.comapFlatMap(
+            value -> value.length() <= LABEL_MAX ? DataResult.success(value)
+                    : DataResult.error(() -> "Keycard label is too long"),
+            value -> value);
+    *///?}
+
     public static final Codec<KeycardData> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             UUIDUtil.CODEC.fieldOf("installation").forGetter(KeycardData::installationId),
             AccessLevel.CODEC.fieldOf("level").forGetter(KeycardData::level),
@@ -55,9 +66,10 @@ public record KeycardData(UUID installationId, AccessLevel level, long serial, b
             Codec.BOOL.fieldOf("bound").forGetter(KeycardData::bound),
             Codec.LONG.fieldOf("issued_at").forGetter(KeycardData::issuedAt),
             SIGNATURE_CODEC.fieldOf("signature").forGetter(KeycardData::signature),
-            Codec.string(0, LABEL_MAX).optionalFieldOf("label", "").forGetter(KeycardData::label)
+            LABEL_CODEC.optionalFieldOf("label", "").forGetter(KeycardData::label)
     ).apply(inst, KeycardData::new));
 
+    //? if >=1.20.5 {
     private static final StreamCodec<ByteBuf, String> LABEL_STREAM = ByteBufCodecs.stringUtf8(LABEL_MAX);
 
     /** Same fields as {@link #CODEC}; a signature of the wrong length fails the decode. */
@@ -87,6 +99,34 @@ public record KeycardData(UUID installationId, AccessLevel level, long serial, b
                 String label = LABEL_STREAM.decode(buf);
                 return new KeycardData(installation, level, serial, encrypted, bound, issuedAt, signature, label);
             });
+    //?} else {
+    /*public static final StreamCodec<net.minecraft.network.FriendlyByteBuf, KeycardData> STREAM_CODEC = StreamCodec.of(
+            (buf, card) -> {
+                buf.writeUUID(card.installationId());
+                AccessLevel.STREAM_CODEC.encode(buf, card.level());
+                buf.writeLong(card.serial());
+                buf.writeBoolean(card.encrypted());
+                buf.writeBoolean(card.bound());
+                buf.writeLong(card.issuedAt());
+                buf.writeBytes(card.signature);
+                buf.writeUtf(card.label(), LABEL_MAX);
+            },
+            buf -> {
+                UUID installation = buf.readUUID();
+                AccessLevel level = AccessLevel.STREAM_CODEC.decode(buf);
+                long serial = buf.readLong();
+                boolean encrypted = buf.readBoolean();
+                boolean bound = buf.readBoolean();
+                long issuedAt = buf.readLong();
+                if (buf.readableBytes() < SIGNATURE_BYTES) {
+                    throw new DecoderException("Truncated keycard signature");
+                }
+                byte[] signature = new byte[SIGNATURE_BYTES];
+                buf.readBytes(signature);
+                String label = buf.readUtf(LABEL_MAX);
+                return new KeycardData(installation, level, serial, encrypted, bound, issuedAt, signature, label);
+            });
+    *///?}
 
     public KeycardData {
         Objects.requireNonNull(installationId, "installationId");

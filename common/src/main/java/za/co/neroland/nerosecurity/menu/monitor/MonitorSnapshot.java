@@ -55,8 +55,13 @@ public record MonitorSnapshot(BlockPos pos, String installationName, boolean loc
     public static final int MAX_EVENTS = 50;
     private static final int NAME_MAX_BYTES = Installation.NAME_MAX * 4;
 
+    //? if >=1.20.5 {
     public static final Type<MonitorSnapshot> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(NeroSecurityCommon.MOD_ID, "monitor_snapshot"));
+    //?} else {
+    /*public static final Type<MonitorSnapshot> TYPE = new Type<>(
+            Identifier.fromNamespaceAndPath(NeroSecurityCommon.MOD_ID, "monitor_snapshot"), MonitorSnapshot.class);
+    *///?}
 
     public static final StreamCodec<RegistryFriendlyByteBuf, MonitorSnapshot> STREAM_CODEC =
             StreamCodec.of(MonitorSnapshot::write, MonitorSnapshot::read);

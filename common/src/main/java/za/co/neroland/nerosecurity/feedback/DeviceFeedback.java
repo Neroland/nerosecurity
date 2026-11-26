@@ -26,8 +26,13 @@ public record DeviceFeedback(BlockPos pos, byte kind) implements CustomPacketPay
     public static final byte DENIED = 0;
     public static final byte ACCEPTED = 1;
 
+    //? if >=1.20.5 {
     public static final Type<DeviceFeedback> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(NeroSecurityCommon.MOD_ID, "device_feedback"));
+    //?} else {
+    /*public static final Type<DeviceFeedback> TYPE = new Type<>(
+            Identifier.fromNamespaceAndPath(NeroSecurityCommon.MOD_ID, "device_feedback"), DeviceFeedback.class);
+    *///?}
 
     public static final StreamCodec<FriendlyByteBuf, DeviceFeedback> STREAM_CODEC = StreamCodec.of(
             (buf, v) -> {
