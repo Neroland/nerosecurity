@@ -1,7 +1,7 @@
 # NeroSecurity Wiki
 
 Fabric supports Minecraft 1.20 through 1.20.6. Forge supports 1.20 through 1.20.4 and 1.20.6. NeoForge supports 1.20.4 through 1.20.6, with the Forge jar for legacy NeoForge 1.20.1.
-Use the Neroland Core build for the same Minecraft version and loader. Minecraft 1.20.x builds require Core 1.23.0 or newer, and the NeoForge 1.20.5 build requires Core 1.24.0 or newer. Both require Core below 2.0.
+Use Neroland Core 1.24.0 or newer (below 2.0) for the same Minecraft version and loader.
 
 
 Player- and contributor-facing documentation for **NeroSecurity**, part of the Neroland ecosystem.

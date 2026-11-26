@@ -13,8 +13,6 @@ plugins {
 
 // MC version comes from the Stonecutter node (e.g. :fabric:26.1.2), not a global property.
 def mc = stonecutter.current.version
-def mc120 = mc == '1.20' || mc.startsWith('1.20.')
-def preComponents = stonecutter.eval(mc, '<1.20.5')
 // Minecraft before 26.1 ships obfuscated, so those cells need mappings and a remapped jar.
 def obfuscated = mc.startsWith('1.')
 apply plugin: obfuscated ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
@@ -26,8 +24,8 @@ def fabricApi = project.findProperty("fabric_api_version_${mc}")
 def jeiMc = mc == '1.20.5' ? '1.20.6' : mc
 def jeiVersion = project.findProperty("jei_version_${jeiMc}")
 def emiFile = project.findProperty("emi_file_fabric_${mc}")
-def nerolandcoreVersion = project.findProperty(mc120 ? 'nerolandcore_version_1.20' : 'nerolandcore_version')
-def neroeconomyVersion = project.findProperty(preComponents ? 'neroeconomy_version_pre_components' : mc120 ? 'neroeconomy_version_1.20' : 'neroeconomy_version')
+def nerolandcoreVersion = rootProject.property('nerolandcore_version')
+def neroeconomyVersion = rootProject.property('neroeconomy_version')
 
 // This node's projectDir is <loader>/versions/<v>; the authoritative loader source +
 // resources live in the BRANCH root (fabric/). Resolve branch-root paths via the parent.
@@ -42,11 +40,7 @@ def branchDir = project.parent.projectDir
 // A per-Minecraft-version flag (`<x>_compat_<mc>`) overrides the global one for this cell only.
 def compatOn = { String flag -> (rootProject.findProperty("${flag}_${mc}") ?: rootProject.findProperty(flag) ?: 'true').toString().trim() == 'true' }
 def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
-def siblingVersion = { id ->
-    (preComponents && id == "nerofactions" ? rootProject.property("nerofactions_version_pre_components") : null)
-        ?: (mc120 ? rootProject.findProperty("${id}_version_1.20") : null)
-            ?: rootProject.property("${id}_version")
-}
+def siblingVersion = { id -> rootProject.property("${id}_version") }
 def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
 def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
 def siblingRun = [nerofactions: 'withNeroFactions', nerocolonies: 'withNeroColonies', nerospace: 'withNerospace']

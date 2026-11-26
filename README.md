@@ -61,10 +61,9 @@ force fields overload, and an owner is never locked out.
 ## Requirements
 
 - **Minecraft 1.20.x.** Fabric supports Minecraft 1.20 through 1.20.6. Forge supports 1.20 through 1.20.4 and 1.20.6. NeoForge supports 1.20.4 through 1.20.6, with the Forge jar for legacy NeoForge 1.20.1.
-  Use the Neroland Core build for the same Minecraft version and loader. Minecraft 1.20.x builds require Core 1.23.0 or newer, and the NeoForge 1.20.5 build requires Core 1.24.0 or newer. Both require Core below 2.0.
+  Use Neroland Core 1.24.0 or newer (below 2.0) for the same Minecraft version and loader.
 - **Minecraft** 1.21.1, 1.21.4, 1.21.5, 1.21.7–1.21.8, 1.21.9–1.21.10, 1.21.11, 26.1.2, 26.2 or 26.3 on
   **NeoForge**, **MinecraftForge** or **Fabric**.
-- **Neroland Core 1.20.1** or newer (below 2.0) for 1.21.x and 26.x.
 - **Java 17** through Minecraft 1.20.4, **Java 21** from Minecraft 1.20.5 through 1.21.x, and **Java 25** for 26.x.
 
 Optional. NeroSecurity is complete without any of them. Each one is detected at start-up, and each
@@ -72,10 +71,10 @@ loader manifest floors it at the version NeroSecurity is compiled against:
 
 | Mod | Minimum | What it adds |
 | --- | --- | --- |
-| NeroEconomy | 0.4.0-beta.1 | A ready seam for paid security tiers. Nothing costs credits yet. |
-| NeroFactions | 0.7.0-beta.1 | Bind an installation to a faction; members get access by reputation tier, capped at OFFICER. |
-| NeroColonies | 0.5.0-beta.1 | Bind to a colony; members get access by role, capped at OFFICER. |
-| Nerospace | 1.5.0 | Bind to a station; its current owner gets OFFICER. |
+| NeroEconomy | 0.8.1 | A ready seam for paid security tiers. Nothing costs credits yet. |
+| NeroFactions | 0.9.1 | Bind an installation to a faction; members get access by reputation tier, capped at OFFICER. |
+| NeroColonies | 0.9.1 | Bind to a colony; members get access by role, capped at OFFICER. |
+| Nerospace | 2.5.1 | Bind to a station; its current owner gets OFFICER. |
 | Open Parties and Claims | 0.32.7 (0.32.8 on 26.3) | Claims can refuse access on claimed land. They never grant. |
 
 The companion-app features need the NeroLink mod on the server; without it the link module is inert.

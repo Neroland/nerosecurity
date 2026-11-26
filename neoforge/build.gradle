@@ -12,14 +12,12 @@ plugins {
 
 // MC version comes from the Stonecutter node (e.g. :neoforge:26.1.2), not a global property.
 def mc = stonecutter.current.version
-def mc120 = mc == '1.20' || mc.startsWith('1.20.')
-def preComponents = stonecutter.eval(mc, '<1.20.5')
 def neoVersion = project.findProperty("neo_version_${mc}")
 def jeiMc = mc == '1.20.5' ? '1.20.6' : mc
 def jeiVersion = project.findProperty("jei_version_${jeiMc}")
 def emiFile = project.findProperty("emi_file_neoforge_${mc}")
-def nerolandcoreVersion = project.findProperty(mc == '1.20.5' ? 'nerolandcore_version_neoforge_1.20.5' : mc120 ? 'nerolandcore_version_1.20' : 'nerolandcore_version')
-def neroeconomyVersion = project.findProperty(mc == '1.20.5' ? 'neroeconomy_version_neoforge_1.20.5' : preComponents ? 'neroeconomy_version_pre_components' : mc120 ? 'neroeconomy_version_1.20' : 'neroeconomy_version')
+def nerolandcoreVersion = rootProject.property('nerolandcore_version')
+def neroeconomyVersion = rootProject.property('neroeconomy_version')
 
 // This node's projectDir is <loader>/versions/<v>; the authoritative loader source +
 // templates live in the BRANCH root (neoforge/). Resolve branch-root paths via the parent.
@@ -37,12 +35,7 @@ def compatOn = { String flag -> (rootProject.findProperty("${flag}_${mc}") ?: ro
 def mcCeiling = project.findProperty("mc_ceiling_${mc}")
 def mcFloor = project.findProperty("mc_floor_${mc}") ?: mc
 def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
-def siblingVersion = { id ->
-    (mc == "1.20.5" ? rootProject.findProperty("${id}_version_neoforge_1.20.5") : null)
-        ?: (preComponents && id == "nerofactions" ? rootProject.property("nerofactions_version_pre_components") : null)
-        ?: (mc120 ? rootProject.findProperty("${id}_version_1.20") : null)
-            ?: rootProject.property("${id}_version")
-}
+def siblingVersion = { id -> rootProject.property("${id}_version") }
 def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
 def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
 def siblingRun = [nerofactions: 'withNeroFactions', nerocolonies: 'withNeroColonies', nerospace: 'withNerospace']

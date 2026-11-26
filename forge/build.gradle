@@ -11,7 +11,6 @@ plugins {
 
 // MC version comes from the Stonecutter node (e.g. :forge:26.1.2), not a global property.
 def mc = stonecutter.current.version
-def mc120 = mc == '1.20' || mc.startsWith('1.20.')
 def preComponents = stonecutter.eval(mc, '<1.20.5')
 if (preComponents) {
     apply plugin: 'net.minecraftforge.renamer'
@@ -20,8 +19,8 @@ def forgeVersion = project.findProperty("forge_version_${mc}")
 def jeiMc = mc == '1.20.5' ? '1.20.6' : mc
 def jeiVersion = project.findProperty("jei_version_${jeiMc}")
 def emiFile = project.findProperty("emi_file_neoforge_${mc}")
-def nerolandcoreVersion = project.findProperty(mc120 ? 'nerolandcore_version_1.20' : 'nerolandcore_version')
-def neroeconomyVersion = project.findProperty(preComponents ? 'neroeconomy_version_pre_components' : mc120 ? 'neroeconomy_version_1.20' : 'neroeconomy_version')
+def nerolandcoreVersion = rootProject.property('nerolandcore_version')
+def neroeconomyVersion = rootProject.property('neroeconomy_version')
 
 if (!forgeVersion) {
     throw new GradleException("Missing forge_version_${mc} in gradle.properties")
@@ -43,11 +42,7 @@ def compatOn = { String flag -> (rootProject.findProperty("${flag}_${mc}") ?: ro
 def mcCeiling = project.findProperty("mc_ceiling_${mc}")
 def mcFloor = project.findProperty("mc_floor_${mc}") ?: mc
 def siblingIds = ['nerofactions', 'nerocolonies', 'nerospace']
-def siblingVersion = { id ->
-    (preComponents && id == "nerofactions" ? rootProject.property("nerofactions_version_pre_components") : null)
-        ?: (mc120 ? rootProject.findProperty("${id}_version_1.20") : null)
-            ?: rootProject.property("${id}_version")
-}
+def siblingVersion = { id -> rootProject.property("${id}_version") }
 def siblingPkg = [nerofactions: 'factions', nerocolonies: 'colonies', nerospace: 'nerospace']
 def siblingCls = [nerofactions: 'Factions', nerocolonies: 'Colonies', nerospace: 'Nerospace']
 def siblingRun = [nerofactions: 'withNeroFactions', nerocolonies: 'withNeroColonies', nerospace: 'withNerospace']
